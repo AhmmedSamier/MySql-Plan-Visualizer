@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed, provide } from "vue"
+import { ref, computed, provide, reactive } from "vue"
 import AboutView from "./views/AboutView.vue"
 import HomeView from "./views/HomeView.vue"
 import NotFoundView from "./views/NotFoundView.vue"
 import PlanView from "./views/PlanView.vue"
+import type { ActivePlan } from "./types"
 
-const routes = {
+const routes: Record<string, any> = {
   "/": HomeView,
   "/about": AboutView,
   "/plan": PlanView,
@@ -18,10 +19,11 @@ const currentView = computed(() => {
   return routes[currentPath.value] || NotFoundView
 })
 
-const planData = ["", "", ""]
+// Use reactive so that changes are reflected
+const planData = reactive<ActivePlan>(["", "", ""])
 provide("planData", planData)
 
-function setPlanData(name, plan, query) {
+function setPlanData(name: string, plan: string, query: string) {
   planData[0] = plan
   planData[1] = query
   planData[2] = name
@@ -34,3 +36,9 @@ window.setPlanData = setPlanData
 <template>
   <component :is="currentView" />
 </template>
+
+<style>
+[v-cloak] {
+  display: none;
+}
+</style>

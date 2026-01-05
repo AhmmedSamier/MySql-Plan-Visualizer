@@ -5,7 +5,7 @@ const remoteVersion = ref()
 const updateRequired = ref(false)
 
 async function checkForUpdate() {
-  function compareVersions(a, b) {
+  function compareVersions(a: string, b: string) {
     const pa = a.split(".").map(Number)
     const pb = b.split(".").map(Number)
 

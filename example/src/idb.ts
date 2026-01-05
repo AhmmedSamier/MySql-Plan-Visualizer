@@ -1,16 +1,15 @@
+import type { Plan } from "./types"
+
 const DB_NAME = "pev2"
 const DB_VERSION = 1
-let DB
-
-type StoredPlan = Record<string, unknown> & { id?: unknown }
-type ImportablePlan = StoredPlan | unknown[]
+let DB: IDBDatabase | null = null
 
 function deepEqual<T>(a: T, b: T): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 export default {
-  async getDb() {
+  async getDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       if (DB) {
         return resolve(DB)
@@ -35,7 +34,8 @@ export default {
       }
     })
   },
-  async deletePlan(plan) {
+
+  async deletePlan(plan: Plan & { id?: number }): Promise<void> {
     const db = await this.getDb()
 
     return new Promise<void>((resolve) => {
@@ -45,11 +45,13 @@ export default {
       }
 
       const store = trans.objectStore("plans")
-      store.delete(plan.id)
+      if (plan.id) {
+        store.delete(plan.id)
+      }
     })
   },
 
-  async getPlans() {
+  async getPlans(): Promise<Plan[]> {
     const db = await this.getDb()
 
     return new Promise((resolve) => {
@@ -59,10 +61,10 @@ export default {
       }
 
       const store = trans.objectStore("plans")
-      const plans = []
+      const plans: Plan[] = []
 
       store.openCursor().onsuccess = (e) => {
-        const cursor = e.target.result
+        const cursor = (e.target as IDBRequest).result
         if (cursor) {
           plans.push(cursor.value)
           cursor.continue()
@@ -71,7 +73,7 @@ export default {
     })
   },
 
-  async savePlan(plan) {
+  async savePlan(plan: Plan): Promise<void> {
     const db = await this.getDb()
 
     return new Promise<void>((resolve) => {
@@ -85,15 +87,16 @@ export default {
     })
   },
 
-  async importPlans(plans: ImportablePlan[]) {
+  async importPlans(plans: Plan[]): Promise<number[]> {
     const db = await this.getDb()
 
     return new Promise<number[]>((resolve, reject) => {
       const trans = db.transaction(["plans"], "readwrite")
       const store = trans.objectStore("plans")
 
-      let count = 0;
-      let duplicates = 0;
+      let count = 0
+      let duplicates = 0
+      let processed = 0
 
       trans.oncomplete = () => {
         resolve([count, duplicates])
@@ -103,36 +106,37 @@ export default {
         reject(trans.error)
       }
 
-      for (const plan of plans) {
-        if ("id" in plan) delete plan.id;
-
-        const cursorReq = store.openCursor();
-        let exists = false;
-
-        cursorReq.onsuccess = (e) => {
-          const cursor = e.target.result;
-          if (!cursor) {
-            // reached end → no duplicate found
-            if (!exists) {
-              store.add(plan);
-              count++;
-            }
-            return;
-          }
-
-          const existing = cursor.value;
-          delete existing.id;
-
-          if (deepEqual(existing, plan)) {
-            exists = true; // duplicate found
-            duplicates++;
-            return;        // stop scanning
-          }
-
-          cursor.continue();
-        };
+      if (plans.length === 0) {
+        resolve([0, 0])
+        return
       }
 
+      // We need to process sequentially or handle async inside loop
+      // But openCursor is async.
+      // Simpler approach: Load all existing plans and compare in memory
+      // This matches the previous logic more or less but cleaner.
+
+      const getAllReq = store.getAll()
+      getAllReq.onsuccess = () => {
+        const existingPlans = getAllReq.result as any[]
+
+        for (const plan of plans) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const planAny = plan as any
+          if (planAny.id) delete planAny.id
+
+          const isDuplicate = existingPlans.some((existing) => {
+            return deepEqual(existing, plan)
+          })
+
+          if (!isDuplicate) {
+            store.add(plan)
+            count++
+          } else {
+            duplicates++
+          }
+        }
+      }
     })
   },
 }
