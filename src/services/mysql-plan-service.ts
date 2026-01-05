@@ -17,6 +17,7 @@ const ACCESS_TYPE_MAP: Record<string, string> = {
 }
 
 export class MysqlPlanService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public isMySQL(data: any): boolean {
     // MySQL V1 has query_block
     // MySQL V2 (explain_json_format_version=2) structure is flexible but usually tree-like
@@ -28,17 +29,20 @@ export class MysqlPlanService {
     )
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public parseMySQL(data: any, flat: Node[]) {
     if (_.has(data, "query_block")) {
       return this.parseV1(data.query_block, flat)
     }
     if (_.has(data, "execution_plan")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return this.parseV2((data as any).execution_plan, flat)
     }
     // Fallback for V2 or other structures
     return this.parseV2(data, flat)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private parseV1(data: any, flat: Node[]): Node {
     let node: Node
 
@@ -48,6 +52,7 @@ export class MysqlPlanService {
       // For visualization, we treat the first item as valid, and subsequent items join to it.
       // However, standard visualization expects a global root.
       // We recursively build a tree.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const children = data.nested_loop.map((child: any) => {
         // Each child usually wraps a table or another construct
         if (child.table) return this.parseTable(child.table, flat)
@@ -105,6 +110,7 @@ export class MysqlPlanService {
     return node
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private parseTable(data: any, flat: Node[]): Node {
     const accessType = data.access_type || "Scan"
     const nodeType = ACCESS_TYPE_MAP[accessType] || accessType
@@ -137,6 +143,7 @@ export class MysqlPlanService {
     return node
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private parseV2(data: any, flat: Node[]): Node {
     // V2 is likely tree based with 'inputs'
     const name = data.name || data.operation || "Unknown"
@@ -150,7 +157,7 @@ export class MysqlPlanService {
     _.each(data, (val, key) => {
       if (typeof val !== "object" && key !== "inputs" && key !== "steps") {
         // naive map
-        // @ts-ignore
+        // @ts-expect-error key access on Node with any
         node[key] = val
       }
     })
@@ -163,6 +170,7 @@ export class MysqlPlanService {
 
     const inputs = data.inputs || data.steps || data.children
     if (inputs && Array.isArray(inputs)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       node[NodeProp.PLANS] = inputs.map((child: any) =>
         this.parseV2(child, flat),
       )
