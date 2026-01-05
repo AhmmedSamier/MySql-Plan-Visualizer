@@ -157,7 +157,6 @@ export class MysqlPlanService {
     _.each(data, (val, key) => {
       if (typeof val !== "object" && key !== "inputs" && key !== "steps") {
         // naive map
-        // @ts-expect-error key access on Node with any
         node[key] = val
       }
     })

@@ -96,7 +96,7 @@ export default {
 
       let count = 0
       let duplicates = 0
-      let processed = 0
+      const processed = 0
 
       trans.oncomplete = () => {
         resolve([count, duplicates])
