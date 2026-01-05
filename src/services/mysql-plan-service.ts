@@ -33,7 +33,7 @@ export class MysqlPlanService {
       return this.parseV1(data.query_block, flat)
     }
     if (_.has(data, "execution_plan")) {
-      return this.parseV2(data.execution_plan, flat)
+      return this.parseV2((data as any).execution_plan, flat)
     }
     // Fallback for V2 or other structures
     return this.parseV2(data, flat)
