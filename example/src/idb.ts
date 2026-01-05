@@ -96,7 +96,6 @@ export default {
 
       let count = 0
       let duplicates = 0
-      const processed = 0
 
       trans.oncomplete = () => {
         resolve([count, duplicates])
@@ -118,7 +117,7 @@ export default {
 
       const getAllReq = store.getAll()
       getAllReq.onsuccess = () => {
-        const existingPlans = getAllReq.result as any[]
+        const existingPlans = getAllReq.result as Plan[]
 
         for (const plan of plans) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
