@@ -9,10 +9,9 @@ import {
   ViewOptionsKey,
 } from "@/symbols"
 import type { ViewOptions } from "@/interfaces"
-import { EstimateDirection, BufferLocation, NodeProp, Metric } from "../enums"
+import { EstimateDirection, NodeProp, Metric } from "../enums"
 import LevelDivider from "@/components/LevelDivider.vue"
 import TimeTooltip from "@/components/tooltip/TimeTooltip.vue"
-import IoTooltip from "@/components/tooltip/IoTooltip.vue"
 import useNode from "@/node"
 import { store } from "@/store"
 import type { FlattenedPlanNode } from "@/store"
@@ -23,7 +22,6 @@ interface Props {
   row: FlattenedPlanNode
   viewOptions: {
     metric: Metric
-    buffersMetric: BufferLocation
   }
 }
 const props = defineProps<Props>()
@@ -40,7 +38,6 @@ const highlightedNodeId = inject(HighlightedNodeIdKey)
 
 const _viewOptions = inject(ViewOptionsKey) as ViewOptions
 const {
-  buffersByLocationTooltip,
   costTooltip,
   estimateFactorPercent,
   estimateFactorTooltip,
@@ -84,12 +81,6 @@ watch(
         :node="node"
         v-if="diagramViewOptions.metric == Metric.time"
       />
-      <IoTooltip
-        :node="node"
-        v-else-if="diagramViewOptions.metric == Metric.io"
-        exclusive
-        class="mb-0"
-      />
       <template v-else-if="diagramViewOptions.metric == Metric.rows">
         <div v-html="rowsTooltip"></div>
       </template>
@@ -99,11 +90,6 @@ watch(
       <template v-else-if="diagramViewOptions.metric == Metric.cost">
         <div v-html="costTooltip"></div>
       </template>
-      <template v-else-if="diagramViewOptions.metric == Metric.buffers">
-        <div
-          v-html="buffersByLocationTooltip(diagramViewOptions.buffersMetric)"
-        ></div
-      ></template>
     </template>
     <td class="node-index" ref="rootEl">
       <span class="fw-normal small">#{{ node.nodeId }} </span>
@@ -268,258 +254,6 @@ watch(
               Math.round(
                 (node[NodeProp.EXCLUSIVE_COST] / store.stats.maxCost) * 100,
               ) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-      </div>
-      <!-- buffers shared -->
-      <div
-        class="progress rounded-0 align-items-center bg-transparent"
-        style="height: 5px"
-        v-else-if="
-          diagramViewOptions.metric == Metric.buffers &&
-          diagramViewOptions.buffersMetric == BufferLocation.shared &&
-          store.stats.maxBlocks?.[BufferLocation.shared]
-        "
-      >
-        <div
-          class="bg-hit"
-          :class="{
-            'border-start border-hit':
-              node[NodeProp.EXCLUSIVE_SHARED_HIT_BLOCKS] > 0,
-          }"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_SHARED_HIT_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.shared]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-read"
-          role="progressbar"
-          :class="{
-            'border-start border-read':
-              node[NodeProp.EXCLUSIVE_SHARED_READ_BLOCKS] > 0,
-          }"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_SHARED_READ_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.shared]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-dirtied"
-          :class="{
-            'border-start border-dirtied':
-              node[NodeProp.EXCLUSIVE_SHARED_DIRTIED_BLOCKS] > 0,
-          }"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_SHARED_DIRTIED_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.shared]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-written"
-          :class="{
-            'border-start border-written':
-              node[NodeProp.EXCLUSIVE_SHARED_WRITTEN_BLOCKS] > 0,
-          }"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_SHARED_WRITTEN_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.shared]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-      </div>
-      <!-- buffers temp -->
-      <div
-        class="progress rounded-0 align-items-center bg-transparent"
-        style="height: 5px"
-        v-else-if="
-          diagramViewOptions.metric == Metric.buffers &&
-          diagramViewOptions.buffersMetric == BufferLocation.temp &&
-          store.stats.maxBlocks?.[BufferLocation.temp]
-        "
-      >
-        <div
-          class="bg-read"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_TEMP_READ_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.temp]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-written"
-          role="progressbar"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_TEMP_WRITTEN_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.temp]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          style="height: 5px"
-        ></div>
-      </div>
-      <!-- buffers local -->
-      <div
-        class="progress rounded-0 align-items-center bg-transparent"
-        style="height: 5px"
-        v-else-if="
-          diagramViewOptions.metric == Metric.buffers &&
-          diagramViewOptions.buffersMetric == BufferLocation.local &&
-          store.stats.maxBlocks?.[BufferLocation.local]
-        "
-      >
-        <div
-          class="bg-hit"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_LOCAL_HIT_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.local]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-read"
-          role="progressbar"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_LOCAL_READ_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.local]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          style="height: 5px"
-        ></div>
-        <div
-          class="bg-dirtied"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_LOCAL_DIRTIED_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.local]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-written"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_LOCAL_WRITTEN_BLOCKS] /
-                  store.stats.maxBlocks?.[BufferLocation.local]) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-      </div>
-      <!-- io -->
-      <div
-        class="progress rounded-0 align-items-center bg-transparent"
-        style="height: 5px"
-        v-else-if="
-          diagramViewOptions.metric == Metric.io &&
-          (store.plan?.content.Plan[NodeProp.SUM_IO_READ_TIME] ||
-            store.plan?.content.Plan[NodeProp.SUM_IO_WRITE_TIME])
-        "
-      >
-        <div
-          class="bg-read"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_SUM_IO_READ_TIME] /
-                  store.stats.maxIo) *
-                  100,
-              ) || 0) + '%',
-          }"
-          aria-valuenow="15"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
-        <div
-          class="bg-written"
-          role="progressbar"
-          style="height: 5px"
-          :style="{
-            width:
-              (Math.round(
-                (node[NodeProp.EXCLUSIVE_SUM_IO_WRITE_TIME] /
-                  store.stats.maxIo) *
-                  100,
-              ) || 0) + '%',
           }"
           aria-valuenow="15"
           aria-valuemin="0"

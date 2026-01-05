@@ -209,7 +209,7 @@ function centerCte() {
                 v-html="
                   sortKeys(
                     node[NodeProp.SORT_KEY] as string[],
-                    node[NodeProp.PRESORTED_KEY] as string[],
+                    undefined,
                   )
                 "
               ></span>

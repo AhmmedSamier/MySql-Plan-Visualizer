@@ -7,51 +7,28 @@ import MainLayout from "../layouts/MainLayout.vue"
     <div class="container">
       <h2>Disclaimer</h2>
       <p>
-        This project is a rewrite of the excellent
-        <a href="https://github.com/AlexTatiyants/pev"
-          >Postgres Explain Visualizer (pev)</a
-        >. Kudos go to Alex Tatiyants.
-      </p>
-
-      <p>
-        The pev project was initialy written in early 2016 but seem to be
-        abandonned since then. There was no activity at all for more than
-        <a href="https://github.com/AlexTatiyants/pev/issues/42"
-          >3 years and counting</a
-        >
-        though there are
-        <a href="https://github.com/AlexTatiyants/pev/issues"
-          >several issues open</a
-        >
-        and relevant pull requests pending.
+        This project is a MySQL adaptation of the excellent
+        <a href="https://github.com/dalibo/pev2"
+          >Postgres Explain Visualizer 2 (pev2)</a
+        >.
       </p>
 
       <h2>Usage tips</h2>
       <p>
         To get the most out of it, we recommend generating a query plan using
-        the following line:
-        <code>EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON)</code>. It
-        is recommend submitting a (decently formatted) SQL query that generated
-        the plan.
+        <code>EXPLAIN FORMAT=JSON</code> or <code>EXPLAIN FORMAT=TREE</code>.
       </p>
       <p>
-        PEV2 can also parse text although the JSON format usually has better
-        support.
+        MySql-Plan-Visualizer can also parse text output from `EXPLAIN ANALYZE` (Tree format).
       </p>
 
-      <h2>Help improve PEV2</h2>
+      <h2>Help improve MySql-Plan-Visualizer</h2>
       <p>You can help us.</p>
 
       <p>
         Report issues or contribute to the code on
-        <a href="https://github.com/dalibo/pev2">Github</a>.
+        <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer">Github</a>.
       </p>
-
-      <hr />
-      <div class="text-center text-secondary">
-        <b>pev2</b> is brought to you by
-        <a href="https://dalibo.com">Dalibo</a>
-      </div>
     </div>
   </MainLayout>
 </template>

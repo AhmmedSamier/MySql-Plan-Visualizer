@@ -1,5 +1,4 @@
-PEV2: A VueJS component to show a graphical vizualization of a PostgreSQL execution
-plan.
+MySql-Plan-Visualizer: A VueJS component to show a graphical vizualization of a MySQL execution plan.
 
 [**Live Demo**](https://ahmmedsamier.github.io/MySql-Plan-Visualizer/)
 
@@ -9,20 +8,11 @@ plan.
 
 To use the explain vizualizer you can choose one of the following options:
 
-## Dalibo service (recommended)
-
-[explain.dalibo.com](https://explain.dalibo.com)
-
-This service is provided by `Dalibo` and can help you to share your plans with
-colleagues or customers.
-
 ## All-in-one local (no installation, no network)
 
 PEV2 can be run locally without any external internet resource.
 
-Simply download
-[pev2.html](https://www.github.com/dalibo/pev2/releases/latest/download/pev2.html),
-open it in your favorite internet browser.
+Simply download the built artifact from releases, open it in your favorite internet browser.
 
 ## Integrated in a web application
 
@@ -45,8 +35,8 @@ open it in your favorite internet browser.
   const { createApp } = Vue
 
   const plan = `
-    Aggregate  (cost=12.50..12.51 rows=1 width=8)
-      ->  Seq Scan on employees  (cost=0.00..10.00 rows=1000 width=0)
+    -> Filter: (t1.c1 < 10)  (cost=0.75 rows=1) (actual time=0.046..0.052 rows=3 loops=1)
+        -> Table scan on t1  (cost=0.75 rows=5) (actual time=0.042..0.048 rows=5 loops=1)
   `;
 
   const app = createApp({
@@ -60,8 +50,6 @@ open it in your favorite internet browser.
   app.mount("#app")
 </script>
 ```
-
-[See it live](https://stackblitz.com/edit/pev2-vanilla).
 
 ### With build tools
 
@@ -111,19 +99,6 @@ add the following in you header (or load them with your favorite bundler).
 />
 ```
 
-[See it live](https://stackblitz.com/edit/pev2-vite).
-
 # Disclaimer
 
-This project is a rewrite of the excellent [Postgres Explain Visualizer
-(pev)][pev]. Kudos go to [Alex Tatiyants][atatiyan].
-
-The [pev][pev] project was initialy written in early 2016 but seems to be
-abandoned since then. There was no activity at all for more than 3 years and
-counting though there are several issues open and relevant pull requests
-pending.
-
-[pev]: https://github.com/AlexTatiyants/pev
-[atatiyan]: https://github.com/AlexTatiyants
-[demo]: https://dalibo.github.io/pev2
-[explain.dali.bo]: https://explain.dalibo.com
+This project is a MySQL adaptation of the PEV2 project.

@@ -1,9 +1,5 @@
 import _ from "lodash"
-import { createApp } from "vue"
 import { EstimateDirection, nodePropTypes, PropType } from "@/enums"
-import type { JIT } from "@/interfaces"
-import SortGroup from "@/components/SortGroup.vue"
-import JitDetails from "@/components/JitDetails.vue"
 import hljs from "highlight.js/lib/core"
 import pgsql from "highlight.js/lib/languages/pgsql"
 hljs.registerLanguage("pgsql", pgsql)
@@ -163,25 +159,11 @@ export function list(value: string[] | string): string {
   )
 }
 
-function sortGroups(value: string): string {
-  const app = createApp(SortGroup, { sortGroup: value }).mount(
-    document.createElement("div"),
-  )
-  return app.$el.outerHTML
-}
-
 export function transferRate(value: number): string {
   if (!value) {
     return ""
   }
   return blocksAsBytes(value) + "/s"
-}
-
-function jit(value: JIT): string {
-  const app = createApp(JitDetails, { jit: value }).mount(
-    document.createElement("div"),
-  )
-  return app.$el.outerHTML
 }
 
 export function formatNodeProp(key: string, value: unknown): string {
@@ -217,12 +199,8 @@ export function formatNodeProp(key: string, value: unknown): string {
       return blocks(value as number, true)
     } else if (nodePropTypes[key] === PropType.list) {
       return list(value as string[])
-    } else if (nodePropTypes[key] === PropType.sortGroups) {
-      return sortGroups(value as string)
     } else if (nodePropTypes[key] === PropType.transferRate) {
       return transferRate(value as number)
-    } else if (nodePropTypes[key] === PropType.jit) {
-      return jit(value as JIT)
     }
   }
   return _.escape(value as unknown as string)

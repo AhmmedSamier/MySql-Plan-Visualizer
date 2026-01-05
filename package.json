@@ -1,6 +1,7 @@
 {
   "name": "pev2",
   "version": "1.19.0",
+  "description": "MySQL Plan Visualizer",
   "homepage": "https://ahmmedsamier.github.io/MySql-Plan-Visualizer/",
   "license": "PostgreSQL license",
   "type": "module",

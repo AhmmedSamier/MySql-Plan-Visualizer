@@ -6,8 +6,6 @@ import type {
   IPlan,
   IPlanContent,
   IPlanStats,
-  IBlocksStats,
-  Settings,
 } from "@/interfaces"
 
 type FlattenedNodeMap = Map<number, FlattenedPlanNode>;
@@ -83,12 +81,7 @@ function initStats(): IPlanStats {
     maxRows:  NaN,
     maxCost:  NaN,
     maxDuration:  NaN,
-    maxBlocks:  {} as IBlocksStats,
-    maxIo:  NaN,
     maxEstimateFactor:  NaN,
-    triggers:  [],
-    jitTime:  NaN,
-    settings: {} as Settings
   }
 }
 
@@ -118,12 +111,7 @@ export const store = reactive<Store>({
       maxRows:  content.maxRows || NaN,
       maxCost:  content.maxCost || NaN,
       maxDuration:  content.maxDuration || NaN,
-      maxBlocks:  content.maxBlocks || ({} as IBlocksStats),
-      maxIo:  content.maxIo || NaN,
       maxEstimateFactor:  content.maxEstimateFactor || NaN,
-      triggers:  content.Triggers || [],
-      jitTime:  (content.JIT && content.JIT.Timing && content.JIT.Timing.Total) || NaN,
-      settings:  content.Settings as Settings
     }
 
     const flatPlans = []
