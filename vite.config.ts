@@ -40,6 +40,7 @@ const build = process.env.LIB
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: "./",
   build: build,
   plugins: [
     vue({

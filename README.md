@@ -1,6 +1,8 @@
 PEV2: A VueJS component to show a graphical vizualization of a PostgreSQL execution
 plan.
 
+[**Live Demo**](https://ahmmedsamier.github.io/MySql-Plan-Visualizer/)
+
 ![PEV2 screenshot](pev2_screenshot.png)
 
 # Usage
