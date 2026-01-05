@@ -9,7 +9,7 @@ import MainLayout from "../layouts/MainLayout.vue"
       <p>
         This project is a MySQL adaptation of the excellent
         <a href="https://github.com/dalibo/pev2"
-          >Postgres Explain Visualizer 2 (pev2)</a
+          >PEV2</a
         >.
       </p>
 
