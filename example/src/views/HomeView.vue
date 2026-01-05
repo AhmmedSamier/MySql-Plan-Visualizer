@@ -71,12 +71,12 @@ const visiblePages = computed(() => {
 const planDropZoneRef = useTemplateRef("planDropZoneRef")
 const { isOverDropZone: isOverPlanDropZone } = useDropZone(
   planDropZoneRef,
-  (files) => onDrop(files as any, planInput),
+  (files) => onDrop(files, planInput),
 )
 const queryDropZoneRef = useTemplateRef("queryDropZoneRef")
 const { isOverDropZone: isOverQueryDropZone } = useDropZone(
   queryDropZoneRef,
-  (files) => onDrop(files as any, queryInput),
+  (files) => onDrop(files, queryInput),
 )
 
 const savedPlansDropZoneRef = useTemplateRef("savedPlansDropZoneRef")

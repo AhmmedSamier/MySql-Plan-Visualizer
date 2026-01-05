@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed, provide, reactive } from "vue"
+import { ref, computed, provide, reactive, type Component } from "vue"
 import AboutView from "./views/AboutView.vue"
 import HomeView from "./views/HomeView.vue"
 import NotFoundView from "./views/NotFoundView.vue"
 import PlanView from "./views/PlanView.vue"
 import type { ActivePlan } from "./types"
 
-const routes: Record<string, any> = {
+const routes: Record<string, Component> = {
   "/": HomeView,
   "/about": AboutView,
   "/plan": PlanView,
