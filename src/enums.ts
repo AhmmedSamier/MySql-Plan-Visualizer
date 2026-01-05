@@ -110,6 +110,18 @@ export enum NodeProp {
   OPERATION = "Operation",
   RECHECK_COND = "Recheck Cond",
   SCAN_DIRECTION = "Scan Direction",
+  // MySQL specific
+  USED_COLUMNS = "Used Columns",
+  ATTACHED_CONDITION = "Attached Condition",
+  POSSIBLE_KEYS = "Possible Keys",
+  KEY = "Key",
+  KEY_LENGTH = "Key Length",
+  ROWS_EXAMINED_PER_SCAN = "Rows Examined per Scan",
+  ROWS_PRODUCED_PER_JOIN = "Rows Produced per Join",
+  FILTERED = "Filtered",
+  COST_INFO = "Cost Info",
+  USED_KEY_PARTS = "Used Key Parts",
+  MESSAGE = "Message",
 
   // computed by pev
   NODE_ID = "nodeId",
@@ -233,6 +245,12 @@ nodePropTypes[NodeProp.PRESORTED_KEY] = PropType.list
 nodePropTypes[NodeProp.WAL_RECORDS] = PropType.rows
 nodePropTypes[NodeProp.WAL_BYTES] = PropType.bytes
 nodePropTypes[NodeProp.WAL_FPI] = PropType.rows
+nodePropTypes[NodeProp.USED_COLUMNS] = PropType.list
+nodePropTypes[NodeProp.POSSIBLE_KEYS] = PropType.list
+nodePropTypes[NodeProp.USED_KEY_PARTS] = PropType.list
+nodePropTypes[NodeProp.ROWS_EXAMINED_PER_SCAN] = PropType.rows
+nodePropTypes[NodeProp.ROWS_PRODUCED_PER_JOIN] = PropType.rows
+nodePropTypes[NodeProp.COST_INFO] = PropType.json
 
 nodePropTypes[NodeProp.EXCLUSIVE_DURATION] = PropType.duration
 nodePropTypes[NodeProp.EXCLUSIVE_COST] = PropType.cost

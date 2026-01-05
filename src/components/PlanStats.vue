@@ -246,7 +246,7 @@ function hasParallelChildren(node: Node) {
           class="btn btn-xs btn-close float-end"
           v-on:click="showSettings = false"
         ></button>
-        <h3>PG Settings</h3>
+        <h3>Settings</h3>
         <em class="text-secondary d-block pb-2">
           Configuration parameters affecting query planning with value different
           from the built-in default value.

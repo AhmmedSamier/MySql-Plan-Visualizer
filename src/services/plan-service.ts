@@ -1,4 +1,5 @@
 import _ from "lodash"
+import { MysqlPlanService } from "@/services/mysql-plan-service"
 import {
   BufferLocation,
   EstimateDirection,
@@ -498,6 +499,12 @@ export class PlanService {
     if (Array.isArray(value)) {
       value = value[0]
     }
+    const mysqlService = new MysqlPlanService()
+    if (mysqlService.isMySQL(value)) {
+      const flat: Node[] = []
+      const root = mysqlService.parseMySQL(value, flat)
+      return { Plan: root } as IPlanContent
+    }
     if (!value.Plan) {
       throw new Error("Invalid plan")
     }
@@ -579,13 +586,18 @@ export class PlanService {
     const partialPattern = "(Finalize|Simple|Partial)*"
     const typePattern = "([^\\r\\n\\t\\f\\v\\(]*?)"
     // tslint:disable-next-line:max-line-length
+    // MySQL cost: (cost=10.0 rows=5)
+    // Postgres cost: (cost=10.0..20.0 rows=5 width=4)
+    // We make the second cost and width optional.
     const estimationPattern =
-      "\\(cost=(\\d+\\.\\d+)\\.\\.(\\d+\\.\\d+)\\s+rows=(\\d+)\\s+width=(\\d+)\\)"
+      "\\(cost=(\\d+\\.\\d+)(?:\\.\\.(\\d+\\.\\d+))?\\s+rows=(\\d+)(?:\\s+width=(\\d+))?\\)"
     const nonCapturingGroupOpen = "(?:"
     const nonCapturingGroupClose = ")"
     const openParenthesisPattern = "\\("
     const closeParenthesisPattern = "\\)"
-    // tslint:disable-next-line:max-line-length
+
+    // MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
+    // Postgres actual: (actual time=0.010..0.010 rows=1 loops=1)
     const actualPattern =
       "(?:actual(?:\\stime=(\\d+\\.\\d+)\\.\\.(\\d+\\.\\d+))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
     const optionalGroup = "?"
@@ -626,28 +638,54 @@ export class PlanService {
     const jitRegex = /^(\s*)JIT:\s*$/
     const extraRegex = /^(\s*)(\S.*\S)\s*$/
 
+    // We need to keep track of group indices carefully since we made some optional
+    // Original groups for Cost: 1=Start, 2=Total, 3=Rows, 4=Width
+    // New groups for Cost: 1=Start, 2=Total(Optional), 3=Rows, 4=Width(Optional)
+
+    // Original groups for Actual: 1=Start, 2=Total, 3=Rows, 4=Loops, 5=Never
+    // New groups for Actual: 1=Start, 2=Total, 3=Rows, 4=Loops, 5=Never
+
+    // The nodeRegex constructs a large regex with OR branches.
+    // Branch 1: Cost AND Actual
+    // Branch 2: Only Cost
+    // Branch 3: Only Actual
+
+    // We must ensure the `NodeMatch` enum or logic aligns.
+    // Since we can't easily change the enum which is used as array index usually,
+    // let's look at how it's used. `nodeMatches` is the result of exec.
+    // The code uses named constants like `NodeMatch.EstimatedStartupCost1`.
+
+    // We DO need to update the enum because we changed the regex structure.
+    // The previous enum assumed strict structure.
+    // Actually, the previous code just used indices.
+
     enum NodeMatch {
       Prefix = 1,
       PartialMode,
       Type,
+      // Branch 1 (Cost + Actual)
       EstimatedStartupCost1,
-      EstimatedTotalCost1,
-      EstimatedRows,
-      EstimatedRowWidth,
+      EstimatedTotalCost1, // might be undefined if mysql
+      EstimatedRows1,
+      EstimatedRowWidth1, // might be undefined
       ActualTimeFirst1,
       ActualTimeLast1,
       ActualRows1,
       ActualLoops1,
-      NeverExecuted,
+      NeverExecuted1,
+      // Branch 2 (Cost only)
       EstimatedStartupCost2,
       EstimatedTotalCost2,
       EstimatedRows2,
       EstimatedRowWidth2,
+      // Branch 3 (Actual only)
       ActualTimeFirst2,
       ActualTimeLast2,
       ActualRows2,
       ActualLoops2,
+      NeverExecuted2,
     }
+
     const nodeRegex = new RegExp(
       prefixPattern +
         partialPattern +
@@ -655,6 +693,7 @@ export class PlanService {
         typePattern +
         "\\s*" +
         nonCapturingGroupOpen +
+        // Option 1: Both Cost AND Actual
         (nonCapturingGroupOpen +
           estimationPattern +
           "\\s+" +
@@ -663,10 +702,12 @@ export class PlanService {
           closeParenthesisPattern +
           nonCapturingGroupClose) +
         "|" +
+        // Option 2: Only Cost
         nonCapturingGroupOpen +
         estimationPattern +
         nonCapturingGroupClose +
         "|" +
+        // Option 3: Only Actual
         nonCapturingGroupOpen +
         openParenthesisPattern +
         actualPattern +
@@ -706,54 +747,73 @@ export class PlanService {
         return
       } else if (nodeMatches && !cteMatches && !subMatches) {
         //const prefix = nodeMatches[NodeMatch.Prefix]
-        const neverExecuted = nodeMatches[NodeMatch.NeverExecuted]
+        const neverExecuted =
+          nodeMatches[NodeMatch.NeverExecuted1] ||
+          nodeMatches[NodeMatch.NeverExecuted2]
         const newNode: Node = new Node(nodeMatches[NodeMatch.Type])
+
+        // Cost values from Branch 1 or Branch 2
+        // Note: For MySQL, EstimatedTotalCost1/2 might be undefined if we only matched start cost.
+        // We logic needs to handle that `cost=10` maps to TotalCost?
+        // In regex: (cost=10) -> group1=10, group2=undefined
+        // If we want `total cost` to be 10, we should put it there.
+        // Usually strict PG cost=0..10.
+        // If MySQL cost=10, we probably want that as Total Cost.
+
+        const startupCost1 = nodeMatches[NodeMatch.EstimatedStartupCost1]
+        const totalCost1 = nodeMatches[NodeMatch.EstimatedTotalCost1]
+        const startupCost2 = nodeMatches[NodeMatch.EstimatedStartupCost2]
+        const totalCost2 = nodeMatches[NodeMatch.EstimatedTotalCost2]
+
+        if (startupCost1) {
+          newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost1)
+          newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost1 || startupCost1) // If total is missing, use start (single cost value)
+        } else if (startupCost2) {
+          newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost2)
+          newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost2 || startupCost2)
+        }
+
         if (
-          (nodeMatches[NodeMatch.EstimatedStartupCost1] &&
-            nodeMatches[NodeMatch.EstimatedTotalCost1]) ||
-          (nodeMatches[NodeMatch.EstimatedStartupCost2] &&
-            nodeMatches[NodeMatch.EstimatedTotalCost2])
+          nodeMatches[NodeMatch.EstimatedRows1] ||
+          nodeMatches[NodeMatch.EstimatedRows2]
         ) {
-          newNode[NodeProp.STARTUP_COST] = parseFloat(
-            nodeMatches[NodeMatch.EstimatedStartupCost1] ||
-              nodeMatches[NodeMatch.EstimatedStartupCost2],
-          )
-          newNode[NodeProp.TOTAL_COST] = parseFloat(
-            nodeMatches[NodeMatch.EstimatedTotalCost1] ||
-              nodeMatches[NodeMatch.EstimatedTotalCost2],
-          )
           newNode[NodeProp.PLAN_ROWS] = parseInt(
-            nodeMatches[NodeMatch.EstimatedRows] ||
+            nodeMatches[NodeMatch.EstimatedRows1] ||
               nodeMatches[NodeMatch.EstimatedRows2],
             0,
-          )
-          newNode[NodeProp.PLAN_WIDTH] = parseInt(
-            nodeMatches[NodeMatch.EstimatedRowWidth] ||
-              nodeMatches[NodeMatch.EstimatedRowWidth2],
-            0,
-          )
-        }
-        if (
-          (nodeMatches[NodeMatch.ActualTimeFirst1] &&
-            nodeMatches[NodeMatch.ActualTimeLast1]) ||
-          (nodeMatches[NodeMatch.ActualTimeFirst2] &&
-            nodeMatches[NodeMatch.ActualTimeLast2])
-        ) {
-          newNode[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
-            nodeMatches[NodeMatch.ActualTimeFirst1] ||
-              nodeMatches[NodeMatch.ActualTimeFirst2],
-          )
-          newNode[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
-            nodeMatches[NodeMatch.ActualTimeLast1] ||
-              nodeMatches[NodeMatch.ActualTimeLast2],
           )
         }
 
         if (
-          (nodeMatches[NodeMatch.ActualRows1] &&
-            nodeMatches[NodeMatch.ActualLoops1]) ||
-          (nodeMatches[NodeMatch.ActualRows2] &&
-            nodeMatches[NodeMatch.ActualLoops2])
+          nodeMatches[NodeMatch.EstimatedRowWidth1] ||
+          nodeMatches[NodeMatch.EstimatedRowWidth2]
+        ) {
+          newNode[NodeProp.PLAN_WIDTH] = parseInt(
+            nodeMatches[NodeMatch.EstimatedRowWidth1] ||
+              nodeMatches[NodeMatch.EstimatedRowWidth2],
+            0,
+          )
+        }
+
+        if (
+          nodeMatches[NodeMatch.ActualTimeFirst1] ||
+          nodeMatches[NodeMatch.ActualTimeFirst2]
+        ) {
+          newNode[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
+            nodeMatches[NodeMatch.ActualTimeFirst1] ||
+              nodeMatches[NodeMatch.ActualTimeFirst2] ||
+              "0",
+          )
+          newNode[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
+            nodeMatches[NodeMatch.ActualTimeLast1] ||
+              nodeMatches[NodeMatch.ActualTimeLast2] ||
+              "0",
+          )
+        }
+
+        if (
+          nodeMatches[NodeMatch.ActualRows1] ||
+          nodeMatches[NodeMatch.ActualRows2]
         ) {
           const actual_rows =
             nodeMatches[NodeMatch.ActualRows1] ||
@@ -1407,8 +1467,9 @@ export class PlanService {
               `${prefix}${bufferScope}_${buffersOperation}_blocks`.toUpperCase() as keyof typeof NodeProp
             return (node[NodeProp[bufferProp]] as number) || 0
           })
-          const buffersProp = `${prefix}${buffersOperation}_blocks`.toUpperCase() as keyof typeof NodeProp;
-          node[NodeProp[buffersProp] as unknown as keyof typeof Node] = buffers;
+          const buffersProp =
+            `${prefix}${buffersOperation}_blocks`.toUpperCase() as keyof typeof NodeProp
+          node[NodeProp[buffersProp] as unknown as keyof typeof Node] = buffers
           if (time) {
             node[NodeProp[speedProp] as unknown as keyof typeof Node] = Number(
               (buffers / (time / 1000)).toFixed(3),
