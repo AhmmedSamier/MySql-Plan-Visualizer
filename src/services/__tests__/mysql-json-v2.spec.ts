@@ -10,37 +10,39 @@ describe("PlanService MySQL JSON V2", () => {
       query_block: {
         select_id: 1,
         cost_info: {
-          query_cost: "500.00"
+          query_cost: "500.00",
         },
         execution_plan: {
           steps: [
             {
               substeps: [
                 {
-                   name: "join",
-                   cost_info: { query_cost: "400.00" },
-                   inputs: [
-                     {
-                       name: "ALL",
-                       table_name: "t1",
-                       cost_info: { query_cost: "100.00" }
-                     },
-                     {
-                       name: "range",
-                       table_name: "t2",
-                       cost_info: { query_cost: "200.00" }
-                     }
-                   ]
-                }
-              ]
-            }
-          ]
-        }
-      }
+                  name: "join",
+                  cost_info: { query_cost: "400.00" },
+                  inputs: [
+                    {
+                      name: "ALL",
+                      table_name: "t1",
+                      cost_info: { query_cost: "100.00" },
+                    },
+                    {
+                      name: "range",
+                      table_name: "t2",
+                      cost_info: { query_cost: "200.00" },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
     })
 
     const r = planService.fromSource(source) as IPlanContent
     const plan = r.Plan
+
+    expect(plan).toBeDefined()
 
     // The parser `parseV2` uses `inputs` || `steps` || `children`
     // Root `execution_plan` has `steps`.
