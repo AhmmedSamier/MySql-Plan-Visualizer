@@ -32,6 +32,9 @@ export class MysqlPlanService {
     if (_.has(data, "query_block")) {
       return this.parseV1(data.query_block, flat)
     }
+    if (_.has(data, "execution_plan")) {
+      return this.parseV2(data.execution_plan, flat)
+    }
     // Fallback for V2 or other structures
     return this.parseV2(data, flat)
   }
@@ -151,6 +154,12 @@ export class MysqlPlanService {
         node[key] = val
       }
     })
+
+    // Explicit mappings
+    if (data.table_name) {
+      node[NodeProp.RELATION_NAME] = data.table_name
+      node[NodeProp.ALIAS] = data.table_name
+    }
 
     const inputs = data.inputs || data.steps || data.children
     if (inputs && Array.isArray(inputs)) {

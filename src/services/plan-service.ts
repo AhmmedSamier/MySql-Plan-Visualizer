@@ -584,7 +584,7 @@ export class PlanService {
 
     const prefixPattern = "^(\\s*->\\s*|\\s*)"
     const partialPattern = "(Finalize|Simple|Partial)*"
-    const typePattern = "([^\\r\\n\\t\\f\\v\\(]*?)"
+    const typePattern = "(.*?)"
     // tslint:disable-next-line:max-line-length
     // MySQL cost: (cost=10.0 rows=5)
     // Postgres cost: (cost=10.0..20.0 rows=5 width=4)
