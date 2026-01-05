@@ -32,6 +32,15 @@ export class MysqlPlanService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public parseMySQL(data: any, flat: Node[]) {
     if (_.has(data, "query_block")) {
+      // Check if query_block has 'inputs' or 'operation', if so, use parseV2 or a modified V1 logic?
+      // But standard V1 query_block doesn't usually have 'operation' string like that.
+      // It seems safe to say if it has 'operation' or 'inputs', we might want to process it recursively.
+      if (
+        _.has(data.query_block, "inputs") ||
+        _.has(data.query_block, "operation")
+      ) {
+        return this.parseV2(data.query_block, flat)
+      }
       return this.parseV1(data.query_block, flat)
     }
     if (_.has(data, "execution_plan")) {
@@ -151,8 +160,15 @@ export class MysqlPlanService {
     const node = new Node(mappedName)
 
     if (data.cost_info) {
-      node[NodeProp.TOTAL_COST] = parseFloat(data.cost_info.query_cost || "0")
+      if (data.cost_info.query_cost) {
+        node[NodeProp.TOTAL_COST] = parseFloat(data.cost_info.query_cost)
+      } else if (data.cost_info.read_cost || data.cost_info.eval_cost) {
+        node[NodeProp.TOTAL_COST] =
+          parseFloat(data.cost_info.read_cost || "0") +
+          parseFloat(data.cost_info.eval_cost || "0")
+      }
     }
+
     // Generic mapping
     _.each(data, (val, key) => {
       if (typeof val !== "object" && key !== "inputs" && key !== "steps") {
@@ -165,6 +181,12 @@ export class MysqlPlanService {
     if (data.table_name) {
       node[NodeProp.RELATION_NAME] = data.table_name
       node[NodeProp.ALIAS] = data.table_name
+    }
+
+    // Map rows
+    if (data.rows_examined_per_scan || data.rows_produced_per_join) {
+      node[NodeProp.PLAN_ROWS] =
+        data.rows_examined_per_scan || data.rows_produced_per_join
     }
 
     const inputs = data.inputs || data.steps || data.children
