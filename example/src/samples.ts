@@ -5921,13 +5921,9 @@ EXPLAIN (ANALYZE,BUFFERS,SETTINGS)
 SELECT * from pgbench_accounts where aid  BETWEEN  5000000 AND 9000000 ;
 `
 
-interface Sample extends Array<string> {
-  0: string
-  1: string
-  2: string
-}
+import type { Sample } from "./types"
 
-const samples = <Sample[]>[
+const samples: Sample[] = [
   ["Simple join (TEXT format)", plan1_source, plan1_query],
   ["Simple join (JSON format)", plan1_source_json, plan1_query],
   ["Three joins, missing an index", plan2_source, plan2_query],

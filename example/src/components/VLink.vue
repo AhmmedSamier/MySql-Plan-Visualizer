@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { inject } from "vue"
+import { inject, type Ref } from "vue"
 
 const props = defineProps({
   to: {
@@ -8,16 +8,18 @@ const props = defineProps({
   },
 })
 
-const currentPath = inject("currentPath")
+const currentPath = inject<Ref<string>>("currentPath")
 
-const go = (event) => {
+const go = (event: Event) => {
   event.preventDefault()
-  currentPath.value = props.to
+  if (currentPath) {
+    currentPath.value = props.to
+  }
 }
 </script>
 
 <template>
-  <a v-bind:to="to" v-on:click="go" href>
+  <a v-bind:href="to" v-on:click="go">
     <slot></slot>
   </a>
 </template>

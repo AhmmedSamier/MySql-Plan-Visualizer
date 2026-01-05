@@ -9,7 +9,7 @@ import { useDropZone } from "@vueuse/core"
 
 import { time_ago } from "../utils"
 import MainLayout from "../layouts/MainLayout.vue"
-import Plan from "@/components/Plan.vue"
+import type { Plan, Sample } from "../types"
 import VersionCheck from "../components/VersionCheck.vue"
 import {
   faEdit,
@@ -22,7 +22,11 @@ import samples from "../samples.ts"
 
 import idb from "../idb"
 
-const setPlanData = inject("setPlanData")
+const setPlanData = inject("setPlanData") as (
+  name: string,
+  plan: string,
+  query: string
+) => void
 
 const planInput = ref<string>("")
 const queryInput = ref<string>("")
@@ -34,10 +38,9 @@ const currentPage = ref<number>(1)
 const totalPages = computed(() => {
   return Math.ceil(savedPlans.value.length / pageSize)
 })
-const hovered = ref(null)
+const hovered = ref<number | null>(null)
 const selectionMode = ref(false)
 const selection = ref<Plan[]>([])
-const messages = ref<string[]>([])
 
 const paginatedPlans = computed(() => {
   const start = (currentPage.value - 1) * pageSize
@@ -68,26 +71,28 @@ const visiblePages = computed(() => {
 const planDropZoneRef = useTemplateRef("planDropZoneRef")
 const { isOverDropZone: isOverPlanDropZone } = useDropZone(
   planDropZoneRef,
-  (files) => onDrop(files, planInput),
+  (files) => onDrop(files as any, planInput),
 )
 const queryDropZoneRef = useTemplateRef("queryDropZoneRef")
 const { isOverDropZone: isOverQueryDropZone } = useDropZone(
   queryDropZoneRef,
-  (files) => onDrop(files, queryInput),
+  (files) => onDrop(files as any, queryInput),
 )
 
 const savedPlansDropZoneRef = useTemplateRef("savedPlansDropZoneRef")
 const { isOverDropZone: isOverSavedPlansDropZone } = useDropZone(
   savedPlansDropZoneRef,
   {
-    onDrop: (files) => onImport(files),
+    onDrop: (files) => {
+      if (files) onImport(files)
+    },
     dataTypes: ["json"],
     multiple: false,
   },
 )
 
 function submitPlan() {
-  const newPlan: Plan = ["", "", ""]
+  const newPlan: Plan = ["", "", "", ""]
   newPlan[0] =
     planName.value ||
     "New Plan - " +
@@ -100,7 +105,7 @@ function submitPlan() {
   newPlan[3] = new Date().toISOString()
   savePlanData(newPlan)
 
-  setPlanData(...newPlan)
+  setPlanData(newPlan[0], newPlan[1], newPlan[2])
 }
 
 async function savePlanData(sample: Plan) {
@@ -121,11 +126,11 @@ async function loadPlans() {
   const plans = await idb.getPlans()
   savedPlans.value = plans
     .slice()
-    .sort((a, b) => new Date(a[3]) - new Date(b[3]))
+    .sort((a, b) => new Date(a[3]).getTime() - new Date(b[3]).getTime())
     .reverse()
 }
 
-function loadPlan(plan?: Plan) {
+function loadPlan(plan?: Plan | Sample) {
   if (!plan) {
     return
   }
@@ -147,14 +152,14 @@ function openPlan(plan: Plan) {
   setPlanData(plan[0], plan[1], plan[2])
 }
 
-function isSelected(id: integer) {
-  return selection.value.includes(id)
+function isSelected(id: string) {
+  return selection.value.some((p) => p[3] === id)
 }
 
-function togglePlanSelection(plan) {
-  const index = selection.value.indexOf(plan.id)
+function togglePlanSelection(plan: Plan) {
+  const index = selection.value.findIndex((p) => p[3] === plan[3])
   if (index === -1) {
-    selection.value.push(plan.id)
+    selection.value.push(plan)
   } else {
     selection.value.splice(index, 1)
   }
@@ -165,9 +170,7 @@ function editPlan(plan: Plan) {
 }
 
 function plansFromSelection() {
-  return selection.value.length > 0
-    ? savedPlans.value.filter((p) => selection.value.includes(p.id))
-    : savedPlans.value
+  return selection.value.length > 0 ? selection.value : savedPlans.value
 }
 
 function deletePlans() {
@@ -212,7 +215,7 @@ function prevPage() {
     currentPage.value--
   }
 }
-function goToPage(page) {
+function goToPage(page: number) {
   currentPage.value = page
 }
 
@@ -232,7 +235,7 @@ function triggerImport() {
 async function handleImportFile(event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files?.length) return
-  onImport(input.files)
+  onImport(Array.from(input.files))
 }
 
 function onImport(files: File[]) {
@@ -256,7 +259,7 @@ function onImport(files: File[]) {
   reader.readAsText(file)
 }
 
-async function exportPlans(plans) {
+async function exportPlans(plans?: Plan[]) {
   if (!plans) {
     plans = plansFromSelection()
   }
@@ -274,7 +277,14 @@ async function exportPlans(plans) {
   addMessage(`Exported ${plans.length} plans`)
 }
 
-function addMessage(text) {
+interface Message {
+  id: number
+  text: string
+}
+
+const messages = ref<Message[]>([])
+
+function addMessage(text: string) {
   const id = Date.now() + Math.random()
 
   messages.value.push({ id, text })
@@ -505,7 +515,7 @@ function addMessage(text) {
             <div
               class="alert alert-success py-1"
               v-for="message in messages"
-              :key="message"
+              :key="message.id"
             >
               <span v-html="message.text"></span>
             </div>
@@ -514,9 +524,9 @@ function addMessage(text) {
           <div class="list-group" v-cloak>
             <a
               class="list-group-item list-group-item-action px-2 py-1 flex-column"
-              :class="{ active: isSelected(plan.id) }"
+              :class="{ active: isSelected(plan[3]) }"
               v-for="(plan, index) in paginatedPlans"
-              :key="plan.id"
+              :key="plan[3]"
               href="#"
               @click.prevent="openOrSelectPlan(plan)"
               @mouseenter="hovered = index"
@@ -527,7 +537,7 @@ function addMessage(text) {
                   class="form-check-input me-3"
                   type="checkbox"
                   v-if="selectionMode"
-                  :value="plan.id"
+                  :value="plan"
                   v-model="selection"
                   @click.stop
                 />
@@ -537,7 +547,7 @@ function addMessage(text) {
                   </p>
                   <small
                     :class="{
-                      'text-secondary': !isSelected(plan.id),
+                      'text-secondary': !isSelected(plan[3]),
                     }"
                   >
                     created

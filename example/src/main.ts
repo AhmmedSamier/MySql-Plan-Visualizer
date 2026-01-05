@@ -8,6 +8,6 @@ createApp(App).mount("#app")
 
 declare global {
   interface Window {
-    setPlanData: () => void
+    setPlanData: (name: string, plan: string, query: string) => void
   }
 }
