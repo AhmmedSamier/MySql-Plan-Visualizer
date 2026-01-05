@@ -40,7 +40,7 @@ const build = process.env.LIB
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "./",
+  base: "/MySql-Plan-Visualizer/",
   build: build,
   plugins: [
     vue({
