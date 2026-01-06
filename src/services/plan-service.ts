@@ -1,21 +1,14 @@
 import _ from "lodash"
 import { MysqlPlanService } from "@/services/mysql-plan-service"
 import {
-  BufferLocation,
   EstimateDirection,
-  SortGroupsProp,
   NodeProp,
-  SortSpaceMemoryProp,
   WorkerProp,
 } from "@/enums"
-import { splitBalanced } from "@/services/help-service"
 import type {
-  IBlocksStats,
   IPlan,
   IPlanContent,
   IPlanStats,
-  JIT,
-  SortGroups,
 } from "@/interfaces"
 import { Node, Worker } from "@/interfaces"
 
@@ -23,10 +16,6 @@ interface NodeElement {
   node: Node
   subelementType?: string
   name?: string
-}
-
-interface JitElement {
-  node: object
 }
 
 type recurseItemType = Array<[Node, recurseItemType]>
@@ -117,8 +106,6 @@ export class PlanService {
     // calculate actuals after processing child nodes so that actual duration
     // takes loops into account
     this.calculateActuals(node)
-    this.calculateExclusives(node)
-    this.calculateIoTimingsAverage(node)
     this.convertNodeType(node)
   }
 
@@ -141,69 +128,6 @@ export class PlanService {
     const slowest = _.maxBy(this.flat, NodeProp.EXCLUSIVE_DURATION)
     if (slowest) {
       plan.content.maxDuration = slowest[NodeProp.EXCLUSIVE_DURATION] as number
-    }
-
-    if (!plan.content.maxBlocks) {
-      plan.content.maxBlocks = {} as IBlocksStats
-    }
-
-    function sumShared(o: Node): number {
-      return (
-        (o[NodeProp.EXCLUSIVE_SHARED_HIT_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_SHARED_READ_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_SHARED_DIRTIED_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_SHARED_WRITTEN_BLOCKS] as number)
-      )
-    }
-    const highestShared = _.maxBy(this.flat, (o) => {
-      return sumShared(o)
-    }) as Node
-    if (highestShared && sumShared(highestShared)) {
-      plan.content.maxBlocks[BufferLocation.shared] = sumShared(highestShared)
-    }
-
-    function sumTemp(o: Node): number {
-      return (
-        (o[NodeProp.EXCLUSIVE_TEMP_READ_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_TEMP_WRITTEN_BLOCKS] as number)
-      )
-    }
-    const highestTemp = _.maxBy(this.flat, (o) => {
-      return sumTemp(o)
-    }) as Node
-    if (highestTemp && sumTemp(highestTemp)) {
-      plan.content.maxBlocks[BufferLocation.temp] = sumTemp(highestTemp)
-    }
-
-    function sumLocal(o: Node) {
-      return (
-        (o[NodeProp.EXCLUSIVE_LOCAL_HIT_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_LOCAL_READ_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_LOCAL_DIRTIED_BLOCKS] as number) +
-        (o[NodeProp.EXCLUSIVE_LOCAL_WRITTEN_BLOCKS] as number)
-      )
-    }
-    const highestLocal = _.maxBy(this.flat, (o) => {
-      return sumLocal(o)
-    })
-    if (highestLocal && sumLocal(highestLocal)) {
-      plan.content.maxBlocks[BufferLocation.local] = sumLocal(highestLocal)
-    }
-
-    if (!plan.content.maxIo) {
-      plan.content.maxIo = 0
-    }
-    function sumIo(o: Node) {
-      return (
-        (o[NodeProp.EXCLUSIVE_SUM_IO_READ_TIME] as number) +
-        (o[NodeProp.EXCLUSIVE_SUM_IO_WRITE_TIME] as number)
-      )
-    }
-    const highestIo = _.maxBy(this.flat, (o) => {
-      return sumIo(o)
-    })
-    if (highestIo && sumIo(highestIo)) {
-      plan.content.maxIo = sumIo(highestIo)
     }
 
     const highestEstimateFactor = _.max(
@@ -574,7 +498,7 @@ export class PlanService {
     const lines = this.splitIntoLines(text)
 
     const root: IPlanContent = {} as IPlanContent
-    type ElementAtDepth = [number, NodeElement | JitElement]
+    type ElementAtDepth = [number, NodeElement]
     // Array to keep reference to previous nodes with there depth
     const elementsAtDepth: ElementAtDepth[] = []
 
@@ -608,11 +532,6 @@ export class PlanService {
 
     const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
 
-    enum TriggerMatch {
-      Name = 2,
-      Time,
-      Calls,
-    }
     const triggerRegex =
       /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
 
@@ -635,7 +554,6 @@ export class PlanService {
         "\\s*$",
     )
 
-    const jitRegex = /^(\s*)JIT:\s*$/
     const extraRegex = /^(\s*)(\S.*\S)\s*$/
 
     // We need to keep track of group indices carefully since we made some optional
@@ -739,7 +657,6 @@ export class PlanService {
       const cteMatches = cteRegex.exec(line)
       const triggerMatches = triggerRegex.exec(line)
       const workerMatches = workerRegex.exec(line)
-      const jitMatches = jitRegex.exec(line)
 
       const extraMatches = extraRegex.exec(line)
 
@@ -934,10 +851,6 @@ export class PlanService {
           )
         }
 
-        if (this.parseSort(workerMatches[WorkerMatch.Extra], worker)) {
-          return
-        }
-
         // extra info
         const info = workerMatches[WorkerMatch.Extra]
           .split(/: (.+)/)
@@ -952,36 +865,7 @@ export class PlanService {
       } else if (triggerMatches) {
         // Remove elements from elementsAtDepth for deeper levels
         _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        root.Triggers = root.Triggers || []
-        root.Triggers.push({
-          "Trigger Name": triggerMatches[TriggerMatch.Name],
-          Time: this.parseTime(triggerMatches[TriggerMatch.Time]),
-          Calls: triggerMatches[TriggerMatch.Calls],
-        })
-      } else if (jitMatches) {
-        let element
-        if (elementsAtDepth.length === 0) {
-          root.JIT = {} as JIT
-          element = {
-            node: root.JIT,
-          }
-          elementsAtDepth.push([1, element])
-        } else {
-          const lastElement = _.last(elementsAtDepth)?.[1] as NodeElement
-          if (!lastElement) {
-            return
-          }
-          if (_.last(lastElement.node?.[NodeProp.WORKERS])) {
-            const worker: Worker = _.last(
-              lastElement.node?.[NodeProp.WORKERS],
-            ) as Worker
-            worker.JIT = {} as JIT
-            element = {
-              node: worker.JIT,
-            }
-            elementsAtDepth.push([depth, element])
-          }
-        }
+        // Ignoring triggers as they are PG specific usually
       } else if (extraMatches) {
         //const prefix = extraMatches[1]
 
@@ -1014,41 +898,7 @@ export class PlanService {
           return
         }
 
-        if (this.parseSort(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseBuffers(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseWAL(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseIOTimings(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseOptions(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseTiming(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseSettings(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseSortGroups(extraMatches[2], element as Node)) {
-          return
-        }
-
-        if (this.parseSortKey(extraMatches[2], element as Node)) {
-          return
-        }
+        // Removed Postgres specific parsers (sort, buffers, WAL, JIT etc)
 
         // remove the " ms" unit in case of time
         let value: string | number = info[1].replace(/(\s*ms)$/, "")
@@ -1073,441 +923,13 @@ export class PlanService {
     return root
   }
 
-  private parseSortKey(text: string, el: Node): boolean {
-    const sortRegex = /^\s*((?:Sort|Presorted) Key):\s+(.*)/g
-    const sortMatches = sortRegex.exec(text)
-    if (sortMatches) {
-      el[sortMatches[1]] = _.map(splitBalanced(sortMatches[2], ","), _.trim)
-      return true
-    }
-    return false
-  }
-
-  private parseSort(text: string, el: Node | Worker): boolean {
-    enum SortMatch {
-      Method = 2,
-      SpaceType,
-      SpaceUsed,
-    }
-    const sortRegex =
-      /^(\s*)Sort Method:\s+(.*)\s+(Memory|Disk):\s+(?:(\S*)kB)\s*$/g
-    const sortMatches = sortRegex.exec(text)
-    if (sortMatches) {
-      el[NodeProp.SORT_METHOD] = sortMatches[SortMatch.Method].trim()
-      el[NodeProp.SORT_SPACE_USED] = sortMatches[SortMatch.SpaceUsed]
-      el[NodeProp.SORT_SPACE_TYPE] = sortMatches[SortMatch.SpaceType]
-      return true
-    }
-    return false
-  }
-
-  private parseBuffers(text: string, el: Node): boolean {
-    /*
-     * Groups
-     */
-    const buffersRegex = /Buffers:\s+(.*)\s*$/g
-    const buffersMatches = buffersRegex.exec(text)
-
-    /*
-     * Groups:
-     * 1: type
-     * 2: info
-     */
-    if (buffersMatches) {
-      _.each(buffersMatches[1].split(/,\s+/), (infos) => {
-        const bufferInfoRegex = /(shared|temp|local)\s+(.*)$/g
-        const m = bufferInfoRegex.exec(infos)
-        if (m) {
-          const type = m[1]
-          // Initiate with default value
-          _.each(["hit", "read", "written", "dirtied"], (method) => {
-            el[_.map([type, method, "blocks"], _.capitalize).join(" ")] = 0
-          })
-          _.each(m[2].split(/\s+/), (buffer) => {
-            this.parseBuffer(buffer, type, el)
-          })
-        }
-      })
-      return true
-    }
-    return false
-  }
-
-  private parseBuffer(text: string, type: string, el: Node): void {
-    const s = text.split(/=/)
-    const method = s[0]
-    const value = parseInt(s[1], 0)
-    el[_.map([type, method, "blocks"], _.capitalize).join(" ")] = value
+  private parseTime(text: string): number {
+    return parseFloat(text.replace(/(\s*ms)$/, ""))
   }
 
   private getWorker(node: Node, workerNumber: number): Worker | undefined {
     return _.find(node[NodeProp.WORKERS], (worker) => {
       return worker[WorkerProp.WORKER_NUMBER] === workerNumber
-    })
-  }
-
-  private parseWAL(text: string, el: Node): boolean {
-    const WALRegex = /WAL:\s+(.*)\s*$/g
-    const WALMatches = WALRegex.exec(text)
-
-    if (WALMatches) {
-      // Initiate with default value
-      _.each(["Records", "Bytes", "FPI"], (type) => {
-        el["WAL " + type] = 0
-      })
-      _.each(WALMatches[1].split(/\s+/), (t) => {
-        const s = t.split(/=/)
-        const type = s[0]
-        const value = parseInt(s[1], 0)
-        let typeCaps
-        switch (type) {
-          case "fpi":
-            typeCaps = "FPI"
-            break
-          default:
-            typeCaps = _.capitalize(type)
-        }
-        el["WAL " + typeCaps] = value
-      })
-      return true
-    }
-
-    return false
-  }
-
-  private parseIOTimings(text: string, el: Node): boolean {
-    /*
-     * Groups
-     */
-    const iotimingsRegex = /I\/O Timings:\s+(.*)\s*$/g
-    const iotimingsMatches = iotimingsRegex.exec(text)
-
-    if (!iotimingsMatches) {
-      return false
-    }
-
-    const scopeRegex =
-      /\b(shared\/local|shared|local|temp)((?:\s+(?:read|write)=\d+(?:\.\d+)?)+)/g
-    const operationRegex = /(read|write)=(\d+(?:\.\d+)?)/g
-
-    const results = []
-    let scopeMatch
-    let operationMatch
-
-    // 1. Handle scoped timings like "local read=10 write=20"
-    while ((scopeMatch = scopeRegex.exec(text)) !== null) {
-      const scope = scopeMatch[1]
-      const operationsString = scopeMatch[2]
-
-      const entry = { scope, read: 0, write: 0 }
-
-      while (
-        (operationMatch = operationRegex.exec(operationsString)) !== null
-      ) {
-        entry[operationMatch[1] as "read" | "write"] = parseFloat(
-          operationMatch[2],
-        )
-      }
-
-      results.push(entry)
-    }
-
-    // 2. Handle unscoped timings like "read=0.011" outside of scoped blocks
-    const rest = text.replace(scopeRegex, "")
-    const unscoped = { scope: undefined, read: 0, write: 0 }
-    let found = false
-
-    while ((operationMatch = operationRegex.exec(rest)) !== null) {
-      unscoped[operationMatch[1] as "read" | "write"] = parseFloat(
-        operationMatch[2],
-      )
-      found = true
-    }
-
-    if (found) {
-      results.push(unscoped)
-    }
-
-    const scopeIsDetailed = _.some(results, (result) => {
-      return result.scope == "shared" || result.scope == "local"
-    })
-
-    const scopeIsPartiallyDetailed = _.some(results, (result) => {
-      return result.scope == "shared/local"
-    })
-
-    // Initiate with default value
-    if (scopeIsDetailed) {
-      el[NodeProp.SHARED_IO_READ_TIME] = 0
-      el[NodeProp.SHARED_IO_WRITE_TIME] = 0
-      el[NodeProp.LOCAL_IO_READ_TIME] = 0
-      el[NodeProp.LOCAL_IO_WRITE_TIME] = 0
-    } else {
-      el[NodeProp.IO_READ_TIME] = 0
-      el[NodeProp.IO_WRITE_TIME] = 0
-    }
-    if (scopeIsPartiallyDetailed || scopeIsDetailed) {
-      el[NodeProp.TEMP_IO_READ_TIME] = 0
-      el[NodeProp.TEMP_IO_WRITE_TIME] = 0
-    }
-
-    results.forEach((result) => {
-      ;["read", "write"].forEach((operation) => {
-        let prop = `IO_${_.upperCase(operation)}_TIME` as keyof typeof NodeProp
-
-        if (result.scope && result.scope != "shared/local") {
-          prop = (_.upperCase(result.scope) +
-            "_" +
-            prop) as keyof typeof NodeProp
-        }
-        const nodeProp = NodeProp[prop] as unknown as keyof typeof Node
-        el[nodeProp] = result[operation as "read" | "write"]
-      })
-    })
-
-    return true
-  }
-
-  private parseOptions(text: string, el: Node): boolean {
-    // Parses an options block in JIT block
-    // eg. Options: Inlining false, Optimization false, Expressions true, Deforming true
-
-    /*
-     * Groups
-     */
-    const optionsRegex = /^(\s*)Options:\s+(.*)$/g
-    const optionsMatches = optionsRegex.exec(text)
-
-    if (optionsMatches) {
-      el.Options = {}
-      const options = optionsMatches[2].split(/\s*,\s*/)
-      let matches
-      _.each(options, (option) => {
-        const reg = /^(\S*)\s+(.*)$/g
-        matches = reg.exec(option)
-        if (matches && el.Options) {
-          el.Options[matches[1]] = JSON.parse(matches[2])
-        }
-      })
-      return true
-    }
-    return false
-  }
-
-  private parseTiming(text: string, el: Node): boolean {
-    // Parses a timing block in JIT block
-    // eg. Timing: Generation 0.340 ms, Inlining 0.000 ms, Optimization 0.168 ms, Emission 1.907 ms, Total 2.414 ms
-
-    /*
-     * Groups
-     */
-    const timingRegex = /^(\s*)Timing:\s+(.*)$/g
-    const timingMatches = timingRegex.exec(text)
-
-    if (timingMatches) {
-      el.Timing = {}
-      const timings = timingMatches[2].split(/\s*,\s*/)
-      let matches
-      _.each(timings, (option) => {
-        const reg = /^(\S*)\s+(.*)$/g
-        matches = reg.exec(option)
-        if (matches && el.Timing) {
-          el.Timing[matches[1]] = this.parseTime(matches[2])
-        }
-      })
-      return true
-    }
-    return false
-  }
-
-  private parseTime(text: string): number {
-    return parseFloat(text.replace(/(\s*ms)$/, ""))
-  }
-
-  private parseSettings(text: string, el: Node): boolean {
-    // Parses a settings block
-    // eg. Settings: constraint_exclusion = 'on', effective_cache_size = '30GB'
-
-    const settingsRegex = /^(\s*)Settings:\s*(.*)$/g
-    const settingsMatches = settingsRegex.exec(text)
-
-    if (settingsMatches) {
-      el.Settings = {}
-      const settings = splitBalanced(settingsMatches[2], ",")
-      let matches
-      _.each(settings, (option) => {
-        const reg = /^(\S*)\s+=\s+(.*)$/g
-        matches = reg.exec(_.trim(option))
-        if (matches && el.Settings) {
-          el.Settings[matches[1]] = matches[2].replace(/'/g, "")
-        }
-      })
-      return true
-    }
-    return false
-  }
-
-  private parseSortGroups(text: string, el: Node): boolean {
-    // Parses a Full-sort Groups block
-    // eg. Full-sort Groups: 312500  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
-    const sortGroupsRegex =
-      /^\s*(Full-sort|Pre-sorted) Groups:\s+([0-9]*)\s+Sort Method[s]*:\s+(.*)\s+Average Memory:\s+(\S*)kB\s+Peak Memory:\s+(\S*)kB.*$/g
-    const matches = sortGroupsRegex.exec(text)
-
-    if (matches) {
-      const groups: SortGroups = {
-        [SortGroupsProp.GROUP_COUNT]: parseInt(matches[2], 0),
-        [SortGroupsProp.SORT_METHODS_USED]: _.map(
-          matches[3].split(","),
-          _.trim,
-        ),
-        [SortGroupsProp.SORT_SPACE_MEMORY]: {
-          [SortSpaceMemoryProp.AVERAGE_SORT_SPACE_USED]: parseInt(
-            matches[4],
-            0,
-          ),
-          [SortSpaceMemoryProp.PEAK_SORT_SPACE_USED]: parseInt(matches[5], 0),
-        },
-      }
-
-      if (matches[1] === "Full-sort") {
-        el[NodeProp.FULL_SORT_GROUPS] = groups
-      } else if (matches[1] === "Pre-sorted") {
-        el[NodeProp.PRE_SORTED_GROUPS] = groups
-      } else {
-        throw new Error("Unsupported sort groups method")
-      }
-      return true
-    }
-    return false
-  }
-
-  private calculateExclusives(node: Node) {
-    // Caculate inclusive value for the current node for the given property
-    const properties: Array<keyof typeof NodeProp> = [
-      "SHARED_HIT_BLOCKS",
-      "SHARED_READ_BLOCKS",
-      "SHARED_DIRTIED_BLOCKS",
-      "SHARED_WRITTEN_BLOCKS",
-      "TEMP_READ_BLOCKS",
-      "TEMP_WRITTEN_BLOCKS",
-      "LOCAL_HIT_BLOCKS",
-      "LOCAL_READ_BLOCKS",
-      "LOCAL_DIRTIED_BLOCKS",
-      "LOCAL_WRITTEN_BLOCKS",
-      "IO_READ_TIME",
-      "IO_WRITE_TIME",
-      "SHARED_IO_READ_TIME",
-      "SHARED_IO_WRITE_TIME",
-      "LOCAL_IO_READ_TIME",
-      "LOCAL_IO_WRITE_TIME",
-      "TEMP_IO_READ_TIME",
-      "TEMP_IO_WRITE_TIME",
-    ]
-    _.each(properties, (property) => {
-      const sum = Number(
-        _.sumBy(
-          // Don't take subplans into account (InitPlan)
-          _.filter(
-            node[NodeProp.PLANS],
-            (child: Node) => !child[NodeProp.SUBPLAN_NAME],
-          ),
-          (child: Node) => {
-            return (child[NodeProp[property]] as number) || 0
-          },
-        ).toFixed(3),
-      )
-      const exclusivePropertyString = ("EXCLUSIVE_" +
-        property) as keyof typeof NodeProp
-      const nodeProp = NodeProp[
-        exclusivePropertyString
-      ] as unknown as keyof typeof Node
-      node[nodeProp] = Number(
-        ((node[NodeProp[property]] as number) - sum).toFixed(3),
-      )
-    })
-  }
-
-  private calculateIoTimingsAverage(node: Node) {
-    // The matrix to match I/O Timings with Buffers
-    let scopesMatrix
-    if (_.isUndefined(node[NodeProp.TEMP_IO_READ_TIME])) {
-      // pre Pg15
-      scopesMatrix = {
-        "": ["shared", "local", "temp"],
-      }
-    } else if (!_.isUndefined(node[NodeProp.IO_READ_TIME])) {
-      // pg15-16
-      scopesMatrix = {
-        "": ["shared", "local"],
-        temp: ["temp"],
-      }
-    } else {
-      // pg17+
-      scopesMatrix = {
-        shared: ["shared"],
-        local: ["local"],
-        temp: ["temp"],
-      }
-    }
-    const operations = ["read", "write"]
-    const buffersOperations = ["read", "written"]
-
-    _.forEach(scopesMatrix, (buffersScopes, timingScope) => {
-      operations.forEach((operation, index) => {
-        ;["exclusive_", ""].forEach((prefix) => {
-          const timeProp =
-            `${prefix}${timingScope ? timingScope + "_" : ""}io_${operation}_time`.toUpperCase() as keyof typeof NodeProp
-          const speedProp =
-            `${prefix}average_${timingScope ? timingScope + "_" : ""}io_${operation}_speed`.toUpperCase() as keyof typeof NodeProp
-          const time = (node[NodeProp[timeProp]] as number) || 0
-          const buffersOperation = buffersOperations[index]
-          const buffers = _.sumBy(buffersScopes, (bufferScope) => {
-            const bufferProp =
-              `${prefix}${bufferScope}_${buffersOperation}_blocks`.toUpperCase() as keyof typeof NodeProp
-            return (node[NodeProp[bufferProp]] as number) || 0
-          })
-          const buffersProp =
-            `${prefix}${buffersOperation}_blocks`.toUpperCase() as keyof typeof NodeProp
-          node[NodeProp[buffersProp] as unknown as keyof typeof Node] = buffers
-          if (time) {
-            node[NodeProp[speedProp] as unknown as keyof typeof Node] = Number(
-              (buffers / (time / 1000)).toFixed(3),
-            )
-          }
-        })
-      })
-    })
-
-    // We also compute sum and average speed for read / write timings for all scopes
-    operations.forEach((operation, index) => {
-      ;["exclusive_", ""].forEach((prefix) => {
-        const sumTimeProp =
-          `${prefix}sum_io_${operation}_time`.toUpperCase() as keyof typeof NodeProp
-        const speedProp =
-          `${prefix}average_sum_io_${operation}_speed`.toUpperCase() as keyof typeof NodeProp
-        let time = 0
-        let buffers = 0
-        _.forEach(scopesMatrix, (buffersScopes, timingScope) => {
-          const timeProp =
-            `${prefix}${timingScope ? timingScope + "_" : ""}io_${operation}_time`.toUpperCase() as keyof typeof NodeProp
-          time += (node[NodeProp[timeProp]] as number) || 0
-          const buffersOperation = buffersOperations[index]
-          buffers += _.sumBy(buffersScopes, (bufferScope) => {
-            const bufferProp =
-              `${prefix}${bufferScope}_${buffersOperation}_blocks`.toUpperCase() as keyof typeof NodeProp
-            return (node[NodeProp[bufferProp]] as number) || 0
-          })
-        })
-        node[NodeProp[sumTimeProp] as unknown as keyof typeof Node] = Number(
-          time.toFixed(3),
-        )
-        if (time) {
-          node[NodeProp[speedProp] as unknown as keyof typeof Node] = Number(
-            (buffers / (time / 1000)).toFixed(3),
-          )
-        }
-      })
     })
   }
 

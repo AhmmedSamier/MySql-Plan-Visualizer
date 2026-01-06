@@ -3,12 +3,11 @@ import _ from "lodash"
 import { computed, onBeforeMount, ref, watch } from "vue"
 import type { Node, Worker, ViewOptions } from "@/interfaces"
 import {
-  BufferLocation,
   NodeProp,
   EstimateDirection,
   HighlightType,
 } from "@/enums"
-import { blocks, cost, duration, factor, formatNodeProp, rows } from "@/filters"
+import { cost, duration, factor, formatNodeProp, rows } from "@/filters"
 import { numberToColorHsl } from "@/services/color-service"
 import { store } from "@/store"
 
@@ -290,86 +289,6 @@ export default function useNode(
     }
   })
 
-  const sharedHitPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_SHARED_HIT_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.shared]) *
-      100
-    )
-  })
-
-  const sharedReadPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_SHARED_READ_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.shared]) *
-      100
-    )
-  })
-
-  const sharedDirtiedPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_SHARED_DIRTIED_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.shared]) *
-      100
-    )
-  })
-
-  const sharedWrittenPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_SHARED_WRITTEN_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.shared]) *
-      100
-    )
-  })
-
-  const tempReadPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_TEMP_READ_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.temp]) *
-      100
-    )
-  })
-
-  const tempWrittenPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_TEMP_WRITTEN_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.temp]) *
-      100
-    )
-  })
-
-  const localHitPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_LOCAL_HIT_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.local]) *
-      100
-    )
-  })
-
-  const localReadPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_LOCAL_READ_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.local]) *
-      100
-    )
-  })
-
-  const localDirtiedPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_LOCAL_DIRTIED_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.local]) *
-      100
-    )
-  })
-
-  const localWrittenPercent = computed((): number => {
-    return (
-      (node[NodeProp.EXCLUSIVE_LOCAL_WRITTEN_BLOCKS] /
-        store.stats.maxBlocks?.[BufferLocation.local]) *
-      100
-    )
-  })
-
   const rowsTooltip = computed((): string => {
     return ["Rows: ", rows(node[NodeProp.ACTUAL_ROWS_REVISED] as number)].join(
       "",
@@ -422,83 +341,6 @@ export default function useNode(
     return !rowsIsFractional.value && hasSeveralLoops.value ? "~" : ""
   })
 
-  const buffersByLocationTooltip = computed(
-    () =>
-      (location: BufferLocation): string => {
-        let text = ""
-        let hit
-        let read
-        let written
-        let dirtied
-        switch (location) {
-          case BufferLocation.shared:
-            hit = node[NodeProp.EXCLUSIVE_SHARED_HIT_BLOCKS]
-            read = node[NodeProp.EXCLUSIVE_SHARED_READ_BLOCKS]
-            dirtied = node[NodeProp.EXCLUSIVE_SHARED_DIRTIED_BLOCKS]
-            written = node[NodeProp.EXCLUSIVE_SHARED_WRITTEN_BLOCKS]
-            break
-          case BufferLocation.temp:
-            read = node[NodeProp.EXCLUSIVE_TEMP_READ_BLOCKS]
-            written = node[NodeProp.EXCLUSIVE_TEMP_WRITTEN_BLOCKS]
-            break
-          case BufferLocation.local:
-            hit = node[NodeProp.EXCLUSIVE_LOCAL_HIT_BLOCKS]
-            read = node[NodeProp.EXCLUSIVE_LOCAL_READ_BLOCKS]
-            dirtied = node[NodeProp.EXCLUSIVE_LOCAL_DIRTIED_BLOCKS]
-            written = node[NodeProp.EXCLUSIVE_LOCAL_WRITTEN_BLOCKS]
-            break
-        }
-        text += '<table class="table table-sm table-borderless mb-0">'
-        text += hit
-          ? '<tr><td>Hit:</td><td class="text-end">' +
-            blocks(hit, true) +
-            "</td></tr>"
-          : ""
-        text += read
-          ? '<tr><td>Read:</td><td class="text-end">' +
-            blocks(read, true) +
-            "</td></tr>"
-          : ""
-        text += dirtied
-          ? '<tr><td>Dirtied:</td><td class="text-end">' +
-            blocks(dirtied, true) +
-            "</td></tr>"
-          : ""
-        text += written
-          ? '<tr><td>Written:</td><td class="text-end">' +
-            blocks(written, true) +
-            "</td></tr>"
-          : ""
-        text += "</table>"
-
-        if (!hit && !read && !dirtied && !written) {
-          text = " N/A"
-        }
-
-        switch (location) {
-          case BufferLocation.shared:
-            text = "Shared Blocks:" + text
-            break
-          case BufferLocation.temp:
-            text = "Temp Blocks:" + text
-            break
-          case BufferLocation.local:
-            text = "Local Blocks:" + text
-            break
-        }
-        return text
-      },
-  )
-
-  const buffersByMetricTooltip = computed(() => (metric: NodeProp): string => {
-    let text = '<table class="table table-sm table-borderless mb-0">'
-    text += `<tr><td>${metric}:</td><td class="text-end">`
-    if (node[metric]) {
-      text += `${blocks(node[metric] as number, true)}</td></tr>`
-    }
-    return text
-  })
-
   const heapFetchesTooltip = computed((): string => {
     return `Heap Fetches: ${node[NodeProp.HEAP_FETCHES]?.toLocaleString()}`
   })
@@ -513,8 +355,6 @@ export default function useNode(
   return {
     barColor,
     barWidth,
-    buffersByLocationTooltip,
-    buffersByMetricTooltip,
     costClass,
     costTooltip,
     durationClass,
@@ -531,10 +371,6 @@ export default function useNode(
     indexRecheckTooltip,
     isNeverExecuted,
     isParallelAware,
-    localDirtiedPercent,
-    localHitPercent,
-    localReadPercent,
-    localWrittenPercent,
     nodeName,
     plannerRowEstimateDirection,
     plannerRowEstimateValue,
@@ -545,12 +381,6 @@ export default function useNode(
     rowsRemovedProp,
     rowsRemovedTooltip,
     rowsTooltip,
-    sharedDirtiedPercent,
-    sharedHitPercent,
-    sharedReadPercent,
-    sharedWrittenPercent,
-    tempReadPercent,
-    tempWrittenPercent,
     tilde,
     workersLaunchedCount,
     workersPlannedCount,

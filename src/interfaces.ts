@@ -1,8 +1,5 @@
 import type {
-  BufferLocation,
   HighlightType,
-  SortGroupsProp,
-  SortSpaceMemoryProp,
 } from "@/enums"
 
 export interface IPlan {
@@ -24,27 +21,13 @@ export interface IPlanContent {
   maxCost?: number
   maxTotalCost?: number
   maxDuration?: number
-  maxBlocks?: IBlocksStats
-  maxIo?: number
   maxEstimateFactor?: number
-  Triggers?: ITrigger[]
-  JIT?: JIT
   "Query Text"?: string
   [k: string]:
     | Node
     | number
     | string
-    | IBlocksStats
-    | ITrigger[]
-    | JIT
     | undefined
-}
-
-export interface ITrigger {
-  "Trigger Name": string
-  Relation?: string
-  Time: number
-  Calls: string
 }
 
 export interface IPlanStats {
@@ -53,16 +36,7 @@ export interface IPlanStats {
   maxRows: number
   maxCost: number
   maxDuration: number
-  maxBlocks: IBlocksStats
-  maxIo: number
   maxEstimateFactor: number
-  triggers?: ITrigger[]
-  jitTime?: number
-  settings?: Settings
-}
-
-export type IBlocksStats = {
-  [key in BufferLocation]: number
 }
 
 import { EstimateDirection, NodeProp } from "@/enums"
@@ -71,9 +45,6 @@ import { EstimateDirection, NodeProp } from "@/enums"
 export class Node {
   nodeId!: number
   size!: [number, number];
-  ["Options"]?: Options;
-  ["Timing"]?: Timing;
-  ["Settings"]?: Settings;
   [NodeProp.ACTUAL_LOOPS]!: number;
   [NodeProp.ACTUAL_ROWS]!: number;
   [NodeProp.ACTUAL_ROWS_REVISED]!: number;
@@ -81,18 +52,6 @@ export class Node {
   [NodeProp.ACTUAL_TOTAL_TIME]?: number;
   [NodeProp.EXCLUSIVE_COST]!: number;
   [NodeProp.EXCLUSIVE_DURATION]!: number;
-  [NodeProp.EXCLUSIVE_LOCAL_DIRTIED_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_LOCAL_HIT_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_LOCAL_READ_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_LOCAL_WRITTEN_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_SHARED_DIRTIED_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_SHARED_HIT_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_SHARED_READ_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_SHARED_WRITTEN_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_READ_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_WRITTEN_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_TEMP_READ_BLOCKS]!: number;
-  [NodeProp.EXCLUSIVE_TEMP_WRITTEN_BLOCKS]!: number;
   [NodeProp.FILTER]!: string;
   [NodeProp.PLANNER_ESTIMATE_DIRECTION]?: EstimateDirection;
   [NodeProp.PLANNER_ESTIMATE_FACTOR]?: number;
@@ -109,45 +68,10 @@ export class Node {
   [NodeProp.WORKERS_PLANNED]?: number;
   [NodeProp.WORKERS_LAUNCHED_BY_GATHER]?: number;
   [NodeProp.WORKERS_PLANNED_BY_GATHER]?: number;
-  [NodeProp.EXCLUSIVE_IO_READ_TIME]!: number;
-  [NodeProp.EXCLUSIVE_IO_WRITE_TIME]!: number;
-  [NodeProp.EXCLUSIVE_SHARED_IO_READ_TIME]!: number;
-  [NodeProp.EXCLUSIVE_SHARED_IO_WRITE_TIME]!: number;
-  [NodeProp.EXCLUSIVE_LOCAL_IO_READ_TIME]!: number;
-  [NodeProp.EXCLUSIVE_LOCAL_IO_WRITE_TIME]!: number;
-  [NodeProp.EXCLUSIVE_TEMP_IO_READ_TIME]!: number;
-  [NodeProp.EXCLUSIVE_TEMP_IO_WRITE_TIME]!: number;
-  [NodeProp.EXCLUSIVE_SUM_IO_READ_TIME]!: number;
-  [NodeProp.EXCLUSIVE_SUM_IO_WRITE_TIME]!: number;
-  [NodeProp.AVERAGE_IO_READ_SPEED]!: number;
-  [NodeProp.AVERAGE_IO_WRITE_SPEED]!: number;
-  [NodeProp.AVERAGE_SHARED_IO_READ_SPEED]!: number;
-  [NodeProp.AVERAGE_SHARED_IO_WRITE_SPEED]!: number;
-  [NodeProp.AVERAGE_LOCAL_IO_READ_SPEED]!: number;
-  [NodeProp.AVERAGE_LOCAL_IO_WRITE_SPEED]!: number;
-  [NodeProp.AVERAGE_TEMP_IO_READ_SPEED]!: number;
-  [NodeProp.AVERAGE_TEMP_IO_WRITE_SPEED]!: number;
-  [NodeProp.AVERAGE_SUM_IO_READ_SPEED]!: number;
-  [NodeProp.AVERAGE_SUM_IO_WRITE_SPEED]!: number;
-  [NodeProp.EXCLUSIVE_AVERAGE_SUM_IO_READ_SPEED]!: number;
-  [NodeProp.EXCLUSIVE_AVERAGE_SUM_IO_WRITE_SPEED]!: number;
-  [NodeProp.IO_READ_TIME]!: number;
-  [NodeProp.IO_WRITE_TIME]!: number;
-  [NodeProp.SHARED_IO_READ_TIME]!: number;
-  [NodeProp.SHARED_IO_WRITE_TIME]!: number;
-  [NodeProp.LOCAL_IO_READ_TIME]!: number;
-  [NodeProp.LOCAL_IO_WRITE_TIME]!: number;
-  [NodeProp.TEMP_IO_READ_TIME]!: number;
-  [NodeProp.TEMP_IO_WRITE_TIME]!: number;
-  [NodeProp.SUM_IO_READ_TIME]!: number;
-  [NodeProp.SUM_IO_WRITE_TIME]!: number;
   [NodeProp.PARTIAL_MODE]!: string;
   [NodeProp.SCAN_DIRECTION]!: string;
   [k: string]:
     | Node[]
-    | Options
-    | SortGroups
-    | Timing
     | Worker[]
     | boolean
     | number
@@ -289,26 +213,11 @@ export class Worker {
   }
 }
 
-export type Options = {
-  [k: string]: string
-}
-
-export type Timing = {
-  [k: string]: number
-}
-
-export type Settings = {
-  [k: string]: string
-}
-
-export type SortGroups = {
-  [SortGroupsProp.SORT_METHODS_USED]: string[]
-  [SortGroupsProp.SORT_SPACE_MEMORY]: SortSpaceMemory
-  [key: string]: number | string | string[] | SortSpaceMemory
-}
-
-export type SortSpaceMemory = {
-  [key in SortSpaceMemoryProp]: number
+export type ViewOptions = {
+  showHighlightBar: boolean
+  showPlanStats: boolean
+  highlightType: HighlightType
+  diagramWidth: number
 }
 
 export type StatsTableItemType = {
@@ -317,18 +226,6 @@ export type StatsTableItemType = {
   time: number
   timePercent: number
   nodes: Node[]
-}
-
-export type ViewOptions = {
-  showHighlightBar: boolean
-  showPlanStats: boolean
-  highlightType: HighlightType
-  diagramWidth: number
-}
-
-export interface JIT {
-  ["Timing"]: Timing
-  [key: string]: number | Timing
 }
 
 // A plan node with id, node, isLastSibling, branches
