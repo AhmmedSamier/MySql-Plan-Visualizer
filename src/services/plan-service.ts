@@ -523,7 +523,7 @@ export class PlanService {
 
     // MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
     const actualPattern =
-      "(?:actual(?:\\stime=(\\d+\\.\\d+)\\.\\.(\\d+\\.\\d+))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
+      "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
     const optionalGroup = "?"
 
     // tslint:disable-next-line:max-line-length
