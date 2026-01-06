@@ -39,13 +39,12 @@ export class MysqlPlanService {
       // Check if query_block has 'inputs' or 'operation', if so, use parseV2 or a modified V1 logic?
       // But standard V1 query_block doesn't usually have 'operation' string like that.
       // It seems safe to say if it has 'operation' or 'inputs', we might want to process it recursively.
-      if (
-        _.has((data as any).query_block, "inputs") ||
-        _.has((data as any).query_block, "operation")
-      ) {
-        return this.parseV2((data as any).query_block, flat)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const queryBlock = (data as any).query_block
+      if (_.has(queryBlock, "inputs") || _.has(queryBlock, "operation")) {
+        return this.parseV2(queryBlock, flat)
       }
-      return this.parseV1((data as any).query_block, flat)
+      return this.parseV1(queryBlock, flat)
     }
     if (_.has(data, "execution_plan")) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
