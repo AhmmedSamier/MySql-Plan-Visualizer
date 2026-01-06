@@ -44,21 +44,19 @@ describe("PlanService MySQL Tree Extensive", () => {
     expect(joinChildren).toHaveLength(2)
 
     const filterNode = joinChildren[0]
-    expect(filterNode[NodeProp.NODE_TYPE]).toBe("Filter: (t1.col1 > 50)")
+    expect(filterNode[NodeProp.NODE_TYPE]).toBe("Filter")
+    expect(filterNode[NodeProp.FILTER]).toBe("(t1.col1 > 50)")
     expect(filterNode[NodeProp.PLAN_ROWS]).toBe(50)
 
     const tableScanNode = filterNode[NodeProp.PLANS][0]
-    expect(tableScanNode[NodeProp.NODE_TYPE]).toBe("Table scan on t1") // Note: The regex might capture "Table scan on t1" as type
-    // Or maybe "Table scan" if it parses "on t1" as extra?
-    // In PlanService.fromText:
-    // nodeRegex -> prefix + partial + type + ...
-    // "-> Table scan on t1  (cost=..."
-    // Type will capture "Table scan on t1".
-    // Usually visualization might prefer "Table scan" and Relation "t1".
-    // The current generic text parser doesn't know about MySQL "on table" syntax specifically, so it treats it as the Node Type.
+    expect(tableScanNode[NodeProp.NODE_TYPE]).toBe("Table scan")
+    expect(tableScanNode[NodeProp.RELATION_NAME]).toBe("t1")
 
     const indexLookupNode = joinChildren[1]
-    expect(indexLookupNode[NodeProp.NODE_TYPE]).toContain("Index lookup on t2")
+    expect(indexLookupNode[NodeProp.NODE_TYPE]).toBe("Index lookup")
+    expect(indexLookupNode[NodeProp.RELATION_NAME]).toBe("t2")
+    expect(indexLookupNode[NodeProp.INDEX_NAME]).toBe("idx_col1")
+    expect(indexLookupNode[NodeProp.ATTACHED_CONDITION]).toBe("(col1=t1.col1)")
     expect(indexLookupNode[NodeProp.ACTUAL_LOOPS]).toBe(50)
   })
 
@@ -88,6 +86,9 @@ describe("PlanService MySQL Tree Extensive", () => {
       const source = `-> Index lookup on t1 using idx_a (a=10)  (cost=1.10 rows=1)`
       const r = planService.fromSource(source) as IPlanContent
       const plan = r.Plan
-      expect(plan[NodeProp.NODE_TYPE]).toBe("Index lookup on t1 using idx_a (a=10)")
+      expect(plan[NodeProp.NODE_TYPE]).toBe("Index lookup")
+      expect(plan[NodeProp.RELATION_NAME]).toBe("t1")
+      expect(plan[NodeProp.INDEX_NAME]).toBe("idx_a")
+      expect(plan[NodeProp.ATTACHED_CONDITION]).toBe("(a=10)")
   })
 })
