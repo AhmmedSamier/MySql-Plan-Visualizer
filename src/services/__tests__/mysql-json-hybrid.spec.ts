@@ -67,7 +67,8 @@ describe("MySQL JSON Hybrid Format", () => {
 
     // Check Child (Filter)
     const filter = root[NodeProp.PLANS][0]
-    expect(filter[NodeProp.NODE_TYPE]).toBe("Filter: (total_spent > 100)")
+    expect(filter[NodeProp.NODE_TYPE]).toBe("Filter")
+    expect(filter[NodeProp.FILTER]).toBe("(total_spent > 100)")
 
     // Check Child (Aggregate)
     const aggregate = filter[NodeProp.PLANS][0]

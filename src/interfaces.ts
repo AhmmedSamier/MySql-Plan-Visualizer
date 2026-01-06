@@ -134,6 +134,34 @@ export class Node {
       Alias,
     }
     const subqueryRegex = /^(Subquery\sScan)\son\s(.+)$/.exec(type)
+
+    // MySQL specific regex
+    enum MysqlFilterMatch {
+      NodeType = 1,
+      Filter,
+    }
+    const mysqlFilterRegex = /^(Filter):\s+(.*)$/.exec(type)
+
+    enum MysqlIndexMatch {
+      NodeType = 1,
+      RelationName,
+      IndexName,
+      Extra,
+    }
+    const mysqlIndexLookupRegex =
+      /^(Index\slookup)\son\s(\S+)\susing\s([^\s(]+)(.*)$/.exec(type)
+
+    const mysqlSingleRowIndexLookupRegex =
+      /^(Single-row\sindex\slookup)\son\s(\S+)\susing\s([^\s(]+)(.*)$/.exec(
+        type,
+      )
+
+    enum MysqlTableScanMatch {
+      NodeType = 1,
+      RelationName,
+    }
+    const mysqlTableScanRegex = /^(Table\sscan)\son\s(\S+)$/.exec(type)
+
     if (scanAndOperationsRegex) {
       this[NodeProp.NODE_TYPE] =
         scanAndOperationsRegex[ScanAndOperationMatch.NodeType]
@@ -149,11 +177,43 @@ export class Node {
     } else if (indexRegex) {
       this[NodeProp.NODE_TYPE] = indexRegex[IndexMatch.NodeType]
       this[NodeProp.INDEX_NAME] = indexRegex[IndexMatch.IndexName]
-      this[NodeProp.SCAN_DIRECTION] = indexRegex[IndexMatch.ScanDirection] ? "Backward" : "Forward"
+      this[NodeProp.SCAN_DIRECTION] = indexRegex[IndexMatch.ScanDirection]
+        ? "Backward"
+        : "Forward"
       this[NodeProp.RELATION_NAME] = indexRegex[IndexMatch.RelationName]
       if (indexRegex[IndexMatch.Alias]) {
         this[NodeProp.ALIAS] = indexRegex[IndexMatch.Alias]
       }
+    } else if (mysqlFilterRegex) {
+      this[NodeProp.NODE_TYPE] = mysqlFilterRegex[MysqlFilterMatch.NodeType]
+      this[NodeProp.FILTER] = mysqlFilterRegex[MysqlFilterMatch.Filter]
+    } else if (mysqlIndexLookupRegex) {
+      this[NodeProp.NODE_TYPE] =
+        mysqlIndexLookupRegex[MysqlIndexMatch.NodeType]
+      this[NodeProp.RELATION_NAME] =
+        mysqlIndexLookupRegex[MysqlIndexMatch.RelationName]
+      this[NodeProp.INDEX_NAME] =
+        mysqlIndexLookupRegex[MysqlIndexMatch.IndexName]
+      const extra = mysqlIndexLookupRegex[MysqlIndexMatch.Extra]
+      if (extra) {
+        this[NodeProp.ATTACHED_CONDITION] = extra.trim()
+      }
+    } else if (mysqlSingleRowIndexLookupRegex) {
+      this[NodeProp.NODE_TYPE] =
+        mysqlSingleRowIndexLookupRegex[MysqlIndexMatch.NodeType]
+      this[NodeProp.RELATION_NAME] =
+        mysqlSingleRowIndexLookupRegex[MysqlIndexMatch.RelationName]
+      this[NodeProp.INDEX_NAME] =
+        mysqlSingleRowIndexLookupRegex[MysqlIndexMatch.IndexName]
+      const extra = mysqlSingleRowIndexLookupRegex[MysqlIndexMatch.Extra]
+      if (extra) {
+        this[NodeProp.ATTACHED_CONDITION] = extra.trim()
+      }
+    } else if (mysqlTableScanRegex) {
+      this[NodeProp.NODE_TYPE] =
+        mysqlTableScanRegex[MysqlTableScanMatch.NodeType]
+      this[NodeProp.RELATION_NAME] =
+        mysqlTableScanRegex[MysqlTableScanMatch.RelationName]
     } else if (cteRegex) {
       this[NodeProp.NODE_TYPE] = cteRegex[CteMatch.NodeType]
       this[NodeProp.CTE_NAME] = cteRegex[CteMatch.CteName]

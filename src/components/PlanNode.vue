@@ -232,6 +232,13 @@ function centerCte() {
                 v-html="keysToString(node[NodeProp.HASH_CONDITION] as string)"
               ></span>
             </div>
+            <div
+              v-if="node[NodeProp.FILTER]"
+              :class="{ 'line-clamp-2': !showDetails }"
+            >
+              <span class="text-secondary">filter</span>
+              <span v-html="keysToString(node[NodeProp.FILTER] as string)"></span>
+            </div>
             <div v-if="node[NodeProp.CTE_NAME]">
               <a class="text-reset" href="" @click.prevent.stop="centerCte">
                 <FontAwesomeIcon
