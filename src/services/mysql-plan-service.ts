@@ -25,23 +25,26 @@ export class MysqlPlanService {
       _.has(data, "query_block") ||
       _.has(data, "query_spec") ||
       (_.has(data, "execution_plan") && !_.has(data, "Plan")) ||
+      _.has(data, "query_plan") ||
       ((_.has(data, "inputs") || _.has(data, "steps")) && !_.has(data, "Plan"))
     )
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public parseMySQL(data: any, flat: Node[]) {
+    if (_.has(data, "query_plan")) {
+      return this.parseV2(data.query_plan, flat)
+    }
     if (_.has(data, "query_block")) {
       // Check if query_block has 'inputs' or 'operation', if so, use parseV2 or a modified V1 logic?
       // But standard V1 query_block doesn't usually have 'operation' string like that.
       // It seems safe to say if it has 'operation' or 'inputs', we might want to process it recursively.
-      if (
-        _.has(data.query_block, "inputs") ||
-        _.has(data.query_block, "operation")
-      ) {
-        return this.parseV2(data.query_block, flat)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const queryBlock = (data as any).query_block
+      if (_.has(queryBlock, "inputs") || _.has(queryBlock, "operation")) {
+        return this.parseV2(queryBlock, flat)
       }
-      return this.parseV1(data.query_block, flat)
+      return this.parseV1(queryBlock, flat)
     }
     if (_.has(data, "execution_plan")) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
