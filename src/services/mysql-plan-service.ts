@@ -25,12 +25,16 @@ export class MysqlPlanService {
       _.has(data, "query_block") ||
       _.has(data, "query_spec") ||
       (_.has(data, "execution_plan") && !_.has(data, "Plan")) ||
+      _.has(data, "query_plan") ||
       ((_.has(data, "inputs") || _.has(data, "steps")) && !_.has(data, "Plan"))
     )
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public parseMySQL(data: any, flat: Node[]) {
+    if (_.has(data, "query_plan")) {
+      return this.parseV2(data.query_plan, flat)
+    }
     if (_.has(data, "query_block")) {
       // Check if query_block has 'inputs' or 'operation', if so, use parseV2 or a modified V1 logic?
       // But standard V1 query_block doesn't usually have 'operation' string like that.
