@@ -300,12 +300,8 @@ function addMessage(text: string) {
       <VersionCheck />
       <div class="alert alert-warning">
         This is the demo application for
-        <a href="https://github.com/dalibo/pev2">PEV2</a>. It is serverless and
+        <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer">MySql-Plan-Visualizer</a>. It is serverless and
         doesn't send your plans over the internet.
-        <br />
-        Please consider using
-        <a href="https://explain.dalibo.com">explain.dalibo.com</a> instead if
-        you want to save or share your plans.
       </div>
       <div class="row">
         <div class="col-sm-7">
@@ -314,13 +310,8 @@ function addMessage(text: string) {
               <div class="text-secondary">
                 For best results, use
                 <code>
-                  EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON)
+                  EXPLAIN FORMAT=JSON
                 </code>
-                <br />
-                <em>psql</em> users can export the plan to a file using
-                <code class="text-nowrap"
-                  >psql -XqAt -f explain.sql > analyze.json</code
-                >
               </div>
             </div>
           </div>

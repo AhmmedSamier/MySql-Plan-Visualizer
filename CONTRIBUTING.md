@@ -1,19 +1,19 @@
-# pev2
+# MySql-Plan-Visualizer
 
 ## Prerequisites
 
-For the develoment of this project you need to have NPM version > 8 installed.
+For the develoment of this project you need to have Bun installed.
 
 ## Project Setup
 
 ```sh
-npm ci
+bun install
 ```
 
 ### Compile and Hot-Reload for Development
 
 ```sh
-npm run dev
+bun run dev
 ```
 
 You'll get the URL to test your modifications (typically <http://localhost:5173/>).
@@ -23,11 +23,11 @@ Any change on the code will force a recompilation and update the page.
 ### Type-Check, Compile and Minify for Production
 
 ```sh
-npm run build
+bun run build
 ```
 
 ### Lint with [ESLint](https://eslint.org/)
 
 ```sh
-npm run lint
+bun run lint
 ```

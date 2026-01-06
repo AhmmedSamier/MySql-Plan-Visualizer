@@ -15,7 +15,7 @@ const currentPath = inject("currentPath")
     <nav class="navbar">
       <div :class="[currentPath == '/plan' ? 'container-fluid' : 'container']">
         <VLink class="btn btn-link" to="/">
-          <img src="../assets/logo_pev2.svg" alt="" style="height: 1.5rem" />
+          <img src="../assets/logo.svg" alt="" style="height: 1.5rem" />
         </VLink>
         <div v-if="props?.title" class="text-center ms-auto">
           {{ props?.title }}

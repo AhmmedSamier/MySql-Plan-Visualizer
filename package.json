@@ -1,23 +1,23 @@
 {
-  "name": "pev2",
+  "name": "mysql-plan-visualizer",
   "version": "1.19.0",
   "description": "MySQL Plan Visualizer",
   "homepage": "https://ahmmedsamier.github.io/MySql-Plan-Visualizer/",
-  "license": "PostgreSQL license",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "files": [
     "dist"
   ],
-  "main": "./dist/pev2.umd.js",
-  "module": "./dist/pev2.es.js",
+  "main": "./dist/mysql-plan-visualizer.umd.js",
+  "module": "./dist/mysql-plan-visualizer.es.js",
   "types": "./dist/components/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/components/index.d.ts",
-      "import": "./dist/pev2.es.js",
-      "require": "./dist/pev2.umd.js"
+      "import": "./dist/mysql-plan-visualizer.es.js",
+      "require": "./dist/mysql-plan-visualizer.umd.js"
     },
-    "./dist/pev2.css": "./dist/pev2.css"
+    "./dist/mysql-plan-visualizer.css": "./dist/mysql-plan-visualizer.css"
   },
   "scripts": {
     "dev": "vite",

@@ -41,7 +41,7 @@ export class PlanService {
     planQuery = planQuery.replace(/(\S)(?!$)(\s{2,})/gm, "$1 ")
 
     const plan: IPlan = {
-      id: NodeProp.PEV_PLAN_TAG + new Date().getTime().toString(),
+      id: NodeProp.MPV_PLAN_TAG + new Date().getTime().toString(),
       name: planName || "plan created on " + new Date().toDateString(),
       createdOn: new Date(),
       content: planContent,
@@ -511,7 +511,6 @@ export class PlanService {
     const typePattern = "(.*?)"
     // tslint:disable-next-line:max-line-length
     // MySQL cost: (cost=10.0 rows=5)
-    // Postgres cost: (cost=10.0..20.0 rows=5 width=4)
     // We make the second cost and width optional.
     const estimationPattern =
       "\\(cost=(\\d+\\.\\d+)(?:\\.\\.(\\d+\\.\\d+))?\\s+rows=(\\d+)(?:\\s+width=(\\d+))?\\)"
@@ -521,7 +520,6 @@ export class PlanService {
     const closeParenthesisPattern = "\\)"
 
     // MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
-    // Postgres actual: (actual time=0.010..0.010 rows=1 loops=1)
     const actualPattern =
       "(?:actual(?:\\stime=(\\d+\\.\\d+)\\.\\.(\\d+\\.\\d+))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
     const optionalGroup = "?"
@@ -897,8 +895,6 @@ export class PlanService {
         if (!element) {
           return
         }
-
-        // Removed Postgres specific parsers (sort, buffers, WAL, JIT etc)
 
         // remove the " ms" unit in case of time
         let value: string | number = info[1].replace(/(\s*ms)$/, "")

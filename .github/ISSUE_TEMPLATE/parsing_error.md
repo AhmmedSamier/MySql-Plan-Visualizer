@@ -6,7 +6,7 @@ labels: "parsing"
 assignees: ""
 ---
 
-**Version of PEV2: xxxx**
+**Version of MySql-Plan-Visualizer: xxxx**
 
 **Copy the failing plan**
 

@@ -10,8 +10,8 @@ const build = process.env.LIB
   ? {
       lib: {
         entry: path.resolve(__dirname, "src/components/index.ts"),
-        name: "pev2",
-        fileName: (format: string) => `pev2.${format}.js`,
+        name: "MysqlPlanVisualizer",
+        fileName: (format: string) => `mysql-plan-visualizer.${format}.js`,
       },
       rollupOptions: {
         external: ["vue"],

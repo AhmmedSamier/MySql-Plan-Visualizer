@@ -2,7 +2,7 @@ MySql-Plan-Visualizer: A VueJS component to show a graphical vizualization of a 
 
 [**Live Demo**](https://ahmmedsamier.github.io/MySql-Plan-Visualizer/)
 
-![PEV2 screenshot](pev2_screenshot.png)
+![Screenshot](screenshot.png)
 
 # Usage
 
@@ -10,7 +10,7 @@ To use the explain vizualizer you can choose one of the following options:
 
 ## All-in-one local (no installation, no network)
 
-PEV2 can be run locally without any external internet resource.
+MySql-Plan-Visualizer can be run locally without any external internet resource.
 
 Simply download the built artifact from releases, open it in your favorite internet browser.
 
@@ -20,15 +20,15 @@ Simply download the built artifact from releases, open it in your favorite inter
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://unpkg.com/pev2/dist/pev2.umd.js"></script>
+<script src="https://unpkg.com/mysql-plan-visualizer/dist/mysql-plan-visualizer.umd.js"></script>
 <link
   href="https://unpkg.com/bootstrap@5/dist/css/bootstrap.min.css"
   rel="stylesheet"
 />
-<link rel="stylesheet" href="https://unpkg.com/pev2/dist/pev2.css" />
+<link rel="stylesheet" href="https://unpkg.com/mysql-plan-visualizer/dist/mysql-plan-visualizer.css" />
 
 <div id="app" class="d-flex flex-column vh-100">
-  <pev2 :plan-source="plan" plan-query="" />
+  <mysql-plan-visualizer :plan-source="plan" plan-query="" />
 </div>
 
 <script>
@@ -46,31 +46,31 @@ Simply download the built artifact from releases, open it in your favorite inter
       }
     },
   })
-  app.component("pev2", pev2.Plan)
+  app.component("mysql-plan-visualizer", MysqlPlanVisualizer.Plan)
   app.mount("#app")
 </script>
 ```
 
 ### With build tools
 
-PEV2 can be integrated as a component in a web application.
+MySql-Plan-Visualizer can be integrated as a component in a web application.
 
 Install it:
 
 ```
-npm install pev2
+npm install mysql-plan-visualizer
 ```
 
-Declare the `PEV2` component and use it:
+Declare the `Plan` component and use it:
 
 ```javascript
-import { Plan } from "pev2"
-import "pev2/dist/pev2.css"
+import { Plan } from "mysql-plan-visualizer"
+import "mysql-plan-visualizer/dist/mysql-plan-visualizer.css"
 
 export default {
-  name: "PEV2 example",
+  name: "MySql-Plan-Visualizer example",
   components: {
-    pev2: Plan,
+    MysqlPlanVisualizer: Plan,
   },
   data() {
     return {
@@ -81,15 +81,15 @@ export default {
 }
 ```
 
-Then add the `PEV2` component to your template:
+Then add the component to your template:
 
 ```html
 <div id="app">
-  <pev2 :plan-source="plan" :plan-query="query"></pev2>
+  <mysql-plan-visualizer :plan-source="plan" :plan-query="query"></mysql-plan-visualizer>
 </div>
 ```
 
-`PEV2` requires `Bootstrap (CSS)` to work so don't forget to
+`MySql-Plan-Visualizer` requires `Bootstrap (CSS)` to work so don't forget to
 add the following in you header (or load them with your favorite bundler).
 
 ```html
@@ -98,7 +98,3 @@ add the following in you header (or load them with your favorite bundler).
   rel="stylesheet"
 />
 ```
-
-# Disclaimer
-
-This project is a MySQL adaptation of the PEV2 project.
