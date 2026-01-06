@@ -513,8 +513,10 @@ export class PlanService {
     // MySQL cost: (cost=10.0 rows=5)
     // Postgres cost: (cost=10.0..20.0 rows=5 width=4)
     // We make the second cost and width optional.
+    // Modified to support integer costs and scientific notation in rows/costs
+    const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
     const estimationPattern =
-      "\\(cost=(\\d+\\.\\d+)(?:\\.\\.(\\d+\\.\\d+))?\\s+rows=(\\d+)(?:\\s+width=(\\d+))?\\)"
+      `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
     const nonCapturingGroupOpen = "(?:"
     const nonCapturingGroupClose = ")"
     const openParenthesisPattern = "\\("
