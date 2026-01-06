@@ -84,7 +84,7 @@ export enum NodeProp {
   USED_KEY_PARTS = "Used Key Parts",
   MESSAGE = "Message",
 
-  // computed by pev
+  // computed by mpv
   NODE_ID = "nodeId",
   EXCLUSIVE_DURATION = "*Duration (exclusive)",
   EXCLUSIVE_COST = "*Cost (exclusive)",
@@ -107,7 +107,7 @@ export enum NodeProp {
 
   ARRAY_INDEX_KEY = "arrayIndex",
 
-  PEV_PLAN_TAG = "plan_",
+  MPV_PLAN_TAG = "plan_",
 }
 
 export enum PropType {

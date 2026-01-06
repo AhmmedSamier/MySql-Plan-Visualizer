@@ -1,6 +1,6 @@
 import type { Plan } from "./types"
 
-const DB_NAME = "pev2"
+const DB_NAME = "mpv"
 const DB_VERSION = 1
 let DB: IDBDatabase | null = null
 

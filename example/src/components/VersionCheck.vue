@@ -23,7 +23,7 @@ async function checkForUpdate() {
 
   try {
     const resp = await fetch(
-      "https://api.github.com/repos/dalibo/pev2/releases/latest",
+      "https://api.github.com/repos/ahmmedsamier/MySql-Plan-Visualizer/releases/latest",
     )
 
     if (!resp.ok) {
@@ -37,7 +37,7 @@ async function checkForUpdate() {
     if (compareVersions(localVersion.value, remoteVersion.value) < 0) {
       updateRequired.value = true
     } else {
-      console.log("pev2 is up to date.")
+      console.log("MySql-Plan-Visualizer is up to date.")
     }
   } catch (err) {
     console.error("Update check failed:", err)
@@ -51,7 +51,7 @@ onMounted(() => {
 
 <template>
   <div class="alert alert-danger d-inline-block" v-if="updateRequired">
-    <p class="fw-bold">A new version of pev2 is available!</p>
+    <p class="fw-bold">A new version of MySql-Plan-Visualizer is available!</p>
     <p>
       Local version: <b>{{ localVersion }}</b>
       <br />
@@ -60,7 +60,7 @@ onMounted(() => {
     <p class="mb-0">
       You can download
       <a
-        href="https://www.github.com/dalibo/pev2/releases/latest/download/pev2.html"
+        href="https://www.github.com/ahmmedsamier/MySql-Plan-Visualizer/releases/latest/download/index.html"
         >the latest version</a
       >.
     </p>

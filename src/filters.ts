@@ -14,7 +14,7 @@ export function duration(value: number | undefined): string {
   if (value < 0) {
     console.error(`
       Duration is negative. This is probably a bug.
-      Please report it at https://github.com/dalibo/pev2.
+      Please report it at https://github.com/ahmmedsamier/MySql-Plan-Visualizer.
     `)
   }
   const result: string[] = []

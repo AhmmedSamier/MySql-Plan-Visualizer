@@ -5,14 +5,6 @@ import MainLayout from "../layouts/MainLayout.vue"
 <template>
   <MainLayout>
     <div class="container">
-      <h2>Disclaimer</h2>
-      <p>
-        This project is a MySQL adaptation of the excellent
-        <a href="https://github.com/dalibo/pev2"
-          >PEV2</a
-        >.
-      </p>
-
       <h2>Usage tips</h2>
       <p>
         To get the most out of it, we recommend generating a query plan using

@@ -424,10 +424,10 @@ function updateNodeSize(node: Node, size: [number, number]) {
         <div class="d-flex align-items-center">
           <span class="text-secondary">
             <LogoImage />
-            PEV2 <i>version {{ version }}</i>
+            MysqlPlanVisualizer <i>version {{ version }}</i>
           </span>
           <a
-            href="https://github.com/dalibo/pev2/issues/new?template=parsing_error.md&labels=parsing&title=Failed+to+parse+plan"
+            href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer/issues/new?template=parsing_error.md&labels=parsing&title=Failed+to+parse+plan"
             target="_blank"
             class="btn btn-primary ms-auto"
             >Open an issue on Github</a
@@ -492,7 +492,7 @@ function updateNodeSize(node: Node, size: [number, number]) {
         </li>
       </ul>
       <div class="ms-auto me-2 small">
-        <a href="https://github.com/dalibo/pev2" target="_blank">
+        <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer" target="_blank">
           <LogoImage />
           {{ version }}
         </a>
@@ -729,7 +729,7 @@ function updateNodeSize(node: Node, size: [number, number]) {
 
 <style lang="scss">
 @import "../assets/scss/variables";
-@import "../assets/scss/pev2";
+@import "../assets/scss/mpv";
 @import "splitpanes/dist/splitpanes.css";
 @import "highlight.js/scss/stackoverflow-light.scss";
 
