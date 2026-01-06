@@ -187,9 +187,29 @@ export class MysqlPlanService {
     }
 
     // Map rows
-    if (data.rows_examined_per_scan || data.rows_produced_per_join) {
+    if (data.rows_examined_per_scan || data.rows_produced_per_join || data.estimated_rows) {
       node[NodeProp.PLAN_ROWS] =
-        data.rows_examined_per_scan || data.rows_produced_per_join
+        data.rows_examined_per_scan || data.rows_produced_per_join || data.estimated_rows
+    }
+
+    if (data.actual_rows) {
+      node[NodeProp.ACTUAL_ROWS] = data.actual_rows
+    }
+
+    if (data.actual_loops) {
+      node[NodeProp.ACTUAL_LOOPS] = data.actual_loops
+    }
+
+    if (data.estimated_total_cost) {
+      node[NodeProp.TOTAL_COST] = parseFloat(data.estimated_total_cost)
+    }
+
+    if (data.actual_last_row_ms) {
+      node[NodeProp.ACTUAL_TOTAL_TIME] = data.actual_last_row_ms
+    }
+
+    if (data.actual_first_row_ms) {
+      node[NodeProp.ACTUAL_STARTUP_TIME] = data.actual_first_row_ms
     }
 
     const inputs = data.inputs || data.steps || data.children
