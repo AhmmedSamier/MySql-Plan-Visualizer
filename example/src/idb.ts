@@ -73,6 +73,20 @@ export default {
     })
   },
 
+  async getPlan(id: number): Promise<Plan | undefined> {
+    const db = await this.getDb()
+
+    return new Promise((resolve) => {
+      const trans = db.transaction(["plans"], "readonly")
+      const store = trans.objectStore("plans")
+      const request = store.get(id)
+
+      request.onsuccess = () => {
+        resolve(request.result)
+      }
+    })
+  },
+
   async savePlan(plan: Plan): Promise<void> {
     const db = await this.getDb()
 

@@ -25,7 +25,8 @@ import idb from "../idb"
 const setPlanData = inject("setPlanData") as (
   name: string,
   plan: string,
-  query: string
+  query: string,
+  id?: number
 ) => void
 
 const planInput = ref<string>("")
@@ -148,8 +149,8 @@ function openOrSelectPlan(plan: Plan) {
   }
 }
 
-function openPlan(plan: Plan) {
-  setPlanData(plan[0], plan[1], plan[2])
+function openPlan(plan: Plan & { id?: number }) {
+  setPlanData(plan[0], plan[1], plan[2], plan.id)
 }
 
 function isSelected(id: string) {

@@ -32,6 +32,12 @@ import { HighlightType, NodeProp } from "@/enums"
 import { json_, pgsql_ } from "@/filters"
 import { setDefaultProps } from "vue-tippy"
 import { store } from "@/store.ts"
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
+import {
+  faPlus,
+  faMinus,
+  faArrowsAlt,
+} from "@fortawesome/free-solid-svg-icons"
 
 setDefaultProps({ theme: "light" })
 
@@ -207,31 +213,50 @@ function initZoom() {
   }
   d3.select(planEl.value.$el).call(zoomListener)
   nextTick(() => {
-    if (layoutRootNode.value) {
-      const extent = getLayoutExtent(layoutRootNode.value)
-      const x0 = extent[0]
-      const y0 = extent[2]
-      const x1 = extent[1]
-      const y1 = extent[3]
-      const rect = planEl.value.$el.getBoundingClientRect()
-
-      d3.select(planEl.value.$el).call(
-        zoomListener.transform,
-        d3.zoomIdentity
-          .translate(rect.width / 2, 10)
-          .scale(
-            Math.min(
-              1,
-              Math.max(
-                minScale,
-                0.8 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
-              ),
-            ),
-          )
-          .translate(-(x0 + x1) / 2, 10),
-      )
-    }
+    fitToScreen()
   })
+}
+
+function fitToScreen() {
+  if (!planEl.value || !layoutRootNode.value) {
+    return
+  }
+  const extent = getLayoutExtent(layoutRootNode.value)
+  const x0 = extent[0]
+  const y0 = extent[2]
+  const x1 = extent[1]
+  const y1 = extent[3]
+  const rect = planEl.value.$el.getBoundingClientRect()
+
+  d3.select(planEl.value.$el)
+    .transition()
+    .call(
+      zoomListener.transform,
+      d3.zoomIdentity
+        .translate(rect.width / 2, 10)
+        .scale(
+          Math.min(
+            1,
+            Math.max(
+              minScale,
+              0.8 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
+            ),
+          ),
+        )
+        .translate(-(x0 + x1) / 2, 10),
+    )
+}
+
+function zoomIn() {
+  if (planEl.value) {
+    d3.select(planEl.value.$el).transition().call(zoomListener.scaleBy, 1.2)
+  }
+}
+
+function zoomOut() {
+  if (planEl.value) {
+    d3.select(planEl.value.$el).transition().call(zoomListener.scaleBy, 0.8)
+  }
 }
 
 onBeforeUnmount(() => {
@@ -583,6 +608,33 @@ function updateNodeSize(node: Node, size: [number, number]) {
                         cost
                       </button>
                     </div>
+                  </div>
+                  <div
+                    class="position-absolute m-1 p-1 bottom-0 end-0 d-flex flex-column"
+                    style="margin-bottom: 50px !important"
+                    v-if="store.plan"
+                  >
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Zoom In"
+                      @click="zoomIn"
+                    >
+                      <FontAwesomeIcon :icon="faPlus" />
+                    </button>
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Zoom Out"
+                      @click="zoomOut"
+                    >
+                      <FontAwesomeIcon :icon="faMinus" />
+                    </button>
+                    <button
+                      class="btn btn-light btn-sm"
+                      title="Fit to Screen"
+                      @click="fitToScreen"
+                    >
+                      <FontAwesomeIcon :icon="faArrowsAlt" />
+                    </button>
                   </div>
                   <svg width="100%" height="100%" :class="{ ready }">
                     <g :transform="transform">
