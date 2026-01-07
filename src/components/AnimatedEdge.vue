@@ -6,6 +6,7 @@ interface Props {
   d: string
   strokeColor: string
   strokeWidth?: number
+  rows?: number
 }
 const props = defineProps<Props>()
 
@@ -35,7 +36,9 @@ watch(
     :stroke="strokeColor"
     fill="none"
     :stroke-width="strokeWidth"
-  />
+  >
+    <title v-if="rows !== undefined">Rows: {{ rows }}</title>
+  </path>
 </template>
 
 <style scoped>

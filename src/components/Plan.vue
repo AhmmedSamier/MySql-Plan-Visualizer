@@ -649,6 +649,7 @@ function updateNodeSize(node: Node, size: [number, number]) {
                             link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
                           )
                         "
+                        :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                       />
                       <AnimatedEdge
                         v-for="(link, index) in layoutRootNode?.links()"
@@ -663,6 +664,7 @@ function updateNodeSize(node: Node, size: [number, number]) {
                             link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
                           )
                         "
+                        :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                       />
                       <foreignObject
                         v-for="(item, index) in layoutRootNode?.descendants()"
@@ -707,6 +709,7 @@ function updateNodeSize(node: Node, size: [number, number]) {
                               link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
                             )
                           "
+                          :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                         />
                         <foreignObject
                           v-for="(item, index) in cte.descendants()"
