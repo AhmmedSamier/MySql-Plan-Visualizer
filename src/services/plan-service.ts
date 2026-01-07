@@ -375,6 +375,22 @@ export class PlanService {
       const data = JSON.parse(source)
       return this.getPlanContent(data)
     } catch {
+      // try to parse wrapping quotes
+      const sourceTrimmed = source.trim()
+      if (
+        (sourceTrimmed.startsWith("'") && sourceTrimmed.endsWith("'")) ||
+        (sourceTrimmed.startsWith('"') && sourceTrimmed.endsWith('"'))
+      ) {
+        try {
+          const data = JSON.parse(
+            sourceTrimmed.substring(1, sourceTrimmed.length - 1),
+          )
+          return this.getPlanContent(data)
+        } catch {
+          // ignore
+        }
+      }
+
       if (/^(\s*)(\[|\{)\s*\n.*?\1(\]|\})\s*/gms.exec(source)) {
         return this.fromJson(source)
       }
