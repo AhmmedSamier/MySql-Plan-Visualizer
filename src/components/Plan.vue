@@ -18,6 +18,7 @@ import {
   SelectedNodeIdKey,
   SelectNodeKey,
   ViewOptionsKey,
+  ToggleDetailsKey,
 } from "@/symbols"
 import Copy from "@/components/Copy.vue"
 import Diagram from "@/components/Diagram.vue"
@@ -41,6 +42,8 @@ import {
   faChevronLeft,
   faChevronRight,
   faTimes,
+  faAngleDoubleDown,
+  faAngleDoubleUp,
 } from "@fortawesome/free-solid-svg-icons"
 
 setDefaultProps({ theme: "light" })
@@ -337,6 +340,12 @@ function selectNode(nodeId: number, center: boolean): void {
 }
 provide(SelectNodeKey, selectNode)
 provide(ViewOptionsKey, viewOptions)
+
+const toggleDetails = ref<{ show: boolean; counter: number }>({
+  show: false,
+  counter: 0,
+})
+provide(ToggleDetailsKey, toggleDetails)
 
 function centerNode(nodeId: number): void {
   const rect = planEl.value.$el.getBoundingClientRect()
@@ -737,6 +746,30 @@ function highlightResult(index: number) {
                       @click="toggleSearch"
                     >
                       <FontAwesomeIcon :icon="faSearch" />
+                    </button>
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Collapse All"
+                      @click="
+                        toggleDetails = {
+                          show: false,
+                          counter: toggleDetails.counter + 1,
+                        }
+                      "
+                    >
+                      <FontAwesomeIcon :icon="faAngleDoubleUp" />
+                    </button>
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Expand All"
+                      @click="
+                        toggleDetails = {
+                          show: true,
+                          counter: toggleDetails.counter + 1,
+                        }
+                      "
+                    >
+                      <FontAwesomeIcon :icon="faAngleDoubleDown" />
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
