@@ -11,3 +11,7 @@ export const SelectNodeKey: InjectionKey<
 > = Symbol("selectNode")
 
 export const ViewOptionsKey: InjectionKey<ViewOptions> = Symbol("viewOptions")
+
+export const ToggleDetailsKey: InjectionKey<
+  Ref<{ show: boolean; counter: number }>
+> = Symbol("toggleDetails")

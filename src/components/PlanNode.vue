@@ -8,6 +8,7 @@ import {
   SelectedNodeIdKey,
   SelectNodeKey,
   ViewOptionsKey,
+  ToggleDetailsKey,
 } from "@/symbols"
 import { keysToString, sortKeys } from "@/filters"
 import { HighlightType, NodeProp } from "@/enums"
@@ -40,6 +41,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const showDetails = ref<boolean>(false)
+const toggleDetails = inject(ToggleDetailsKey)
 
 const node = reactive<Node>(props.node)
 const updateNodeSize =
@@ -85,6 +87,15 @@ watch(selectedNodeId, () => {
     showDetails.value = true
   }
 })
+
+watch(
+  () => toggleDetails?.value.counter,
+  () => {
+    if (toggleDetails) {
+      showDetails.value = toggleDetails.value.show
+    }
+  },
+)
 
 function centerCte() {
   const cteNode = findNodeBySubplanName(
