@@ -42,8 +42,8 @@ import {
   faChevronLeft,
   faChevronRight,
   faTimes,
-  faAngleDoubleDown,
-  faAngleDoubleUp,
+  faCompress,
+  faExpand,
 } from "@fortawesome/free-solid-svg-icons"
 
 setDefaultProps({ theme: "light" })
@@ -509,10 +509,12 @@ function nodeMatches(node: Node, term: string): boolean {
 
   return fieldsToCheck.some((field) => {
     const val = node[field]
-    if (typeof val === 'string') {
+    if (typeof val === "string") {
       return val.toLowerCase().includes(term)
     } else if (Array.isArray(val)) {
-       return val.some(v => typeof v === 'string' && v.toLowerCase().includes(term))
+      return val.some(
+        (v) => typeof v === "string" && v.toLowerCase().includes(term),
+      )
     }
     return false
   })
@@ -548,7 +550,6 @@ function highlightResult(index: number) {
     highlightedNodeId.value = node.nodeId
   }
 }
-
 </script>
 
 <template>
@@ -643,7 +644,10 @@ function highlightResult(index: number) {
         </li>
       </ul>
       <div class="ms-auto me-2 small">
-        <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer" target="_blank">
+        <a
+          href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer"
+          target="_blank"
+        >
           <LogoImage />
           {{ version }}
         </a>
@@ -757,7 +761,7 @@ function highlightResult(index: number) {
                         }
                       "
                     >
-                      <FontAwesomeIcon :icon="faAngleDoubleUp" />
+                      <FontAwesomeIcon :icon="faCompress" />
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
@@ -769,7 +773,7 @@ function highlightResult(index: number) {
                         }
                       "
                     >
-                      <FontAwesomeIcon :icon="faAngleDoubleDown" />
+                      <FontAwesomeIcon :icon="faExpand" />
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
