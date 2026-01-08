@@ -247,7 +247,7 @@ function fitToScreen() {
             1,
             Math.max(
               minScale,
-              0.8 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
+              0.95 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
             ),
           ),
         )
