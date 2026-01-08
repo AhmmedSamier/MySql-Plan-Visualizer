@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue"
 import { animate } from "motion-v"
+import { directive as vTippy } from "vue-tippy"
 
 interface Props {
   d: string
@@ -36,8 +37,8 @@ watch(
     :stroke="strokeColor"
     fill="none"
     :stroke-width="strokeWidth"
+    v-tippy="rows !== undefined ? `Rows: ${rows}` : null"
   >
-    <title v-if="rows !== undefined">Rows: {{ rows }}</title>
   </path>
 </template>
 

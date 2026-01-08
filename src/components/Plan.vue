@@ -37,6 +37,10 @@ import {
   faPlus,
   faMinus,
   faArrowsAlt,
+  faSearch,
+  faChevronLeft,
+  faChevronRight,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons"
 
 setDefaultProps({ theme: "light" })
@@ -67,6 +71,10 @@ const selectedNode = ref<Node | undefined>(undefined)
 const highlightedNodeId = ref<number>(NaN)
 const gridIsNotNew = localStorage.getItem("gridIsNotNew")
 const ready = ref(false)
+const showSearchInput = ref(false)
+const searchInput = ref("")
+const searchResults = ref<Node[]>([])
+const currentSearchIndex = ref(-1)
 
 const viewOptions = reactive({
   showHighlightBar: false,
@@ -239,7 +247,7 @@ function fitToScreen() {
             1,
             Math.max(
               minScale,
-              0.8 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
+              0.95 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
             ),
           ),
         )
@@ -423,6 +431,115 @@ watch(
 function updateNodeSize(node: Node, size: [number, number]) {
   node.size = [size[0] / scale.value, size[1] / scale.value]
 }
+
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+function toggleSearch() {
+  showSearchInput.value = !showSearchInput.value
+  if (showSearchInput.value) {
+    nextTick(() => {
+      searchInputRef.value?.focus()
+    })
+  } else {
+    searchInput.value = ""
+    searchResults.value = []
+    currentSearchIndex.value = -1
+  }
+}
+
+watch(searchInput, (val) => {
+  if (!val || val.trim().length === 0) {
+    searchResults.value = []
+    currentSearchIndex.value = -1
+    return
+  }
+
+  const term = val.toLowerCase()
+  const results: Node[] = []
+
+  if (layoutRootNode.value) {
+    layoutRootNode.value.descendants().forEach((node) => {
+      if (nodeMatches(node.data, term)) {
+        results.push(node.data)
+      }
+    })
+  }
+
+  // Also search CTEs
+  ctes.value.forEach((cte) => {
+    cte.descendants().forEach((node) => {
+      if (nodeMatches(node.data, term)) {
+        results.push(node.data)
+      }
+    })
+  })
+
+  searchResults.value = results
+  if (results.length > 0) {
+    currentSearchIndex.value = 0
+    highlightResult(0)
+  } else {
+    currentSearchIndex.value = -1
+  }
+})
+
+function nodeMatches(node: Node, term: string): boolean {
+  const fieldsToCheck = [
+    NodeProp.NODE_TYPE,
+    NodeProp.RELATION_NAME,
+    NodeProp.ALIAS,
+    NodeProp.INDEX_NAME,
+    NodeProp.CTE_NAME,
+    NodeProp.FUNCTION_NAME,
+    NodeProp.FILTER,
+    NodeProp.JOIN_TYPE,
+    NodeProp.HASH_CONDITION,
+    NodeProp.GROUP_KEY,
+    NodeProp.SORT_KEY,
+  ]
+
+  return fieldsToCheck.some((field) => {
+    const val = node[field]
+    if (typeof val === 'string') {
+      return val.toLowerCase().includes(term)
+    } else if (Array.isArray(val)) {
+       return val.some(v => typeof v === 'string' && v.toLowerCase().includes(term))
+    }
+    return false
+  })
+}
+
+function nextSearchMatch() {
+  if (searchResults.value.length === 0) return
+
+  let nextIndex = currentSearchIndex.value + 1
+  if (nextIndex >= searchResults.value.length) {
+    nextIndex = 0
+  }
+  currentSearchIndex.value = nextIndex
+  highlightResult(nextIndex)
+}
+
+function prevSearchMatch() {
+  if (searchResults.value.length === 0) return
+
+  let prevIndex = currentSearchIndex.value - 1
+  if (prevIndex < 0) {
+    prevIndex = searchResults.value.length - 1
+  }
+  currentSearchIndex.value = prevIndex
+  highlightResult(prevIndex)
+}
+
+function highlightResult(index: number) {
+  const node = searchResults.value[index]
+  if (node) {
+    selectNode(node.nodeId, true)
+    // We can also reuse the highlightedNodeId to show the highlight effect
+    highlightedNodeId.value = node.nodeId
+  }
+}
+
 </script>
 
 <template>
@@ -616,6 +733,13 @@ function updateNodeSize(node: Node, size: [number, number]) {
                   >
                     <button
                       class="btn btn-light btn-sm mb-1"
+                      title="Search"
+                      @click="toggleSearch"
+                    >
+                      <FontAwesomeIcon :icon="faSearch" />
+                    </button>
+                    <button
+                      class="btn btn-light btn-sm mb-1"
                       title="Zoom In"
                       @click="zoomIn"
                     >
@@ -635,6 +759,58 @@ function updateNodeSize(node: Node, size: [number, number]) {
                     >
                       <FontAwesomeIcon :icon="faArrowsAlt" />
                     </button>
+                  </div>
+                  <div
+                    class="position-absolute m-1 p-1 top-0 end-0 bg-white border rounded shadow-sm"
+                    v-if="showSearchInput"
+                    style="z-index: 100; min-width: 250px"
+                  >
+                    <div class="input-group input-group-sm">
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Search nodes..."
+                        v-model="searchInput"
+                        ref="searchInputRef"
+                        @keydown.enter.prevent="nextSearchMatch"
+                        @keydown.esc.prevent="showSearchInput = false"
+                      />
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="prevSearchMatch"
+                        :disabled="searchResults.length === 0"
+                      >
+                        <FontAwesomeIcon :icon="faChevronLeft" />
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="nextSearchMatch"
+                        :disabled="searchResults.length === 0"
+                      >
+                        <FontAwesomeIcon :icon="faChevronRight" />
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="showSearchInput = false"
+                      >
+                        <FontAwesomeIcon :icon="faTimes" />
+                      </button>
+                    </div>
+                    <div
+                      class="small text-secondary mt-1 px-1 d-flex justify-content-between"
+                    >
+                      <span v-if="searchResults.length > 0">
+                        {{ currentSearchIndex + 1 }} /
+                        {{ searchResults.length }} matches
+                      </span>
+                      <span v-else-if="searchInput.length > 0">
+                        No matches found
+                      </span>
+                      <span v-else>Type to search</span>
+                    </div>
                   </div>
                   <svg width="100%" height="100%" :class="{ ready }">
                     <g :transform="transform">
