@@ -77,11 +77,11 @@ function flattenPlan(root: Node, nodeById: FlattenedNodeMap): FlattenedPlanNode[
 function initStats(): IPlanStats {
   return {
     executionTime: NaN,
-    planningTime:  NaN,
-    maxRows:  NaN,
-    maxCost:  NaN,
-    maxDuration:  NaN,
-    maxEstimateFactor:  NaN,
+    planningTime: NaN,
+    maxRows: NaN,
+    maxCost: NaN,
+    maxDuration: NaN,
+    maxEstimateFactor: NaN,
   }
 }
 
@@ -106,18 +106,18 @@ export const store = reactive<Store>({
 
     const content = store.plan.content
     store.stats = {
-      executionTime: (content["Execution Time"] as number) || (content["Total Runtime"] as number) || NaN,
-      planningTime:  (content["Planning Time"] as number) || NaN,
-      maxRows:  content.maxRows || NaN,
-      maxCost:  content.maxCost || NaN,
-      maxDuration:  content.maxDuration || NaN,
-      maxEstimateFactor:  content.maxEstimateFactor || NaN,
+      executionTime: (content["Execution Time"] as number) || (content["Total Runtime"] as number) || (content["execution_time"] as number) || NaN,
+      planningTime: (content["Planning Time"] as number) || (content["planning_time"] as number) || NaN,
+      maxRows: content.maxRows || NaN,
+      maxCost: content.maxCost || NaN,
+      maxDuration: content.maxDuration || NaN,
+      maxEstimateFactor: content.maxEstimateFactor || NaN,
     }
 
     const flatPlans = []
     flatPlans.push(flattenPlan(store.plan.content.Plan, nodeById))
     _.each(store.plan.ctes, (cte) => {
-        flatPlans.push(flattenPlan(cte, nodeById))
+      flatPlans.push(flattenPlan(cte, nodeById))
     })
     store.flat = flatPlans
 

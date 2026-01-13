@@ -8,7 +8,6 @@ import { directive as vTippy } from "vue-tippy"
 import { useDropZone } from "@vueuse/core"
 
 import { time_ago } from "../utils"
-import MainLayout from "../layouts/MainLayout.vue"
 import type { Plan, Sample } from "../types"
 import VersionCheck from "../components/VersionCheck.vue"
 import {
@@ -296,29 +295,21 @@ function addMessage(text: string) {
 </script>
 
 <template>
-  <MainLayout>
-    <div class="mysql-home-page">
-      <!-- Hero Section -->
-      <div class="mysql-hero">
-        <div class="container">
-          <div class="hero-content text-center">
+  <div class="mysql-home-page">
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <!-- Hero Section -->
+          <div class="text-center mb-5">
+            <!-- Dolphin Emoji centered -->
             <div class="hero-icon mb-3">🐬</div>
-            <h1 class="hero-title">MySQL Plan Visualizer</h1>
-            <p class="hero-subtitle">
-              Analyze and optimize your MySQL query execution plans with
-              interactive visualizations
+            <h1 class="display-4 fw-bold mb-3 text-gradient">
+              MySQL Plan Visualizer
+            </h1>
+            <p class="lead text-secondary mx-auto" style="max-width: 600px">
+              Transform your nested MySQL execution plans into intuitive,
+              beautiful, and actionable visualizations. Fix slow queries faster.
             </p>
-            <div class="hero-features mt-4">
-              <span class="feature-badge">
-                <i class="fas fa-chart-line"></i> Performance Analysis
-              </span>
-              <span class="feature-badge">
-                <i class="fas fa-project-diagram"></i> Interactive Diagrams
-              </span>
-              <span class="feature-badge">
-                <i class="fas fa-database"></i> MySQL Optimized
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -670,7 +661,7 @@ function addMessage(text: string) {
         </div>
       </div>
     </div>
-  </MainLayout>
+  </div>
 </template>
 
 <style scoped lang="scss">
@@ -682,68 +673,25 @@ function addMessage(text: string) {
   }
 }
 
-// MySQL Home Page Styling
 .mysql-home-page {
   background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
   min-height: 100vh;
 }
 
-.mysql-hero {
-  background: linear-gradient(135deg, #00758f 0%, #005a6f 100%);
-  color: white;
-  padding: 3rem 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-
-  .hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-  }
-
-  .hero-icon {
-    font-size: 4rem;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-    animation: float 3s ease-in-out infinite;
-  }
-
-  .hero-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .hero-subtitle {
-    font-size: 1.2rem;
-    opacity: 0.95;
-    margin-bottom: 0;
-  }
-
-  .hero-features {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .feature-badge {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-
-    i {
-      margin-right: 0.5rem;
-    }
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: translateY(-2px);
-    }
-  }
+.hero-icon {
+  font-size: 4rem;
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 5px 15px rgba(0, 117, 143, 0.3));
 }
+
+.text-gradient {
+  background: linear-gradient(135deg, #00758f 0%, #00a4db 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 
 @keyframes float {
   0%,
@@ -840,6 +788,116 @@ function addMessage(text: string) {
     font-weight: 600;
     border: none;
     padding: 0.75rem 1rem;
+  }
+}
+
+// Dark Mode Support
+[data-theme="dark"] {
+  .mysql-home-page {
+    background: linear-gradient(180deg, #0b0e14 0%, #151921 100%);
+    color: #e1e1e1;
+  }
+
+  .mysql-tip-card {
+    background: #1a1f29;
+    border-left-color: #f29111;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    
+    .text-secondary {
+      color: #b0b0b0 !important;
+    }
+  }
+
+  .mysql-input-card, .mysql-history-card {
+    background-color: #1a1f29;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    
+    .card-body {
+      background-color: #1a1f29;
+    }
+    
+    textarea, input {
+      background-color: #0b0e14;
+      border-color: #2d333b;
+      color: #e1e1e1;
+      
+      &:focus {
+        border-color: #00a4db;
+        background-color: #0b0e14;
+      }
+      
+      &::placeholder {
+        color: #57606a;
+      }
+    }
+  }
+
+  .text-secondary {
+    color: #909090 !important;
+  }
+  
+  .text-muted {
+    color: #606060 !important;
+  }
+
+  .alert-info.mysql-info-alert {
+    background-color: rgba(0, 117, 143, 0.1);
+    border-color: #00758f;
+    color: #00a4db;
+    
+    .alert-link {
+      color: #00a4db;
+      text-decoration: underline;
+    }
+  }
+
+  .list-group-item {
+    background-color: #1a1f21;
+    border-color: #2d333b;
+    color: #e1e1e1;
+    
+    &.active {
+      background-color: #0d1117;
+      border-color: #00a4db;
+    }
+    
+    &:hover:not(.active) {
+      background-color: #21262d;
+      color: white;
+    }
+    
+    .text-muted {
+      color: #8b949e !important;
+    }
+  }
+
+  .pagination {
+    .page-link {
+      background-color: #161b22;
+      border-color: #30363d;
+      color: #58a6ff;
+      
+      &:hover {
+        background-color: #21262d;
+      }
+    }
+    
+    .page-item.active .page-link {
+      background-color: #1f6feb;
+      border-color: #388bfd;
+    }
+
+    .page-item.disabled .page-link {
+      background-color: #0d1117;
+      border-color: #30363d;
+      color: #484f58;
+    }
+  }
+
+  .alert-success {
+    background-color: rgba(63, 185, 80, 0.1);
+    border-color: #238636;
+    color: #3fb950;
   }
 }
 </style>

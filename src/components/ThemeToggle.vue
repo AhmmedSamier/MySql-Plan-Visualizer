@@ -44,10 +44,31 @@ function applyTheme() {
 
 <template>
   <button
-    class="btn btn-sm btn-outline-secondary"
+    class="btn btn-sm mysql-theme-toggle"
     @click="toggleTheme"
     :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
   >
     <FontAwesomeIcon :icon="isDark ? faSun : faMoon" />
   </button>
 </template>
+
+<style scoped lang="scss">
+.mysql-theme-toggle {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
+  }
+}
+</style>

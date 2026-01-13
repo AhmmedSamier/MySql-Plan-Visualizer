@@ -227,8 +227,8 @@ export class PlanService {
         node[NodeProp.EXCLUSIVE_DURATION] = Math.max(
           0,
           node[NodeProp.EXCLUSIVE_DURATION] -
-            (cteDuration * (node[NodeProp.ACTUAL_TOTAL_TIME] || 0)) /
-              sumScansDuration,
+          (cteDuration * (node[NodeProp.ACTUAL_TOTAL_TIME] || 0)) /
+          sumScansDuration,
         )
       })
     })
@@ -443,7 +443,8 @@ export class PlanService {
     if (mysqlService.isMySQL(value)) {
       const flat: Node[] = []
       const root = mysqlService.parseMySQL(value, flat)
-      return { Plan: root } as IPlanContent
+      // Return a plan content that preserves top-level metadata
+      return { ...value, Plan: root } as IPlanContent
     }
     if (!value.Plan) {
       throw new Error("Invalid plan")
@@ -562,12 +563,12 @@ export class PlanService {
     }
     const workerRegex = new RegExp(
       "^(\\s*)Worker\\s+(\\d+):\\s+" +
-        nonCapturingGroupOpen +
-        actualPattern +
-        nonCapturingGroupClose +
-        optionalGroup +
-        "(.*)" +
-        "\\s*$",
+      nonCapturingGroupOpen +
+      actualPattern +
+      nonCapturingGroupClose +
+      optionalGroup +
+      "(.*)" +
+      "\\s*$",
     )
 
     const extraRegex = /^(\s*)(\S.*\S)\s*$/
@@ -622,33 +623,33 @@ export class PlanService {
 
     const nodeRegex = new RegExp(
       prefixPattern +
-        partialPattern +
-        "\\s*" +
-        typePattern +
-        "\\s*" +
-        nonCapturingGroupOpen +
-        // Option 1: Both Cost AND Actual
-        (nonCapturingGroupOpen +
-          estimationPattern +
-          "\\s+" +
-          openParenthesisPattern +
-          actualPattern +
-          closeParenthesisPattern +
-          nonCapturingGroupClose) +
-        "|" +
-        // Option 2: Only Cost
-        nonCapturingGroupOpen +
+      partialPattern +
+      "\\s*" +
+      typePattern +
+      "\\s*" +
+      nonCapturingGroupOpen +
+      // Option 1: Both Cost AND Actual
+      (nonCapturingGroupOpen +
         estimationPattern +
-        nonCapturingGroupClose +
-        "|" +
-        // Option 3: Only Actual
-        nonCapturingGroupOpen +
+        "\\s+" +
         openParenthesisPattern +
         actualPattern +
         closeParenthesisPattern +
-        nonCapturingGroupClose +
-        nonCapturingGroupClose +
-        "\\s*$",
+        nonCapturingGroupClose) +
+      "|" +
+      // Option 2: Only Cost
+      nonCapturingGroupOpen +
+      estimationPattern +
+      nonCapturingGroupClose +
+      "|" +
+      // Option 3: Only Actual
+      nonCapturingGroupOpen +
+      openParenthesisPattern +
+      actualPattern +
+      closeParenthesisPattern +
+      nonCapturingGroupClose +
+      nonCapturingGroupClose +
+      "\\s*$",
       "m",
     )
 
@@ -712,7 +713,7 @@ export class PlanService {
         ) {
           newNode[NodeProp.PLAN_ROWS] = parseInt(
             nodeMatches[NodeMatch.EstimatedRows1] ||
-              nodeMatches[NodeMatch.EstimatedRows2],
+            nodeMatches[NodeMatch.EstimatedRows2],
             0,
           )
         }
@@ -723,7 +724,7 @@ export class PlanService {
         ) {
           newNode[NodeProp.PLAN_WIDTH] = parseInt(
             nodeMatches[NodeMatch.EstimatedRowWidth1] ||
-              nodeMatches[NodeMatch.EstimatedRowWidth2],
+            nodeMatches[NodeMatch.EstimatedRowWidth2],
             0,
           )
         }
@@ -734,13 +735,13 @@ export class PlanService {
         ) {
           newNode[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
             nodeMatches[NodeMatch.ActualTimeFirst1] ||
-              nodeMatches[NodeMatch.ActualTimeFirst2] ||
-              "0",
+            nodeMatches[NodeMatch.ActualTimeFirst2] ||
+            "0",
           )
           newNode[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
             nodeMatches[NodeMatch.ActualTimeLast1] ||
-              nodeMatches[NodeMatch.ActualTimeLast2] ||
-              "0",
+            nodeMatches[NodeMatch.ActualTimeLast2] ||
+            "0",
           )
         }
 
@@ -757,7 +758,7 @@ export class PlanService {
           newNode[NodeProp.ACTUAL_ROWS] = parseFloat(actual_rows)
           newNode[NodeProp.ACTUAL_LOOPS] = parseInt(
             nodeMatches[NodeMatch.ActualLoops1] ||
-              nodeMatches[NodeMatch.ActualLoops2],
+            nodeMatches[NodeMatch.ActualLoops2],
             0,
           )
         }
