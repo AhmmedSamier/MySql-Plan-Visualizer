@@ -46,7 +46,6 @@ import {
   faCompress,
   faExpand,
   faKeyboard,
-  faColumns,
 } from "@fortawesome/free-solid-svg-icons"
 
 setDefaultProps({ theme: "light" })
@@ -75,7 +74,6 @@ const rootNode = computed(() => store.plan && store.plan.content.Plan)
 const selectedNodeId = ref<number>(NaN)
 const selectedNode = ref<Node | undefined>(undefined)
 const highlightedNodeId = ref<number>(NaN)
-const isGridNotNew = localStorage.getItem("gridIsNotNew")
 const ready = ref(false)
 const showSearchInput = ref(false)
 const searchInput = ref("")

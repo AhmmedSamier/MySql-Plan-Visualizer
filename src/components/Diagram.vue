@@ -8,7 +8,7 @@ import {
   ref,
   watch,
 } from "vue"
-import { NodeProp, Metric } from "../enums"
+import { Metric } from "../enums"
 import { scrollChildIntoParentView } from "@/services/help-service"
 import type { Node } from "@/interfaces"
 import { HighlightedNodeIdKey, SelectNodeKey } from "@/symbols"

@@ -2,7 +2,6 @@
 import { ref, computed, provide, reactive, type Component, onMounted, watch, onBeforeUnmount } from "vue"
 import AboutView from "./views/AboutView.vue"
 import HomeView from "./views/HomeView.vue"
-import NotFoundView from "./views/NotFoundView.vue"
 import PlanView from "./views/PlanView.vue"
 import type { ActivePlan } from "./types"
 import idb from "./idb"

@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import { computed, inject, useTemplateRef, ref, onMounted, watch } from "vue"
-import type { Ref } from "vue"
+import { type Ref } from "vue"
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
-import { Tippy } from "vue-tippy"
 import { directive as vTippy } from "vue-tippy"
 import { useDropZone } from "@vueuse/core"
 
@@ -12,12 +11,14 @@ import type { Plan, Sample } from "../types"
 import VersionCheck from "../components/VersionCheck.vue"
 import {
   faEdit,
-  faInfoCircle,
   faTrash,
   faDownload,
   faUpload,
   faRocket,
   faMagic,
+  faHistory,
+  faCheckSquare,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons"
 import samples from "../samples.ts"
 
@@ -194,7 +195,16 @@ async function deletePlan(plan: Plan) {
   loadPlans()
 }
 
-function onDrop(files: File[] | null, input: Ref) {
+async function clearAllPlans() {
+  if (confirm("Are you sure you want to delete ALL saved plans? This cannot be undone.")) {
+    await idb.clearPlans()
+    loadPlans()
+    currentPage.value = 1
+    addMessage("All plans cleared")
+  }
+}
+
+function onDrop(files: File[] | null, input: Ref<string>) {
   if (files) {
     const reader = new FileReader()
     reader.onload = () => {
@@ -448,7 +458,7 @@ function addMessage(text: string) {
         <div class="card mysql-history-card mt-5 mb-5">
           <div class="card-header d-flex align-items-center">
             <h5 class="mb-0">
-              <i class="fas fa-history me-2"></i>Saved Plans
+              <FontAwesomeIcon :icon="faHistory" class="me-2" />Saved Plans
               <span class="badge bg-light text-dark ms-2">{{
                 savedPlans?.length
               }}</span>
@@ -459,12 +469,10 @@ function addMessage(text: string) {
                 class="btn btn-sm btn-outline-light"
                 @click="selectionMode = !selectionMode"
               >
-                <i
-                  :class="
-                    selectionMode ? 'fas fa-times' : 'fas fa-check-square'
-                  "
+                <FontAwesomeIcon
+                  :icon="selectionMode ? faTimes : faCheckSquare"
                   class="me-1"
-                ></i>
+                />
                 {{ selectionMode ? "Cancel" : "Select" }}
               </button>
               <button
@@ -494,6 +502,13 @@ function addMessage(text: string) {
               >
                 <FontAwesomeIcon :icon="faUpload" class="me-1" />Import
               </button>
+              <button
+                v-if="savedPlans.length > 0 && !selectionMode"
+                class="btn btn-sm btn-outline-light"
+                @click="clearAllPlans"
+              >
+                <FontAwesomeIcon :icon="faTrash" class="me-1" />Clear All
+              </button>
             </div>
           </div>
           <div class="card-body">
@@ -510,72 +525,7 @@ function addMessage(text: string) {
                 style="display: none"
               />
 
-              <nav>
-                <ul class="pagination pagination-sm justify-content-end mb-2">
-                  <li
-                    class="page-item"
-                    :class="{ disabled: currentPage === 1 }"
-                  >
-                    <a
-                      class="page-link"
-                      href="#"
-                      @click="prevPage"
-                      aria-label="Previous"
-                    >
-                      <span aria-hidden="true">&laquo;</span>
-                      <span class="sr-only">Previous</span>
-                    </a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-if="visiblePages[0] > 1"
-                    @click="goToPage(1)"
-                  >
-                    <a class="page-link" href="#">1</a>
-                  </li>
-                  <li class="page-item" v-if="visiblePages[0] > 2">
-                    <a class="page-link"> … </a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-for="page in visiblePages"
-                    :key="page"
-                    @click="goToPage(page)"
-                    :class="{ active: page === currentPage }"
-                  >
-                    <a class="page-link" href="#">{{ page }}</a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-if="
-                      visiblePages[visiblePages.length - 1] < totalPages - 1
-                    "
-                  >
-                    <a class="page-link"> … </a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-if="visiblePages[visiblePages.length - 1] < totalPages"
-                    @click="goToPage(totalPages)"
-                  >
-                    <a class="page-link" href="#">{{ totalPages }}</a>
-                  </li>
-                  <li
-                    class="page-item"
-                    :class="{ disabled: currentPage === totalPages }"
-                  >
-                    <a
-                      class="page-link"
-                      href="#"
-                      @click="nextPage"
-                      aria-labal="Next"
-                    >
-                      <span aria-hidden="true">&raquo;</span>
-                      <span class="sr-only">Next</span>
-                    </a>
-                  </li>
-                </ul>
-              </nav>
+
               <div>
                 <div
                   class="alert alert-success py-1"
@@ -661,6 +611,72 @@ function addMessage(text: string) {
                   <br />
                   Drop your JSON file here
                 </div>
+                <nav class="mt-3">
+                  <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li
+                      class="page-item"
+                      :class="{ disabled: currentPage === 1 }"
+                    >
+                      <a
+                        class="page-link"
+                        href="#"
+                        @click="prevPage"
+                        aria-label="Previous"
+                      >
+                        <span aria-hidden="true">&laquo;</span>
+                        <span class="sr-only">Previous</span>
+                      </a>
+                    </li>
+                    <li
+                      class="page-item"
+                      v-if="visiblePages[0] > 1"
+                      @click="goToPage(1)"
+                    >
+                      <a class="page-link" href="#">1</a>
+                    </li>
+                    <li class="page-item" v-if="visiblePages[0] > 2">
+                      <a class="page-link"> … </a>
+                    </li>
+                    <li
+                      class="page-item"
+                      v-for="page in visiblePages"
+                      :key="page"
+                      @click="goToPage(page)"
+                      :class="{ active: page === currentPage }"
+                    >
+                      <a class="page-link" href="#">{{ page }}</a>
+                    </li>
+                    <li
+                      class="page-item"
+                      v-if="
+                        visiblePages[visiblePages.length - 1] < totalPages - 1
+                      "
+                    >
+                      <a class="page-link"> … </a>
+                    </li>
+                    <li
+                      class="page-item"
+                      v-if="visiblePages[visiblePages.length - 1] < totalPages"
+                      @click="goToPage(totalPages)"
+                    >
+                      <a class="page-link" href="#">{{ totalPages }}</a>
+                    </li>
+                    <li
+                      class="page-item"
+                      :class="{ disabled: currentPage === totalPages }"
+                    >
+                      <a
+                        class="page-link"
+                        href="#"
+                        @click="nextPage"
+                        aria-labal="Next"
+                      >
+                        <span aria-hidden="true">&raquo;</span>
+                        <span class="sr-only">Next</span>
+                      </a>
+                    </li>
+                  </ul>
+                </nav>
               </div>
             </div>
           </div>

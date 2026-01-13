@@ -156,4 +156,18 @@ export default {
       }
     })
   },
+
+  async clearPlans(): Promise<void> {
+    const db = await this.getDb()
+
+    return new Promise<void>((resolve) => {
+      const trans = db.transaction(["plans"], "readwrite")
+      trans.oncomplete = () => {
+        resolve()
+      }
+
+      const store = trans.objectStore("plans")
+      store.clear()
+    })
+  },
 }
