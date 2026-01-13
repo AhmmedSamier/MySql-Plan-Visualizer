@@ -81,7 +81,9 @@ const showSearchInput = ref(false)
 const searchInput = ref("")
 const searchResults = ref<Node[]>([])
 const currentSearchIndex = ref(-1)
-const keyboardShortcutsRef = ref<InstanceType<typeof KeyboardShortcuts> | null>(null)
+const keyboardShortcutsRef = ref<InstanceType<typeof KeyboardShortcuts> | null>(
+  null,
+)
 
 const viewOptions = reactive({
   showHighlightBar: false,
@@ -853,7 +855,7 @@ function handleKeyDown(event: KeyboardEvent) {
         </li>
       </ul>
       <div class="ms-auto me-3 d-flex align-items-center gap-2">
-        <a href="/" class="btn btn-sm mysql-header-btn">
+        <a href="./" class="btn btn-sm mysql-header-btn">
           <i class="fas fa-plus-circle me-1"></i>New Plan
         </a>
         <a href="/about" class="btn btn-sm mysql-header-btn-link">About</a>
@@ -1265,11 +1267,19 @@ function handleKeyDown(event: KeyboardEvent) {
 
 // MySQL Header Styling
 .mysql-header {
-  background: linear-gradient(135deg, var(--mysql-blue) 0%, darken(#00758F, 8%) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--mysql-blue) 0%,
+    darken(#00758f, 8%) 100%
+  );
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  
+
   [data-theme="dark"] & {
-    background: linear-gradient(135deg, darken(#00758F, 15%) 0%, darken(#00758F, 25%) 100%);
+    background: linear-gradient(
+      135deg,
+      darken(#00758f, 15%) 0%,
+      darken(#00758f, 25%) 100%
+    );
   }
 }
 
@@ -1282,7 +1292,7 @@ function handleKeyDown(event: KeyboardEvent) {
     align-items: center;
     gap: 0.5rem;
     white-space: nowrap;
-    
+
     .mysql-icon {
       font-size: 1.5rem;
       filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
@@ -1293,55 +1303,55 @@ function handleKeyDown(event: KeyboardEvent) {
 .mysql-header {
   .nav-tabs {
     border: none;
-    
+
     .nav-link {
       color: rgba(255, 255, 255, 0.85);
       border: none;
       border-radius: 6px 6px 0 0;
       transition: all 0.2s ease;
       font-weight: 500;
-      
+
       &:hover {
         color: white;
         background-color: rgba(255, 255, 255, 0.1);
       }
-      
+
       &.active {
         color: var(--mysql-blue);
         background-color: white;
         font-weight: 600;
-        
+
         [data-theme="dark"] & {
           background-color: var(--bg-color);
           color: var(--mysql-light-blue);
         }
       }
-      
+
       &.disabled {
         color: rgba(255, 255, 255, 0.4);
         cursor: not-allowed;
       }
     }
   }
-  
+
   .mysql-version {
     a {
       color: rgba(255, 255, 255, 0.9);
       transition: color 0.2s ease;
-      
+
       &:hover {
         color: white;
       }
     }
   }
-  
+
   .mysql-header-btn {
     background-color: rgba(255, 255, 255, 0.2);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.3);
     font-weight: 500;
     transition: all 0.2s ease;
-    
+
     &:hover {
       background-color: rgba(255, 255, 255, 0.3);
       color: white;
@@ -1349,20 +1359,20 @@ function handleKeyDown(event: KeyboardEvent) {
       transform: translateY(-1px);
     }
   }
-  
+
   .mysql-header-btn-link {
     background-color: transparent;
     color: rgba(255, 255, 255, 0.9);
     border: none;
     font-weight: 500;
     transition: all 0.2s ease;
-    
+
     &:hover {
       background-color: rgba(255, 255, 255, 0.1);
       color: white;
     }
   }
-  
+
   .header-divider {
     width: 1px;
     height: 24px;
