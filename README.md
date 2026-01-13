@@ -1,22 +1,77 @@
 MySql-Plan-Visualizer: A VueJS component to show a graphical visualization of a MySQL execution plan.
 
+[![npm version](https://badge.fury.io/js/mysql-plan-visualizer.svg)](https://badge.fury.io/js/mysql-plan-visualizer)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 [**Live Demo**](https://ahmmedsamier.github.io/MySql-Plan-Visualizer/)
 
-![Screenshot](screenshot.png)
+# Features
+
+- **Interactive Visualization**: Visualize MySQL EXPLAIN plans as dynamic, interactive trees.
+- **Support for Multiple Formats**:
+  - `FORMAT=TREE` (Recommended)
+  - `FORMAT=JSON`
+  - Traditional Tabular Format
+- **Advanced Navigation**:
+  - Zoom and Pan
+  - Fit to Screen
+  - Collapsible/Expandable nodes
+  - Layout Orientation Switching (Top-to-Bottom / Left-to-Right)
+- **Detailed Insights**:
+  - Node statistics (cost, rows, loops)
+  - Highlighting of expensive nodes
+  - Search functionality to find specific nodes
+  - CTE (Common Table Expression) support
+- **Keyboard Shortcuts**: enhance productivity with varied shortcuts for navigation and view control.
+
+# Installation
+
+You can install the package via npm:
+
+```bash
+npm install mysql-plan-visualizer
+# or
+yarn add mysql-plan-visualizer
+# or
+bun add mysql-plan-visualizer
+```
 
 # Usage
 
-To use the MySQL execution plan visualizer you can choose one of the following options:
+## Integrated in a Vue Application
 
-## All-in-one local (no installation, no network)
+MySql-Plan-Visualizer can be integrated as a component in a web application.
 
-MySql-Plan-Visualizer can be run locally without any external internet resource.
+1. **Import the component and styles**:
 
-Simply download the built artifact from releases, open it in your favorite internet browser.
+```javascript
+import { Plan } from "mysql-plan-visualizer"
+import "mysql-plan-visualizer/dist/mysql-plan-visualizer.css"
+// Ensure Bootstrap CSS is available if not already in your project
+import "bootstrap/dist/css/bootstrap.min.css"
 
-## Integrated in a web application
+export default {
+  components: {
+    MysqlPlanVisualizer: Plan,
+  },
+  data() {
+    return {
+      plan: `... your plan string ...`,
+      query: `SELECT * FROM ...`,
+    }
+  },
+}
+```
 
-### Without building tools
+2. **Use the component**:
+
+```html
+<mysql-plan-visualizer :plan-source="plan" :plan-query="query" />
+```
+
+## All-in-one (via CDN)
+
+You can use it directly in the browser without a build step:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -37,86 +92,34 @@ Simply download the built artifact from releases, open it in your favorite inter
 <script>
   const { createApp } = Vue
 
-  const plan = `
-    -> Filter: (users.id < 10)  (cost=0.75 rows=1) (actual time=0.046..0.052 rows=3 loops=1)
-        -> Table scan on users  (cost=0.75 rows=5) (actual time=0.042..0.048 rows=5 loops=1)
-  `
-
   const app = createApp({
     data() {
       return {
-        plan: plan,
+        plan: `... your plan string ...`,
       }
     },
   })
+
   app.component("mysql-plan-visualizer", MysqlPlanVisualizer.Plan)
   app.mount("#app")
 </script>
 ```
 
-### With build tools
+## Props
 
-MySql-Plan-Visualizer can be integrated as a component in a web application.
+- `plan-source` (String, required): The raw output of the MySQL EXPLAIN command.
+- `plan-query` (String, optional): The original SQL query corresponding to the plan.
 
-Install it:
+# Supported Formats
 
-```
-npm install mysql-plan-visualizer
-```
-
-Declare the `Plan` component and use it:
-
-```javascript
-import { Plan } from "mysql-plan-visualizer"
-import "mysql-plan-visualizer/dist/mysql-plan-visualizer.css"
-
-export default {
-  name: "MySql-Plan-Visualizer example",
-  components: {
-    MysqlPlanVisualizer: Plan,
-  },
-  data() {
-    return {
-      plan: plan,
-      query: query,
-    }
-  },
-}
-```
-
-Then add the component to your template:
-
-```html
-<div id="app">
-  <mysql-plan-visualizer
-    :plan-source="plan"
-    :plan-query="query"
-  ></mysql-plan-visualizer>
-</div>
-```
-
-`MySql-Plan-Visualizer` requires `Bootstrap (CSS)` to work so don't forget to
-add the following in your header (or load them with your favorite bundler).
-
-```html
-<link
-  href="https://unpkg.com/bootstrap@5/dist/css/bootstrap.min.css"
-  rel="stylesheet"
-/>
-```
-
-## MySQL EXPLAIN Formats
-
-This visualizer supports multiple MySQL EXPLAIN formats:
-
-### FORMAT=TREE (Recommended)
+## FORMAT=TREE (Recommended)
 
 ```sql
 EXPLAIN FORMAT=TREE
 SELECT * FROM users WHERE id = 100;
 ```
 
-### FORMAT=JSON
+## FORMAT=JSON
 
 ```sql
 EXPLAIN FORMAT=JSON
@@ -125,9 +128,43 @@ FROM users u
 INNER JOIN orders o ON u.id = o.user_id;
 ```
 
-### Traditional Format
+## Traditional Format
 
 ```sql
 EXPLAIN
 SELECT * FROM users WHERE created_at > '2024-01-01';
 ```
+
+# Development
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone https://github.com/ahmmedsamier/MySql-Plan-Visualizer.git
+   cd MySql-Plan-Visualizer
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   npm install
+   # or
+   bun install
+   ```
+
+3. **Run development server**:
+
+   ```bash
+   npm run dev
+   # or
+   bun run dev
+   ```
+
+4. **Build for production**:
+   ```bash
+   npm run build
+   ```
+
+# License
+
+[MIT](LICENSE)
