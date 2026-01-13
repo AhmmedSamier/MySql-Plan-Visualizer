@@ -92,7 +92,7 @@ const { isOverDropZone: isOverSavedPlansDropZone } = useDropZone(
   },
 )
 
-function submitPlan() {
+async function submitPlan() {
   const newPlan: Plan = ["", "", "", ""]
   newPlan[0] =
     planName.value ||
@@ -104,13 +104,13 @@ function submitPlan() {
   newPlan[1] = planInput.value
   newPlan[2] = queryInput.value
   newPlan[3] = new Date().toISOString()
-  savePlanData(newPlan)
+  const id = await savePlanData(newPlan)
 
-  setPlanData(newPlan[0], newPlan[1], newPlan[2])
+  setPlanData(newPlan[0], newPlan[1], newPlan[2], id)
 }
 
 async function savePlanData(sample: Plan) {
-  await idb.savePlan(sample)
+  return await idb.savePlan(sample)
 }
 
 onMounted(() => {

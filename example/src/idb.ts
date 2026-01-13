@@ -87,17 +87,21 @@ export default {
     })
   },
 
-  async savePlan(plan: Plan): Promise<void> {
+  async savePlan(plan: Plan): Promise<number> {
     const db = await this.getDb()
 
-    return new Promise<void>((resolve) => {
+    return new Promise<number>((resolve, reject) => {
       const trans = db.transaction(["plans"], "readwrite")
-      trans.oncomplete = () => {
-        resolve()
+      const store = trans.objectStore("plans")
+      const request = store.put(plan)
+
+      request.onsuccess = () => {
+        resolve(request.result as number)
       }
 
-      const store = trans.objectStore("plans")
-      store.put(plan)
+      request.onerror = () => {
+        reject(request.error)
+      }
     })
   },
 
