@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import _ from "lodash"
 import { inject, onBeforeMount, provide, reactive, ref, watch } from "vue"
-import { Metric } from "../enums"
+import { NodeProp, Metric } from "../enums"
 import { scrollChildIntoParentView } from "@/services/help-service"
 import type { Node } from "@/interfaces"
 import { HighlightedNodeIdKey, SelectNodeKey } from "@/symbols"
