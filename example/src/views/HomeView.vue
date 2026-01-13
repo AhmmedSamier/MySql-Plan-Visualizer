@@ -16,6 +16,8 @@ import {
   faTrash,
   faDownload,
   faUpload,
+  faRocket,
+  faMagic,
 } from "@fortawesome/free-solid-svg-icons"
 import samples from "../samples.ts"
 
@@ -424,17 +426,21 @@ function addMessage(text: string) {
                     v-model="planName"
                     placeholder="Name for this plan"
                   />
-                  <div class="mt-3">
-                    <button
-                      type="submit"
-                      class="btn btn-primary w-100 mysql-submit-btn"
-                    >
-                      <i class="fas fa-chart-line me-2"></i>Visualize Plan
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Big Prominent Submit Button -->
+          <div class="text-center mt-4">
+            <button
+              type="submit"
+              class="btn btn-lg mysql-submit-btn-premium px-5 py-3"
+            >
+              <FontAwesomeIcon :icon="faRocket" class="me-2" />
+              <span>Visualize Plan</span>
+              <FontAwesomeIcon :icon="faMagic" class="ms-2 opacity-75" />
+            </button>
           </div>
         </form>
 
@@ -762,16 +768,46 @@ function addMessage(text: string) {
     }
   }
 
-  .mysql-submit-btn {
+  .mysql-submit-btn-premium {
     background: linear-gradient(135deg, #00758f 0%, #00a4db 100%);
     border: none;
-    font-weight: 600;
-    padding: 0.75rem;
-    transition: all 0.2s ease;
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 117, 143, 0.3);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 117, 143, 0.4);
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 8px 25px rgba(0, 117, 143, 0.5);
+      background: linear-gradient(135deg, #008caf 0%, #00b4f1 100%);
+    }
+
+    &:active {
+      transform: translateY(-1px) scale(0.98);
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.1);
+      transform: rotate(45deg);
+      transition: all 0.5s ease;
+      opacity: 0;
+    }
+    
+    &:hover::after {
+      left: 100%;
+      opacity: 1;
     }
   }
 }
