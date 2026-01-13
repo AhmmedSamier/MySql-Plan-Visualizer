@@ -6,7 +6,6 @@ import { ViewOptionsKey } from "@/symbols"
 import { cost, duration, factor, keysToString, sortKeys } from "@/filters"
 import LevelDivider from "@/components/LevelDivider.vue"
 import GridProgressBar from "@/components/GridProgressBar.vue"
-import WorkersDetail from "@/components/WorkersDetail.vue"
 import MiscDetail from "@/components/MiscDetail.vue"
 import SeverityBullet from "@/components/SeverityBullet.vue"
 import TimeTooltip from "@/components/tooltip/TimeTooltip.vue"
@@ -354,21 +353,6 @@ const showDetails = ref<boolean>(false)
                 >Output</a
               >
             </li>
-            <li class="nav-item">
-              <a
-                class="nav-link px-2 py-1"
-                :class="{
-                  active: activeTab === 'workers',
-                  disabled: !(
-                    node[NodeProp.WORKERS_PLANNED] ||
-                    node[NodeProp.WORKERS_PLANNED_BY_GATHER]
-                  ),
-                }"
-                @click.prevent.stop="activeTab = 'workers'"
-                href=""
-                >Workers</a
-              >
-            </li>
           </ul>
           <div class="tab-content bg-white">
             <div
@@ -385,12 +369,6 @@ const showDetails = ref<boolean>(false)
               style="max-height: 200px"
               @mousewheel.stop
             ></div>
-            <div
-              class="tab-pane p-1 border border-top-0 rounded rounded-top-start-0"
-              :class="{ 'show active': activeTab === 'workers' }"
-            >
-              <WorkersDetail :node="node" />
-            </div>
           </div>
         </div>
       </div>

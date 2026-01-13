@@ -2,11 +2,9 @@
 import { computed, inject, onBeforeMount, reactive, ref, watch } from "vue"
 import { directive as vTippy } from "vue-tippy"
 import type { Node, ViewOptions } from "@/interfaces"
-import { HelpService } from "@/services/help-service"
 import { EstimateDirection, NodeProp } from "@/enums"
 import useNode from "@/node"
 import { store } from "@/store"
-import WorkersDetail from "@/components/WorkersDetail.vue"
 import MiscDetail from "@/components/MiscDetail.vue"
 import { ViewOptionsKey } from "@/symbols"
 import _ from "lodash"
@@ -43,9 +41,6 @@ const nodeProps = ref<
 // UI flags
 const activeTab = ref<string>("general")
 
-const helpService = new HelpService()
-const getNodeTypeDescription = helpService.getNodeTypeDescription
-
 const {
   costClass,
   durationClass,
@@ -80,7 +75,6 @@ const shouldShowPlannerEstimate = computed(() => {
 function calculateProps() {
   nodeProps.value = _.chain(node)
     .omit(NodeProp.PLANS)
-    .omit(NodeProp.WORKERS)
     .map((value, key) => {
       return { key: key as keyof typeof NodeProp, value }
     })
@@ -94,13 +88,6 @@ watch(activeTab, () => {
 
 <template>
   <div class="card-header border-top">
-    <div
-      v-if="getNodeTypeDescription(node[NodeProp.NODE_TYPE])"
-      class="node-description"
-    >
-      <span class="node-type">{{ node[NodeProp.NODE_TYPE] }} Node</span>
-      <span v-html="getNodeTypeDescription(node[NodeProp.NODE_TYPE])"></span>
-    </div>
     <ul class="nav nav-tabs card-header-tabs">
       <li class="nav-item">
         <a
@@ -121,21 +108,6 @@ watch(activeTab, () => {
           @click.prevent.stop="activeTab = 'output'"
           href=""
           >Output</a
-        >
-      </li>
-      <li class="nav-item">
-        <a
-          class="nav-link"
-          :class="{
-            active: activeTab === 'workers',
-            disabled: !(
-              node[NodeProp.WORKERS_PLANNED] ||
-              node[NodeProp.WORKERS_PLANNED_BY_GATHER]
-            ),
-          }"
-          @click.prevent.stop="activeTab = 'workers'"
-          href=""
-          >Workers</a
         >
       </li>
       <li class="nav-item">
@@ -294,17 +266,6 @@ watch(activeTab, () => {
       style="max-height: 200px"
       @mousewheel.stop
     ></div>
-    <div
-      class="tab-pane"
-      :class="{ 'show active': activeTab === 'workers' }"
-      v-if="
-        node[NodeProp.WORKERS_PLANNED] ||
-        node[NodeProp.WORKERS_PLANNED_BY_GATHER]
-      "
-    >
-      <!-- workers tab -->
-      <WorkersDetail :node="node" />
-    </div>
     <div class="tab-pane" :class="{ 'show active': activeTab === 'misc' }">
       <!-- misc tab -->
       <MiscDetail :node="node" />
