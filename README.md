@@ -1,4 +1,4 @@
-MySql-Plan-Visualizer: A VueJS component to show a graphical vizualization of a MySQL execution plan.
+MySql-Plan-Visualizer: A VueJS component to show a graphical visualization of a MySQL execution plan.
 
 [**Live Demo**](https://ahmmedsamier.github.io/MySql-Plan-Visualizer/)
 
@@ -6,7 +6,7 @@ MySql-Plan-Visualizer: A VueJS component to show a graphical vizualization of a 
 
 # Usage
 
-To use the explain vizualizer you can choose one of the following options:
+To use the MySQL execution plan visualizer you can choose one of the following options:
 
 ## All-in-one local (no installation, no network)
 
@@ -25,7 +25,10 @@ Simply download the built artifact from releases, open it in your favorite inter
   href="https://unpkg.com/bootstrap@5/dist/css/bootstrap.min.css"
   rel="stylesheet"
 />
-<link rel="stylesheet" href="https://unpkg.com/mysql-plan-visualizer/dist/mysql-plan-visualizer.css" />
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/mysql-plan-visualizer/dist/mysql-plan-visualizer.css"
+/>
 
 <div id="app" class="d-flex flex-column vh-100">
   <mysql-plan-visualizer :plan-source="plan" plan-query="" />
@@ -35,9 +38,9 @@ Simply download the built artifact from releases, open it in your favorite inter
   const { createApp } = Vue
 
   const plan = `
-    -> Filter: (t1.c1 < 10)  (cost=0.75 rows=1) (actual time=0.046..0.052 rows=3 loops=1)
-        -> Table scan on t1  (cost=0.75 rows=5) (actual time=0.042..0.048 rows=5 loops=1)
-  `;
+    -> Filter: (users.id < 10)  (cost=0.75 rows=1) (actual time=0.046..0.052 rows=3 loops=1)
+        -> Table scan on users  (cost=0.75 rows=5) (actual time=0.042..0.048 rows=5 loops=1)
+  `
 
   const app = createApp({
     data() {
@@ -85,16 +88,46 @@ Then add the component to your template:
 
 ```html
 <div id="app">
-  <mysql-plan-visualizer :plan-source="plan" :plan-query="query"></mysql-plan-visualizer>
+  <mysql-plan-visualizer
+    :plan-source="plan"
+    :plan-query="query"
+  ></mysql-plan-visualizer>
 </div>
 ```
 
 `MySql-Plan-Visualizer` requires `Bootstrap (CSS)` to work so don't forget to
-add the following in you header (or load them with your favorite bundler).
+add the following in your header (or load them with your favorite bundler).
 
 ```html
 <link
   href="https://unpkg.com/bootstrap@5/dist/css/bootstrap.min.css"
   rel="stylesheet"
 />
+```
+
+## MySQL EXPLAIN Formats
+
+This visualizer supports multiple MySQL EXPLAIN formats:
+
+### FORMAT=TREE (Recommended)
+
+```sql
+EXPLAIN FORMAT=TREE
+SELECT * FROM users WHERE id = 100;
+```
+
+### FORMAT=JSON
+
+```sql
+EXPLAIN FORMAT=JSON
+SELECT u.name, o.total
+FROM users u
+INNER JOIN orders o ON u.id = o.user_id;
+```
+
+### Traditional Format
+
+```sql
+EXPLAIN
+SELECT * FROM users WHERE created_at > '2024-01-01';
 ```

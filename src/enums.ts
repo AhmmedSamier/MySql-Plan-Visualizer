@@ -31,6 +31,11 @@ export enum CenterMode {
   none,
 }
 
+export enum Orientation {
+  LeftToRight = "LeftToRight",
+  TopToBottom = "TopToBottom",
+}
+
 export enum NodeProp {
   // plan property keys
   NODE_TYPE = "Node Type",

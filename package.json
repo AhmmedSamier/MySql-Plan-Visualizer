@@ -1,12 +1,24 @@
 {
   "name": "mysql-plan-visualizer",
   "version": "1.19.0",
-  "description": "MySQL Plan Visualizer",
+  "description": "A modern Vue.js component for visualizing and analyzing MySQL execution plans with interactive diagrams, performance insights, and query optimization recommendations",
   "homepage": "https://ahmmedsamier.github.io/MySql-Plan-Visualizer/",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "files": [
     "dist"
+  ],
+  "keywords": [
+    "mysql",
+    "explain",
+    "visualizer",
+    "query",
+    "optimization",
+    "database",
+    "performance",
+    "plan",
+    "mysql-explain",
+    "vue"
   ],
   "main": "./dist/mysql-plan-visualizer.umd.js",
   "module": "./dist/mysql-plan-visualizer.es.js",

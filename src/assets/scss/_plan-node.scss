@@ -1,7 +1,6 @@
 @use "sass:math";
 
 $compact-width: 50px;
-$bg-color: #fff;
 .plan-node {
   cursor: default;
   text-decoration: none;
@@ -20,6 +19,7 @@ $bg-color: #fff;
     border-radius: $border-radius-base;
     background-color: $plan-node-bg;
     box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
 
     &.card {
       .card-body,
@@ -53,7 +53,7 @@ $bg-color: #fff;
       font-weight: 600;
       margin: 0;
       line-height: inherit;
-      color: black !important;
+      color: var(--node-h4-color) !important;
     }
 
     .node-duration {
@@ -83,12 +83,12 @@ $bg-color: #fff;
 
   &.selected {
     .plan-node-body {
-      border-color: $highlight-color;
-      box-shadow: 0px 0px 5px 2px rgba($highlight-color, 0.4);
+      border-color: var(--mysql-light-blue);
+      box-shadow: 0px 0px 8px 2px rgba(0, 164, 219, 0.4);
     }
 
     .workers > div {
-      border-color: rgba($highlight-color, 0.2);
+      border-color: rgba(0, 164, 219, 0.2);
     }
   }
 
@@ -99,9 +99,10 @@ $bg-color: #fff;
 
     .node-type {
       font-weight: 600;
-      background-color: $blue;
+      background: linear-gradient(135deg, var(--mysql-blue) 0%, var(--mysql-light-blue) 100%);
       color: #fff;
       padding: 0 $padding-base;
+      border-radius: 3px;
     }
   }
 
@@ -116,7 +117,7 @@ $bg-color: #fff;
   .plan-query-container {
     border: 1px solid $line-color;
     padding: $padding-xl;
-    background-color: #fff;
+    background-color: var(--plan-node-bg);
     position: absolute;
     box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.3);
     border-radius: $border-radius-base;

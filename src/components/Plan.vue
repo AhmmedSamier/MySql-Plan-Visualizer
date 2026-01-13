@@ -28,9 +28,11 @@ import PlanNode from "@/components/PlanNode.vue"
 import PlanStats from "@/components/PlanStats.vue"
 import Stats from "@/components/Stats.vue"
 import AnimatedEdge from "@/components/AnimatedEdge.vue"
+import KeyboardShortcuts from "@/components/KeyboardShortcuts.vue"
+import ThemeToggle from "@/components/ThemeToggle.vue"
 import { findNodeById } from "@/services/help-service"
-import { HighlightType, NodeProp } from "@/enums"
-import { json_, pgsql_ } from "@/filters"
+import { HighlightType, NodeProp, Orientation } from "@/enums"
+import { json_, mysql_ } from "@/filters"
 import { setDefaultProps } from "vue-tippy"
 import { store } from "@/store.ts"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
@@ -44,6 +46,7 @@ import {
   faTimes,
   faCompress,
   faExpand,
+  faKeyboard,
 } from "@fortawesome/free-solid-svg-icons"
 
 setDefaultProps({ theme: "light" })
@@ -72,18 +75,20 @@ const rootNode = computed(() => store.plan && store.plan.content.Plan)
 const selectedNodeId = ref<number>(NaN)
 const selectedNode = ref<Node | undefined>(undefined)
 const highlightedNodeId = ref<number>(NaN)
-const gridIsNotNew = localStorage.getItem("gridIsNotNew")
+const isGridNotNew = localStorage.getItem("gridIsNotNew")
 const ready = ref(false)
 const showSearchInput = ref(false)
 const searchInput = ref("")
 const searchResults = ref<Node[]>([])
 const currentSearchIndex = ref(-1)
+const keyboardShortcutsRef = ref<InstanceType<typeof KeyboardShortcuts> | null>(null)
 
 const viewOptions = reactive({
   showHighlightBar: false,
   showPlanStats: true,
   highlightType: HighlightType.NONE,
   diagramWidth: 20,
+  orientation: Orientation.TopToBottom,
 })
 
 // Vertical padding between 2 nodes in the tree layout
@@ -127,6 +132,7 @@ onMounted(() => {
   watch(() => [props.planSource, props.planQuery], parseAndShow, {
     immediate: true,
   })
+  window.addEventListener("keydown", handleKeyDown)
 })
 
 function parseAndShow() {
@@ -177,6 +183,17 @@ function doLayout() {
     })
     offset[0] += currentWidth + padding * 2
   })
+
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    // Swap X and Y for all nodes
+    const swap = (node: FlexHierarchyPointNode<Node>) => {
+      const temp = node.x
+      node.x = node.y
+      node.y = temp
+    }
+    layoutRootNode.value.each(swap)
+    _.each(ctes.value, (tree) => tree.each(swap))
+  }
 
   // compute links from node to CTE
   toCteLinks.value = []
@@ -239,22 +256,38 @@ function fitToScreen() {
   const y1 = extent[3]
   const rect = planEl.value.$el.getBoundingClientRect()
 
+  const diagramWidth = x1 - x0
+  const diagramHeight = y1 - y0
+
+  const s = Math.min(
+    1,
+    Math.max(
+      minScale,
+      0.95 / Math.max(diagramWidth / rect.width, diagramHeight / rect.height),
+    ),
+  )
+
+  let sx, sy, px, py
+
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    // Center vertically, Align Left
+    sx = 20
+    sy = rect.height / 2
+    px = x0
+    py = (y0 + y1) / 2
+  } else {
+    // Center horizontally, Align Top
+    sx = rect.width / 2
+    sy = 20
+    px = (x0 + x1) / 2
+    py = y0
+  }
+
   d3.select(planEl.value.$el)
     .transition()
     .call(
       zoomListener.transform,
-      d3.zoomIdentity
-        .translate(rect.width / 2, 10)
-        .scale(
-          Math.min(
-            1,
-            Math.max(
-              minScale,
-              0.95 / Math.max((x1 - x0) / rect.width, (y1 - y0) / rect.height),
-            ),
-          ),
-        )
-        .translate(-(x0 + x1) / 2, 10),
+      d3.zoomIdentity.translate(sx, sy).scale(s).translate(-px, -py),
     )
 }
 
@@ -272,6 +305,7 @@ function zoomOut() {
 
 onBeforeUnmount(() => {
   window.removeEventListener("hashchange", onHashChange)
+  window.removeEventListener("keydown", handleKeyDown)
 })
 
 watch(viewOptions, onViewOptionsChanged)
@@ -292,18 +326,32 @@ function onSelectedNode(v: number) {
 function lineGen(link: FlexHierarchyPointLink<object>) {
   const source = link.source
   const target = link.target
-  const k = Math.abs(target.y - (source.y + source.ySize) - padding)
   const path = d3.path()
-  path.moveTo(source.x, source.y)
-  path.lineTo(source.x, source.y + source.ySize - padding)
-  path.bezierCurveTo(
-    source.x,
-    source.y + source.ySize - padding + k / 2,
-    target.x,
-    target.y - k / 2,
-    target.x,
-    target.y,
-  )
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    const k = Math.abs(target.x - (source.x + source.ySize) - padding)
+    path.moveTo(source.x, source.y)
+    path.lineTo(source.x + source.ySize - padding, source.y)
+    path.bezierCurveTo(
+      source.x + source.ySize - padding + k / 2,
+      source.y,
+      target.x - k / 2,
+      target.y,
+      target.x,
+      target.y,
+    )
+  } else {
+    const k = Math.abs(target.y - (source.y + source.ySize) - padding)
+    path.moveTo(source.x, source.y)
+    path.lineTo(source.x, source.y + source.ySize - padding)
+    path.bezierCurveTo(
+      source.x,
+      source.y + source.ySize - padding + k / 2,
+      target.x,
+      target.y - k / 2,
+      target.x,
+      target.y,
+    )
+  }
   return path.toString()
 }
 
@@ -381,6 +429,39 @@ const setActiveTab = (tab: string) => {
 function getLayoutExtent(
   layoutRootNode: FlexHierarchyPointNode<Node>,
 ): [number, number, number, number] {
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    const minX =
+      _.min(
+        _.map(layoutRootNode.descendants(), (childNode) => {
+          return childNode.x
+        }),
+      ) || 0
+
+    const maxX =
+      _.max(
+        _.map(layoutRootNode.descendants(), (childNode) => {
+          // Width is ySize - padding
+          return childNode.x + (childNode.ySize - padding)
+        }),
+      ) || 0
+
+    const minY =
+      _.min(
+        _.map(layoutRootNode.descendants(), (childNode) => {
+          // Height is xSize. centered at y.
+          return childNode.y - childNode.xSize / 2
+        }),
+      ) || 0
+
+    const maxY =
+      _.max(
+        _.map(layoutRootNode.descendants(), (childNode) => {
+          return childNode.y + childNode.xSize / 2
+        }),
+      ) || 0
+    return [minX, maxX, minY, maxY]
+  }
+
   const minX =
     _.min(
       _.map(layoutRootNode.descendants(), (childNode) => {
@@ -415,6 +496,15 @@ function isNeverExecuted(node: Node): boolean {
   return !!store.stats.executionTime && !node[NodeProp.ACTUAL_LOOPS]
 }
 
+const shouldAutoFit = ref(false)
+
+watch(
+  () => viewOptions.orientation,
+  () => {
+    shouldAutoFit.value = true
+  },
+)
+
 watch(
   () => {
     const data: [number, number][] = []
@@ -434,11 +524,43 @@ watch(
   },
   () => {
     doLayout()
+    if (shouldAutoFit.value) {
+      fitToScreen()
+      shouldAutoFit.value = false
+    }
   },
 )
 
 function updateNodeSize(node: Node, size: [number, number]) {
-  node.size = [size[0] / scale.value, size[1] / scale.value]
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    node.size = [size[1] / scale.value, size[0] / scale.value]
+  } else {
+    node.size = [size[0] / scale.value, size[1] / scale.value]
+  }
+}
+
+function getNodeX(item: FlexHierarchyPointNode<Node>) {
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    return item.x
+  }
+  return item.x - item.xSize / 2
+}
+
+function getNodeY(item: FlexHierarchyPointNode<Node>) {
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    return item.y - item.xSize / 2
+  }
+  return item.y
+}
+
+function getNodeWidth(item: FlexHierarchyPointNode<Node>) {
+  if (viewOptions.orientation === Orientation.LeftToRight) {
+    // In LTR, ySize is the 'depth' dimension which is Width + padding.
+    // xSize is Height.
+    // We want Width.
+    return item.ySize - padding
+  }
+  return item.xSize
 }
 
 const searchInputRef = ref<HTMLInputElement | null>(null)
@@ -550,6 +672,86 @@ function highlightResult(index: number) {
     highlightedNodeId.value = node.nodeId
   }
 }
+
+function handleKeyDown(event: KeyboardEvent) {
+  // Don't trigger shortcuts when typing in input fields
+  const target = event.target as HTMLElement
+  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+    if (event.key === "Escape") {
+      showSearchInput.value = false
+    }
+    return
+  }
+
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
+  const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey
+
+  // Ctrl/Cmd + F - Open search
+  if (ctrlOrCmd && event.key === "f") {
+    event.preventDefault()
+    toggleSearch()
+    return
+  }
+
+  // + - Zoom in
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault()
+    zoomIn()
+    return
+  }
+
+  // - - Zoom out
+  if (event.key === "-" || event.key === "_") {
+    event.preventDefault()
+    zoomOut()
+    return
+  }
+
+  // 0 - Fit to screen
+  if (event.key === "0") {
+    event.preventDefault()
+    fitToScreen()
+    return
+  }
+
+  // Escape - Close search or deselect node
+  if (event.key === "Escape") {
+    event.preventDefault()
+    if (showSearchInput.value) {
+      showSearchInput.value = false
+    } else if (selectedNodeId.value) {
+      selectedNodeId.value = NaN
+    }
+    return
+  }
+
+  // ? - Show keyboard shortcuts
+  if (event.key === "?" && event.shiftKey) {
+    event.preventDefault()
+    keyboardShortcutsRef.value?.show()
+    return
+  }
+
+  // E - Expand all
+  if (event.key === "e" || event.key === "E") {
+    event.preventDefault()
+    toggleDetails.value = {
+      show: true,
+      counter: toggleDetails.value.counter + 1,
+    }
+    return
+  }
+
+  // C - Collapse all
+  if (event.key === "c" || event.key === "C") {
+    event.preventDefault()
+    toggleDetails.value = {
+      show: false,
+      counter: toggleDetails.value.counter + 1,
+    }
+    return
+  }
+}
 </script>
 
 <template>
@@ -593,8 +795,8 @@ function highlightResult(index: number) {
     v-else
     ref="rootEl"
   >
-    <div class="d-flex align-items-center">
-      <ul class="nav nav-pills">
+    <div class="d-flex align-items-center border-bottom mysql-header py-2">
+      <ul class="nav nav-tabs border-0 flex-grow-1">
         <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
@@ -605,17 +807,24 @@ function highlightResult(index: number) {
         </li>
         <li class="nav-item p-1">
           <a
-            class="nav-link px-2 py-0 position-relative"
+            class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'grid' }"
             href="#grid"
-            >Grid
+            >Grid</a
+          >
+        </li>
+        <li class="nav-item p-1">
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'diagram' }"
+            href="#diagram"
+          >
+            Diagram
             <span
-              class="badge bg-info"
-              style="font-size: 0.6em"
-              v-if="!gridIsNotNew"
+              v-if="!isGridNotNew"
+              class="badge rounded-pill text-bg-warning"
+              >New</span
             >
-              new
-            </span>
           </a>
         </li>
         <li class="nav-item p-1">
@@ -643,14 +852,12 @@ function highlightResult(index: number) {
           >
         </li>
       </ul>
-      <div class="ms-auto me-2 small">
-        <a
-          href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer"
-          target="_blank"
-        >
-          <LogoImage />
-          {{ version }}
+      <div class="ms-auto me-3 d-flex align-items-center gap-2">
+        <a href="/" class="btn btn-sm mysql-header-btn">
+          <i class="fas fa-plus-circle me-1"></i>New Plan
         </a>
+        <a href="/about" class="btn btn-sm mysql-header-btn-link">About</a>
+        <ThemeToggle />
       </div>
     </div>
     <div class="tab-content flex-grow-1 d-flex overflow-hidden">
@@ -740,20 +947,55 @@ function highlightResult(index: number) {
                     </div>
                   </div>
                   <div
+                    class="position-absolute m-1 p-1 bottom-0 start-0 rounded bg-white d-flex"
+                    v-if="store.plan"
+                  >
+                    <div class="btn-group btn-group-xs">
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.orientation === Orientation.TopToBottom,
+                        }"
+                        v-on:click="
+                          viewOptions.orientation = Orientation.TopToBottom
+                        "
+                        title="Vertical Layout"
+                      >
+                        Vertical
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.orientation === Orientation.LeftToRight,
+                        }"
+                        v-on:click="
+                          viewOptions.orientation = Orientation.LeftToRight
+                        "
+                        title="Horizontal Layout"
+                      >
+                        Horizontal
+                      </button>
+                    </div>
+                  </div>
+                  <div
                     class="position-absolute m-1 p-1 bottom-0 end-0 d-flex flex-column"
                     style="margin-bottom: 50px !important"
                     v-if="store.plan"
                   >
                     <button
                       class="btn btn-light btn-sm mb-1"
-                      title="Search"
+                      title="Search (Ctrl+F)"
+                      aria-label="Search nodes in the plan"
                       @click="toggleSearch"
                     >
                       <FontAwesomeIcon :icon="faSearch" />
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
-                      title="Collapse All"
+                      title="Collapse All (C)"
+                      aria-label="Collapse all nodes"
                       @click="
                         toggleDetails = {
                           show: false,
@@ -765,7 +1007,8 @@ function highlightResult(index: number) {
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
-                      title="Expand All"
+                      title="Expand All (E)"
+                      aria-label="Expand all nodes"
                       @click="
                         toggleDetails = {
                           show: true,
@@ -777,24 +1020,35 @@ function highlightResult(index: number) {
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
-                      title="Zoom In"
+                      title="Zoom In (+)"
+                      aria-label="Zoom in on the plan diagram"
                       @click="zoomIn"
                     >
                       <FontAwesomeIcon :icon="faPlus" />
                     </button>
                     <button
                       class="btn btn-light btn-sm mb-1"
-                      title="Zoom Out"
+                      title="Zoom Out (-)"
+                      aria-label="Zoom out on the plan diagram"
                       @click="zoomOut"
                     >
                       <FontAwesomeIcon :icon="faMinus" />
                     </button>
                     <button
-                      class="btn btn-light btn-sm"
-                      title="Fit to Screen"
+                      class="btn btn-light btn-sm mb-1"
+                      title="Fit to Screen (0)"
+                      aria-label="Fit plan diagram to screen"
                       @click="fitToScreen"
                     >
                       <FontAwesomeIcon :icon="faArrowsAlt" />
+                    </button>
+                    <button
+                      class="btn btn-light btn-sm"
+                      title="Keyboard Shortcuts (?)"
+                      aria-label="Show keyboard shortcuts help"
+                      @click="keyboardShortcutsRef?.show()"
+                    >
+                      <FontAwesomeIcon :icon="faKeyboard" />
                     </button>
                   </div>
                   <div
@@ -882,9 +1136,9 @@ function highlightResult(index: number) {
                       <foreignObject
                         v-for="(item, index) in layoutRootNode?.descendants()"
                         :key="`${store.plan?.id}_${index}`"
-                        :x="item.x - item.xSize / 2"
-                        :y="item.y"
-                        :width="item.xSize"
+                        :x="getNodeX(item)"
+                        :y="getNodeY(item)"
+                        :width="getNodeWidth(item)"
                         height="1"
                         ref="root"
                       >
@@ -927,9 +1181,9 @@ function highlightResult(index: number) {
                         <foreignObject
                           v-for="(item, index) in cte.descendants()"
                           :key="`${store.plan?.id}_${index}`"
-                          :x="item.x - item.xSize / 2"
-                          :y="item.y"
-                          :width="item.xSize"
+                          :x="getNodeX(item)"
+                          :y="getNodeY(item)"
+                          :width="getNodeWidth(item)"
                           height="1"
                           ref="root"
                         >
@@ -980,7 +1234,7 @@ function highlightResult(index: number) {
           <div class="overflow-auto flex-grow-1">
             <pre
               class="small p-2 mb-0"
-            ><code v-html="pgsql_(store.query)"></code></pre>
+            ><code v-html="mysql_(store.query)"></code></pre>
           </div>
         </div>
         <Copy :content="store.query" />
@@ -993,6 +1247,7 @@ function highlightResult(index: number) {
       </div>
     </div>
   </div>
+  <KeyboardShortcuts ref="keyboardShortcutsRef" />
 </template>
 
 <style lang="scss">
@@ -1005,6 +1260,114 @@ function highlightResult(index: number) {
   rect,
   foreignObject {
     transition: all 0.2s ease-in-out;
+  }
+}
+
+// MySQL Header Styling
+.mysql-header {
+  background: linear-gradient(135deg, var(--mysql-blue) 0%, darken(#00758F, 8%) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  [data-theme="dark"] & {
+    background: linear-gradient(135deg, darken(#00758F, 15%) 0%, darken(#00758F, 25%) 100%);
+  }
+}
+
+.mysql-brand {
+  .mysql-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    
+    .mysql-icon {
+      font-size: 1.5rem;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    }
+  }
+}
+
+.mysql-header {
+  .nav-tabs {
+    border: none;
+    
+    .nav-link {
+      color: rgba(255, 255, 255, 0.85);
+      border: none;
+      border-radius: 6px 6px 0 0;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      
+      &:hover {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      &.active {
+        color: var(--mysql-blue);
+        background-color: white;
+        font-weight: 600;
+        
+        [data-theme="dark"] & {
+          background-color: var(--bg-color);
+          color: var(--mysql-light-blue);
+        }
+      }
+      
+      &.disabled {
+        color: rgba(255, 255, 255, 0.4);
+        cursor: not-allowed;
+      }
+    }
+  }
+  
+  .mysql-version {
+    a {
+      color: rgba(255, 255, 255, 0.9);
+      transition: color 0.2s ease;
+      
+      &:hover {
+        color: white;
+      }
+    }
+  }
+  
+  .mysql-header-btn {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-weight: 500;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+      color: white;
+      border-color: rgba(255, 255, 255, 0.5);
+      transform: translateY(-1px);
+    }
+  }
+  
+  .mysql-header-btn-link {
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+  }
+  
+  .header-divider {
+    width: 1px;
+    height: 24px;
+    background-color: rgba(255, 255, 255, 0.3);
+    margin: 0 0.25rem;
   }
 }
 </style>

@@ -63,7 +63,7 @@ describe("MySQL JSON Hybrid Format", () => {
 
     // Check Root
     expect(root[NodeProp.NODE_TYPE]).toBe("Sort: total_spent DESC")
-    expect(root[NodeProp.TOTAL_COST]).toBe(24.50)
+    expect(root[NodeProp.TOTAL_COST]).toBe(24.5)
 
     // Check Child (Filter)
     const filter = root[NodeProp.PLANS][0]
@@ -72,8 +72,8 @@ describe("MySQL JSON Hybrid Format", () => {
 
     // Check Child (Aggregate)
     const aggregate = filter[NodeProp.PLANS][0]
-    expect(aggregate[NodeProp.NODE_TYPE]).toBe("Aggregate: u.id")
-    expect(aggregate[NodeProp.TOTAL_COST]).toBe(22.50)
+    expect(aggregate[NodeProp.NODE_TYPE]).toBe("Aggregate")
+    expect(aggregate[NodeProp.TOTAL_COST]).toBe(22.5)
 
     // Check Child (Nested Loop)
     const join = aggregate[NodeProp.PLANS][0]
@@ -83,11 +83,11 @@ describe("MySQL JSON Hybrid Format", () => {
     const u = join[NodeProp.PLANS][0]
     expect(u[NodeProp.RELATION_NAME]).toBe("u")
     expect(u[NodeProp.PLAN_ROWS]).toBe(10)
-    expect(u[NodeProp.TOTAL_COST]).toBe(3.00) // 2.00 read + 1.00 eval
+    expect(u[NodeProp.TOTAL_COST]).toBe(3.0) // 2.00 read + 1.00 eval
 
     const o = join[NodeProp.PLANS][1]
     expect(o[NodeProp.RELATION_NAME]).toBe("o")
     expect(o[NodeProp.PLAN_ROWS]).toBe(5)
-    expect(o[NodeProp.TOTAL_COST]).toBe(19.50) // 12.50 read + 7.00 eval
+    expect(o[NodeProp.TOTAL_COST]).toBe(19.5) // 12.50 read + 7.00 eval
   })
 })

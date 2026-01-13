@@ -1,8 +1,8 @@
 import _ from "lodash"
 import { EstimateDirection, nodePropTypes, PropType } from "@/enums"
 import hljs from "highlight.js/lib/core"
-import pgsql from "highlight.js/lib/languages/pgsql"
-hljs.registerLanguage("pgsql", pgsql)
+import sql from "highlight.js/lib/languages/sql"
+hljs.registerLanguage("sql", sql)
 
 import json from "highlight.js/lib/languages/json"
 hljs.registerLanguage("json", json)
@@ -221,8 +221,8 @@ export function durationClass(i: number): string {
   return ""
 }
 
-export function pgsql_(text: string) {
-  return hljs.highlight(text, { language: "pgsql" }).value
+export function mysql_(text: string) {
+  return hljs.highlight(text, { language: "sql" }).value
 }
 
 export function json_(text: string) {

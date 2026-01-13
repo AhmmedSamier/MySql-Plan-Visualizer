@@ -218,10 +218,7 @@ function centerCte() {
               <span class="text-secondary">by</span>
               <span
                 v-html="
-                  sortKeys(
-                    node[NodeProp.SORT_KEY] as string[],
-                    undefined,
-                  )
+                  sortKeys(node[NodeProp.SORT_KEY] as string[], undefined)
                 "
               ></span>
             </div>
@@ -248,7 +245,29 @@ function centerCte() {
               :class="{ 'line-clamp-2': !showDetails }"
             >
               <span class="text-secondary">filter</span>
-              <span v-html="keysToString(node[NodeProp.FILTER] as string)"></span>
+              <span
+                v-html="keysToString(node[NodeProp.FILTER] as string)"
+              ></span>
+            </div>
+            <div
+              v-if="node[NodeProp.OUTPUT]"
+              :class="{ 'line-clamp-2': !showDetails }"
+            >
+              <span class="text-secondary">Output</span>
+              <span
+                v-html="keysToString(node[NodeProp.OUTPUT] as string)"
+              ></span>
+            </div>
+            <div
+              v-if="node[NodeProp.ATTACHED_CONDITION]"
+              :class="{ 'line-clamp-2': !showDetails }"
+            >
+              <span class="text-secondary">Condition</span>
+              <span
+                v-html="
+                  keysToString(node[NodeProp.ATTACHED_CONDITION] as string)
+                "
+              ></span>
             </div>
             <div v-if="node[NodeProp.CTE_NAME]">
               <a class="text-reset" href="" @click.prevent.stop="centerCte">

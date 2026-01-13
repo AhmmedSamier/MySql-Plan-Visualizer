@@ -1,6 +1,4 @@
-import type {
-  HighlightType,
-} from "@/enums"
+import type { HighlightType, Orientation } from "@/enums"
 
 export interface IPlan {
   id: string
@@ -23,11 +21,7 @@ export interface IPlanContent {
   maxDuration?: number
   maxEstimateFactor?: number
   "Query Text"?: string
-  [k: string]:
-    | Node
-    | number
-    | string
-    | undefined
+  [k: string]: Node | number | string | undefined
 }
 
 export interface IPlanStats {
@@ -142,6 +136,12 @@ export class Node {
     }
     const mysqlFilterRegex = /^(Filter):\s+(.*)$/.exec(type)
 
+    enum MysqlAggregateMatch {
+      NodeType = 1,
+      Output,
+    }
+    const mysqlAggregateRegex = /^(Aggregate):\s+(.*)$/.exec(type)
+
     enum MysqlIndexMatch {
       NodeType = 1,
       RelationName,
@@ -156,6 +156,9 @@ export class Node {
         type,
       )
 
+    const mysqlCoveringIndexLookupRegex =
+      /^(Covering\sindex\slookup)\son\s(\S+)\susing\s([^\s(]+)(.*)$/.exec(type)
+
     enum MysqlTableScanMatch {
       NodeType = 1,
       RelationName,
@@ -168,8 +171,9 @@ export class Node {
       this[NodeProp.RELATION_NAME] =
         scanAndOperationsRegex[ScanAndOperationMatch.RelationName]
       if (scanAndOperationsRegex[ScanAndOperationMatch.Alias]) {
-        this[NodeProp.ALIAS] =
-          scanAndOperationsRegex[ScanAndOperationMatch.Alias]
+        this[NodeProp.ALIAS] = scanAndOperationsRegex[
+          ScanAndOperationMatch.Alias
+        ] as string
       }
     } else if (bitmapRegex) {
       this[NodeProp.NODE_TYPE] = bitmapRegex[BitmapMatch.NodeType]
@@ -187,9 +191,14 @@ export class Node {
     } else if (mysqlFilterRegex) {
       this[NodeProp.NODE_TYPE] = mysqlFilterRegex[MysqlFilterMatch.NodeType]
       this[NodeProp.FILTER] = mysqlFilterRegex[MysqlFilterMatch.Filter]
-    } else if (mysqlIndexLookupRegex) {
+    } else if (mysqlAggregateRegex) {
       this[NodeProp.NODE_TYPE] =
-        mysqlIndexLookupRegex[MysqlIndexMatch.NodeType]
+        mysqlAggregateRegex[MysqlAggregateMatch.NodeType]
+      this[NodeProp.OUTPUT] = [
+        mysqlAggregateRegex[MysqlAggregateMatch.Output] as string,
+      ]
+    } else if (mysqlIndexLookupRegex) {
+      this[NodeProp.NODE_TYPE] = mysqlIndexLookupRegex[MysqlIndexMatch.NodeType]
       this[NodeProp.RELATION_NAME] =
         mysqlIndexLookupRegex[MysqlIndexMatch.RelationName]
       this[NodeProp.INDEX_NAME] =
@@ -206,6 +215,17 @@ export class Node {
       this[NodeProp.INDEX_NAME] =
         mysqlSingleRowIndexLookupRegex[MysqlIndexMatch.IndexName]
       const extra = mysqlSingleRowIndexLookupRegex[MysqlIndexMatch.Extra]
+      if (extra) {
+        this[NodeProp.ATTACHED_CONDITION] = extra.trim()
+      }
+    } else if (mysqlCoveringIndexLookupRegex) {
+      this[NodeProp.NODE_TYPE] =
+        mysqlCoveringIndexLookupRegex[MysqlIndexMatch.NodeType]
+      this[NodeProp.RELATION_NAME] =
+        mysqlCoveringIndexLookupRegex[MysqlIndexMatch.RelationName]
+      this[NodeProp.INDEX_NAME] =
+        mysqlCoveringIndexLookupRegex[MysqlIndexMatch.IndexName]
+      const extra = mysqlCoveringIndexLookupRegex[MysqlIndexMatch.Extra]
       if (extra) {
         this[NodeProp.ATTACHED_CONDITION] = extra.trim()
       }
@@ -278,6 +298,7 @@ export type ViewOptions = {
   showPlanStats: boolean
   highlightType: HighlightType
   diagramWidth: number
+  orientation: Orientation
 }
 
 export type StatsTableItemType = {
