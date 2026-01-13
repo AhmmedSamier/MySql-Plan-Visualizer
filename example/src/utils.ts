@@ -1,14 +1,14 @@
 export function time_ago(time: string | number | Date): string | number | Date {
-  let timestamp: number;
+  let timestamp: number
 
   if (typeof time === "number") {
-    timestamp = time;
+    timestamp = time
   } else if (typeof time === "string") {
-    timestamp = +new Date(time);
+    timestamp = +new Date(time)
   } else if (time instanceof Date) {
-    timestamp = time.getTime();
+    timestamp = time.getTime()
   } else {
-    timestamp = +new Date();
+    timestamp = +new Date()
   }
 
   const time_formats: [number, string, string | number][] = [
@@ -45,7 +45,13 @@ export function time_ago(time: string | number | Date): string | number | Date {
       if (typeof format[2] === "string") {
         return format[list_choice] as string
       } else {
-        return Math.floor(seconds / (format[2] as number)) + " " + format[1] + " " + token
+        return (
+          Math.floor(seconds / (format[2] as number)) +
+          " " +
+          format[1] +
+          " " +
+          token
+        )
       }
     }
   }

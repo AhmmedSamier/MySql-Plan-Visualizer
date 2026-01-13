@@ -1,5 +1,4 @@
-<script lang="ts" setup>
-</script>
+<script lang="ts" setup></script>
 
 <template>
   <div class="container py-4">
@@ -9,7 +8,8 @@
       <code>EXPLAIN FORMAT=JSON</code> or <code>EXPLAIN FORMAT=TREE</code>.
     </p>
     <p>
-      MySql-Plan-Visualizer can also parse text output from `EXPLAIN ANALYZE` (Tree format).
+      MySql-Plan-Visualizer can also parse text output from `EXPLAIN ANALYZE`
+      (Tree format).
     </p>
 
     <h2 class="mt-4">Help improve MySql-Plan-Visualizer</h2>
@@ -17,7 +17,8 @@
 
     <p>
       Report issues or contribute to the code on
-      <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer">Github</a>.
+      <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer">Github</a
+      >.
     </p>
   </div>
 </template>

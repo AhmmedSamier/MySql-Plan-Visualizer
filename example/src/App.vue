@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { ref, computed, provide, reactive, type Component, onMounted, watch, onBeforeUnmount } from "vue"
+import {
+  ref,
+  computed,
+  provide,
+  reactive,
+  type Component,
+  onMounted,
+  watch,
+  onBeforeUnmount,
+} from "vue"
 import AboutView from "./views/AboutView.vue"
 import HomeView from "./views/HomeView.vue"
 import PlanView from "./views/PlanView.vue"
@@ -13,14 +22,18 @@ const routes: Record<string, Component> = {
   "/about": AboutView,
 }
 
-const currentPath = ref(window.location.pathname.replace(import.meta.env.BASE_URL || "/", "/") || "/")
+const currentPath = ref(
+  window.location.pathname.replace(import.meta.env.BASE_URL || "/", "/") || "/",
+)
 provide("currentPath", currentPath)
 
 const currentView = computed(() => {
   if (currentPath.value.startsWith("/plan")) {
     return PlanView
   }
-  const path = currentPath.value.startsWith("/") ? currentPath.value : "/" + currentPath.value
+  const path = currentPath.value.startsWith("/")
+    ? currentPath.value
+    : "/" + currentPath.value
   return routes[path] || HomeView
 })
 
@@ -78,7 +91,7 @@ watch(
     if (window.location.pathname !== url.pathname) {
       window.history.pushState({}, "", url.toString())
     }
-  }
+  },
 )
 
 watch(
@@ -87,7 +100,7 @@ watch(
     if (newId) {
       currentPath.value = `/plan/${newId}`
     }
-  }
+  },
 )
 onBeforeUnmount(() => {
   if (handlePopState) {

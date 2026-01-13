@@ -111,7 +111,11 @@
   .plan {
     background-color: var(--bg-color);
     // Even more subtle dots to not compete with nodes
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-image: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px
+    );
     background-size: 30px 30px;
     background-attachment: local;
   }
@@ -122,94 +126,96 @@
     border-color: var(--bs-border-color) !important;
     color: var(--bs-secondary-color);
     .stat-value {
-        color: var(--bs-emphasis-color);
+      color: var(--bs-emphasis-color);
     }
   }
 
   /* Left diagram view */
-  .diagram, .plan-diagram {
+  .diagram,
+  .plan-diagram {
     background-color: #0f1115;
     color: var(--text-color);
     border-right: 1px solid var(--border-color);
-    
+
     .table-secondary {
-        background-color: #1a1c23;
-        color: var(--text-color);
+      background-color: #1a1c23;
+      color: var(--text-color);
     }
 
     .subplan {
-        color: var(--bs-emphasis-color);
+      color: var(--bs-emphasis-color);
     }
 
     .node-index {
-        color: var(--text-secondary);
+      color: var(--text-secondary);
     }
 
     .progress {
-        background-color: #090a0d !important;
+      background-color: #090a0d !important;
     }
 
     .btn-group {
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        background-color: #0f1115;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: #0f1115;
     }
 
     table {
-        background-color: transparent !important;
-        color: var(--text-color) !important;
-        border-color: var(--border-color);
+      background-color: transparent !important;
+      color: var(--text-color) !important;
+      border-color: var(--border-color);
     }
-    
+
     .table-secondary {
-        background-color: #1a1c23 !important;
-        color: var(--text-color) !important;
-        border-bottom: 2px solid var(--border-color);
+      background-color: #1a1c23 !important;
+      color: var(--text-color) !important;
+      border-bottom: 2px solid var(--border-color);
     }
   }
 
-  .stats, .plan-grid {
+  .stats,
+  .plan-grid {
     table {
-        background-color: transparent !important;
-        color: var(--text-color) !important;
-        border-color: var(--border-color);
+      background-color: transparent !important;
+      color: var(--text-color) !important;
+      border-color: var(--border-color);
     }
   }
 
   .plan-grid {
     background-color: #0f1115;
-    
+
     .node-index {
-        background-color: #1a1c23;
-        color: var(--text-secondary);
+      background-color: #1a1c23;
+      color: var(--text-secondary);
     }
 
     .grid-progress-cell {
-        background-color: transparent;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+      background-color: transparent;
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .node-type {
-        b.bg-light {
-            background-color: #3d4452 !important;
-            color: #fff !important;
-            border-color: #4d5462 !important;
-        }
+      b.bg-light {
+        background-color: #3d4452 !important;
+        color: #fff !important;
+        border-color: #4d5462 !important;
+      }
     }
 
     .tab-content.bg-white {
-        background-color: #1a1c23 !important;
-        border-color: var(--border-color) !important;
+      background-color: #1a1c23 !important;
+      border-color: var(--border-color) !important;
     }
 
     /* Subplan (CTE, Subquery) headers in grid */
     tr td.bg-light {
-        background-color: #1a1c23 !important;
-        color: var(--text-secondary) !important;
+      background-color: #1a1c23 !important;
+      color: var(--text-secondary) !important;
     }
 
     tr.node:hover {
-        background-color: rgba(255, 255, 255, 0.03);
+      background-color: rgba(255, 255, 255, 0.03);
     }
   }
 
@@ -218,10 +224,26 @@
   }
 
   /* Severity colors for dark mode - slightly more muted/glowing */
-  .alert.c-1 { background-color: #2d313d; color: #a0a6b5; border: 1px solid #3d4452; }
-  .alert.c-2 { background-color: #3d3b25; color: #fddb61; border: 1px solid #4d4929; }
-  .alert.c-3 { background-color: #4d2d1a; color: #ffaa66; border: 1px solid #5d3d2a; }
-  .alert.c-4 { background-color: #4d1a1a; color: #ff6666; border: 1px solid #5d2a2a; }
+  .alert.c-1 {
+    background-color: #2d313d;
+    color: #a0a6b5;
+    border: 1px solid #3d4452;
+  }
+  .alert.c-2 {
+    background-color: #3d3b25;
+    color: #fddb61;
+    border: 1px solid #4d4929;
+  }
+  .alert.c-3 {
+    background-color: #4d2d1a;
+    color: #ffaa66;
+    border: 1px solid #5d3d2a;
+  }
+  .alert.c-4 {
+    background-color: #4d1a1a;
+    color: #ff6666;
+    border: 1px solid #5d2a2a;
+  }
 
   .btn-outline-secondary {
     --bs-btn-color: var(--bs-secondary-color);
@@ -231,8 +253,8 @@
     --bs-btn-active-bg: var(--bs-secondary-bg);
     --bs-btn-active-border-color: var(--bs-secondary-color);
     &.active {
-        background-color: #3d4452;
-        color: #fff;
+      background-color: #3d4452;
+      color: #fff;
     }
   }
 
@@ -241,7 +263,7 @@
     border: 1px solid var(--border-color);
     color: #ccc;
     .node-type {
-        background-color: var(--link-color);
+      background-color: var(--link-color);
     }
   }
 
@@ -260,24 +282,33 @@
   /* Premium Node styling */
   .plan-node {
     .plan-node-body {
-        // Lighter and less transparent for better visibility
-        background-color: #2d333b !important;
-        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-        transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+      // Lighter and less transparent for better visibility
+      background-color: #2d333b !important;
+      background-image: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        transparent 100%
+      );
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+      transition:
+        transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
     }
 
     &.selected .plan-node-body {
-        border-color: var(--link-color) !important;
-        box-shadow: 0 0 20px rgba(0, 181, 226, 0.4), 0 8px 32px rgba(0, 0, 0, 0.6) !important;
-        transform: translateY(-2px) scale(1.02);
+      border-color: var(--link-color) !important;
+      box-shadow:
+        0 0 20px rgba(0, 181, 226, 0.4),
+        0 8px 32px rgba(0, 0, 0, 0.6) !important;
+      transform: translateY(-2px) scale(1.02);
     }
 
     &.highlight .plan-node-body {
-        border-color: rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.15) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.15) !important;
     }
   }
 
@@ -285,19 +316,21 @@
   path.edge {
     stroke: rgba(110, 118, 129, 0.4) !important; // Brighter default
     stroke-width: 12px;
-    transition: stroke 0.3s ease, stroke-width 0.3s ease;
-    
+    transition:
+      stroke 0.3s ease,
+      stroke-width 0.3s ease;
+
     &:hover {
-        stroke: rgba(0, 181, 226, 0.6) !important;
-        stroke-width: 14px;
+      stroke: rgba(0, 181, 226, 0.6) !important;
+      stroke-width: 14px;
     }
   }
 
   /* CTE containers in diagram */
   rect.cte-container {
-      fill: rgba(0, 181, 226, 0.05) !important;
-      stroke: rgba(0, 181, 226, 0.2) !important;
-      stroke-dasharray: 5,5;
+    fill: rgba(0, 181, 226, 0.05) !important;
+    stroke: rgba(0, 181, 226, 0.2) !important;
+    stroke-dasharray: 5, 5;
   }
 
   /* Splitpanes splitter */
@@ -306,29 +339,40 @@
     border-left: 1px solid var(--border-color);
     width: 6px;
     position: relative;
-    
+
     &:hover {
-        background-color: #111;
+      background-color: #111;
     }
-    
+
     &::before {
-        content: "";
-        position: absolute;
-        left: 2px;
-        top: 50%;
-        height: 40px;
-        width: 2px;
-        background: #333;
-        transform: translateY(-50%);
-        border-radius: 4px;
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 50%;
+      height: 40px;
+      width: 2px;
+      background: #333;
+      transform: translateY(-50%);
+      border-radius: 4px;
     }
   }
 }
 
 /* Smooth transition for theme switching */
 body {
-    transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
-.plan-node, .plan-container, .navbar, .plan-stats, .card, .btn {
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+.plan-node,
+.plan-container,
+.navbar,
+.plan-stats,
+.card,
+.btn {
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
 }

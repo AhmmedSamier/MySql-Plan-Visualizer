@@ -88,7 +88,7 @@ describe("PlanService MySQL JSON V1", () => {
     // Returns current.
     // Wait, the outer `query_block` cost info is applied to `node` at the end of `parseV1`.
     // So the final root node (the top join) gets the total query cost.
-    expect(plan[NodeProp.TOTAL_COST]).toBe(250.00)
+    expect(plan[NodeProp.TOTAL_COST]).toBe(250.0)
 
     // Verify Structure: Left-Deep Tree
     // Root -> Plans[0] (Join A+B), Plans[1] (Table C)
@@ -96,7 +96,7 @@ describe("PlanService MySQL JSON V1", () => {
     expect(children).toHaveLength(2)
 
     const leftJoin = children[0] // Join (Users + Orders)
-    const tableC = children[1]   // Details
+    const tableC = children[1] // Details
 
     expect(leftJoin[NodeProp.NODE_TYPE]).toBe("Nested Loops")
     expect(tableC[NodeProp.RELATION_NAME]).toBe("details")
@@ -114,7 +114,7 @@ describe("PlanService MySQL JSON V1", () => {
     expect(tableA[NodeProp.PLAN_ROWS]).toBe(1000)
     // Cost calculation: eval + read
     // Users: 50 + 10 = 60
-    expect(tableA[NodeProp.TOTAL_COST]).toBe(60.00)
+    expect(tableA[NodeProp.TOTAL_COST]).toBe(60.0)
 
     expect(tableB[NodeProp.RELATION_NAME]).toBe("orders")
     expect(tableB[NodeProp.NODE_TYPE]).toBe("Index Scan") // ref map
@@ -136,12 +136,12 @@ describe("PlanService MySQL JSON V1", () => {
               rows_examined_per_scan: 500,
               cost_info: {
                 read_cost: "10.00",
-                eval_cost: "5.00"
-              }
-            }
-          }
-        }
-      }
+                eval_cost: "5.00",
+              },
+            },
+          },
+        },
+      },
     })
 
     const r = planService.fromSource(source) as IPlanContent
@@ -156,6 +156,6 @@ describe("PlanService MySQL JSON V1", () => {
     const aggChild = sortChild[NodeProp.PLANS][0]
     expect(aggChild[NodeProp.RELATION_NAME]).toBe("t1")
     expect(aggChild[NodeProp.NODE_TYPE]).toBe("Full Table Scan")
-    expect(aggChild[NodeProp.TOTAL_COST]).toBe(15.00)
+    expect(aggChild[NodeProp.TOTAL_COST]).toBe(15.0)
   })
 })

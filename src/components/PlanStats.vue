@@ -24,15 +24,11 @@ const planningTimeClass = (percent: number) => {
   }
   return false
 }
-
 </script>
 
 <template>
   <Teleport to="#header-stats">
-    <div
-      class="plan-stats d-flex align-items-center"
-      v-if="store.stats"
-    >
+    <div class="plan-stats d-flex align-items-center" v-if="store.stats">
       <div class="d-inline-block px-2 text-nowrap">
         Execution:
         <template v-if="!store.stats.executionTime">

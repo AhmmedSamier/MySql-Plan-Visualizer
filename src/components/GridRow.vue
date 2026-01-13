@@ -3,13 +3,7 @@ import { inject, ref } from "vue"
 import type { ViewOptions } from "@/interfaces"
 import { EstimateDirection, NodeProp } from "@/enums"
 import { ViewOptionsKey } from "@/symbols"
-import {
-  cost,
-  duration,
-  factor,
-  keysToString,
-  sortKeys,
-} from "@/filters"
+import { cost, duration, factor, keysToString, sortKeys } from "@/filters"
 import LevelDivider from "@/components/LevelDivider.vue"
 import GridProgressBar from "@/components/GridProgressBar.vue"
 import WorkersDetail from "@/components/WorkersDetail.vue"
@@ -298,12 +292,7 @@ const showDetails = ref<boolean>(false)
           <template v-if="node[NodeProp.SORT_KEY]">
             <span class="text-secondary">by</span>
             <span
-              v-html="
-                sortKeys(
-                  node[NodeProp.SORT_KEY] as string[],
-                  undefined,
-                )
-              "
+              v-html="sortKeys(node[NodeProp.SORT_KEY] as string[], undefined)"
             ></span>
           </template>
           <template v-if="node[NodeProp.INDEX_NAME]">

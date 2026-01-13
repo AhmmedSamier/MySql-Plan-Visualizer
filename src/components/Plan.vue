@@ -79,7 +79,9 @@ const showSearchInput = ref(false)
 const searchInput = ref("")
 const searchResults = ref<Node[]>([])
 const currentSearchIndex = ref(-1)
-const keyboardShortcutsRef = ref<InstanceType<typeof KeyboardShortcuts> | null>(null)
+const keyboardShortcutsRef = ref<InstanceType<typeof KeyboardShortcuts> | null>(
+  null,
+)
 
 const viewOptions = reactive({
   showHighlightBar: false,
@@ -871,25 +873,35 @@ function handleKeyDown(event: KeyboardEvent) {
                     class="d-flex flex-column flex-grow-1 overflow-hidden plan-diagram"
                   />
                 </Pane>
-                <Pane ref="planEl" class="plan grab-bing position-relative" style="overflow: visible !important;">
+                <Pane
+                  ref="planEl"
+                  class="plan grab-bing position-relative"
+                  style="overflow: visible !important"
+                >
                   <!-- Sidebar Toggle Button -->
                   <button
                     class="btn rounded-circle shadow-sm position-absolute d-flex align-items-center justify-content-center"
-                    :style="{ 
-                      left: viewOptions.showDiagram ? '-15px' : '5px', 
-                      top: '15px', 
-                      width: '30px', 
-                      height: '30px', 
-                      padding: '0', 
-                      zIndex: '9999', 
-                      border: '2px solid white', 
+                    :style="{
+                      left: viewOptions.showDiagram ? '-15px' : '5px',
+                      top: '15px',
+                      width: '30px',
+                      height: '30px',
+                      padding: '0',
+                      zIndex: '9999',
+                      border: '2px solid white',
                       backgroundColor: '#00758f',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
                     }"
                     @click="viewOptions.showDiagram = !viewOptions.showDiagram"
                     :title="viewOptions.showDiagram ? 'Hide Grid' : 'Show Grid'"
                   >
-                    <FontAwesomeIcon :icon="viewOptions.showDiagram ? faChevronLeft : faChevronRight" size="xs" color="white" />
+                    <FontAwesomeIcon
+                      :icon="
+                        viewOptions.showDiagram ? faChevronLeft : faChevronRight
+                      "
+                      size="xs"
+                      color="white"
+                    />
                   </button>
                   <div
                     class="position-absolute m-1 p-1 bottom-0 end-0 rounded bg-white d-flex"
@@ -1273,7 +1285,7 @@ function handleKeyDown(event: KeyboardEvent) {
 .mysql-tabs {
   border: none;
   gap: 0.25rem;
-  
+
   .nav-link {
     color: rgba(255, 255, 255, 0.75);
     border: none !important;
@@ -1282,74 +1294,73 @@ function handleKeyDown(event: KeyboardEvent) {
     transition: all 0.2s ease;
     font-weight: 500;
     font-size: 0.9rem;
-    
+
     &:hover {
       color: white;
       background-color: rgba(255, 255, 255, 0.1);
     }
-    
+
     &.active {
       color: white;
       background-color: rgba(255, 255, 255, 0.15);
       box-shadow: inset 0 -2px 0 white;
       border-radius: 0;
       font-weight: 600;
-      
+
       [data-theme="dark"] & {
         background-color: rgba(255, 255, 255, 0.1);
       }
     }
-    
+
     &.disabled {
       color: rgba(255, 255, 255, 0.3) !important;
       cursor: not-allowed;
     }
   }
 }
-  .mysql-version {
-    a {
-      color: rgba(255, 255, 255, 0.9);
-      transition: color 0.2s ease;
-      
-      &:hover {
-        color: white;
-      }
-    }
-  }
-  
-  .mysql-header-btn {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    font-weight: 500;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.3);
-      color: white;
-      border-color: rgba(255, 255, 255, 0.5);
-      transform: translateY(-1px);
-    }
-  }
-  
-  .mysql-header-btn-link {
-    background-color: transparent;
+.mysql-version {
+  a {
     color: rgba(255, 255, 255, 0.9);
-    border: none;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    
+    transition: color 0.2s ease;
+
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
       color: white;
     }
   }
-  
-  .header-divider {
-    width: 1px;
-    height: 24px;
-    background-color: rgba(255, 255, 255, 0.3);
-    margin: 0 0.25rem;
-  }
+}
 
+.mysql-header-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+  }
+}
+
+.mysql-header-btn-link {
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 0 0.25rem;
+}
 </style>

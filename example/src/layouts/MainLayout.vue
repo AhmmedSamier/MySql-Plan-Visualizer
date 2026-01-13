@@ -17,13 +17,38 @@ const isPlanView = computed(() => currentPath?.value?.startsWith("/plan"))
   <div class="d-flex flex-column vh-100">
     <nav class="navbar mysql-navbar sticky-top">
       <div :class="[isPlanView ? 'container-fluid' : 'container']">
-        <VLink to="/" class="navbar-brand mysql-brand-text d-flex align-items-center">
+        <VLink
+          to="/"
+          class="navbar-brand mysql-brand-text d-flex align-items-center"
+        >
           <span class="me-2" style="font-size: 1.5rem">🐬</span>
-          <span class="d-none d-sm-inline">MySQL <span class="d-none d-lg-inline">Plan Visualizer</span></span>
+          <span class="d-none d-sm-inline"
+            >MySQL <span class="d-none d-lg-inline">Plan Visualizer</span></span
+          >
         </VLink>
-        <div id="header-tabs" class="d-flex align-items-center mx-3 flex-grow-1 overflow-auto" style="scrollbar-width: none;"></div>
-        <div id="header-stats" class="d-none d-xl-flex align-items-center text-white-50 px-2 ms-auto" style="font-size: 0.8rem; border-left: 1px solid rgba(255,255,255,0.2);"></div>
-        <div v-if="props?.title" class="text-center text-white fw-medium text-truncate px-3 d-none d-xxl-block" style="max-width: 400px; position: absolute; left: 50%; transform: translateX(-50%);">
+        <div
+          id="header-tabs"
+          class="d-flex align-items-center mx-3 flex-grow-1 overflow-auto"
+          style="scrollbar-width: none"
+        ></div>
+        <div
+          id="header-stats"
+          class="d-none d-xl-flex align-items-center text-white-50 px-2 ms-auto"
+          style="
+            font-size: 0.8rem;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+          "
+        ></div>
+        <div
+          v-if="props?.title"
+          class="text-center text-white fw-medium text-truncate px-3 d-none d-xxl-block"
+          style="
+            max-width: 400px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+          "
+        >
           {{ props?.title }}
         </div>
         <div class="d-flex gap-2 align-items-center ms-auto">

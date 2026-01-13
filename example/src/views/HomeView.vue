@@ -196,7 +196,11 @@ async function deletePlan(plan: Plan) {
 }
 
 async function clearAllPlans() {
-  if (confirm("Are you sure you want to delete ALL saved plans? This cannot be undone.")) {
+  if (
+    confirm(
+      "Are you sure you want to delete ALL saved plans? This cannot be undone.",
+    )
+  ) {
     await idb.clearPlans()
     loadPlans()
     currentPage.value = 1
@@ -525,7 +529,6 @@ function addMessage(text: string) {
                 style="display: none"
               />
 
-
               <div>
                 <div
                   class="alert alert-success py-1"
@@ -612,7 +615,9 @@ function addMessage(text: string) {
                   Drop your JSON file here
                 </div>
                 <nav class="mt-3">
-                  <ul class="pagination pagination-sm justify-content-center mb-0">
+                  <ul
+                    class="pagination pagination-sm justify-content-center mb-0"
+                  >
                     <li
                       class="page-item"
                       :class="{ disabled: currentPage === 1 }"
@@ -714,7 +719,6 @@ function addMessage(text: string) {
   background-clip: text;
 }
 
-
 @keyframes float {
   0%,
   100% {
@@ -807,9 +811,9 @@ function addMessage(text: string) {
     &:active {
       transform: translateY(-1px) scale(0.98);
     }
-    
+
     &::after {
-      content: '';
+      content: "";
       position: absolute;
       top: -50%;
       left: -50%;
@@ -820,7 +824,7 @@ function addMessage(text: string) {
       transition: all 0.5s ease;
       opacity: 0;
     }
-    
+
     &:hover::after {
       left: 100%;
       opacity: 1;
@@ -854,30 +858,32 @@ function addMessage(text: string) {
     background: #1a1f29;
     border-left-color: #f29111;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    
+
     .text-secondary {
       color: #b0b0b0 !important;
     }
   }
 
-  .mysql-input-card, .mysql-history-card {
+  .mysql-input-card,
+  .mysql-history-card {
     background-color: #1a1f29;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    
+
     .card-body {
       background-color: #1a1f29;
     }
-    
-    textarea, input {
+
+    textarea,
+    input {
       background-color: #0b0e14;
       border-color: #2d333b;
       color: #e1e1e1;
-      
+
       &:focus {
         border-color: #00a4db;
         background-color: #0b0e14;
       }
-      
+
       &::placeholder {
         color: #57606a;
       }
@@ -887,7 +893,7 @@ function addMessage(text: string) {
   .text-secondary {
     color: #909090 !important;
   }
-  
+
   .text-muted {
     color: #606060 !important;
   }
@@ -896,7 +902,7 @@ function addMessage(text: string) {
     background-color: rgba(0, 117, 143, 0.1);
     border-color: #00758f;
     color: #00a4db;
-    
+
     .alert-link {
       color: #00a4db;
       text-decoration: underline;
@@ -907,17 +913,17 @@ function addMessage(text: string) {
     background-color: #1a1f21;
     border-color: #2d333b;
     color: #e1e1e1;
-    
+
     &.active {
       background-color: #0d1117;
       border-color: #00a4db;
     }
-    
+
     &:hover:not(.active) {
       background-color: #21262d;
       color: white;
     }
-    
+
     .text-muted {
       color: #8b949e !important;
     }
@@ -928,12 +934,12 @@ function addMessage(text: string) {
       background-color: #161b22;
       border-color: #30363d;
       color: #58a6ff;
-      
+
       &:hover {
         background-color: #21262d;
       }
     }
-    
+
     .page-item.active .page-link {
       background-color: #1f6feb;
       border-color: #388bfd;

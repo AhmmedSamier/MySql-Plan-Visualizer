@@ -18,8 +18,8 @@ const go = (event: Event) => {
 }
 
 const href = computed(() => {
-  const base = import.meta.env.BASE_URL || '/'
-  const path = props.to.startsWith('/') ? props.to.slice(1) : props.to
+  const base = import.meta.env.BASE_URL || "/"
+  const path = props.to.startsWith("/") ? props.to.slice(1) : props.to
   return base + path
 })
 </script>

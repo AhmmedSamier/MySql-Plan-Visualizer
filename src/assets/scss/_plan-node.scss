@@ -99,7 +99,11 @@ $compact-width: 50px;
 
     .node-type {
       font-weight: 600;
-      background: linear-gradient(135deg, var(--mysql-blue) 0%, var(--mysql-light-blue) 100%);
+      background: linear-gradient(
+        135deg,
+        var(--mysql-blue) 0%,
+        var(--mysql-light-blue) 100%
+      );
       color: #fff;
       padding: 0 $padding-base;
       border-radius: 3px;

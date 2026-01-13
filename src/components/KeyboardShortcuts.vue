@@ -54,11 +54,7 @@ const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
             <tbody>
               <tr v-for="(shortcut, index) in shortcuts" :key="index">
                 <td class="text-end" style="width: 40%">
-                  <kbd
-                    v-for="(key, i) in shortcut.keys"
-                    :key="i"
-                    class="me-1"
-                  >
+                  <kbd v-for="(key, i) in shortcut.keys" :key="i" class="me-1">
                     {{
                       key === "Ctrl" && isMac
                         ? "⌘"
