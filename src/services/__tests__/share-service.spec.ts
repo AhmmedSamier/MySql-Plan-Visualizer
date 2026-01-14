@@ -12,36 +12,76 @@ describe("share-service", () => {
     })
   })
 
-  it("constructs URL with correct base", () => {
-    // Mock window.location
-    // Note: window.location is read-only in some environments, but in JSDOM we can redefine it
+  const setupLocation = (pathname: string) => {
     Object.defineProperty(window, "location", {
       configurable: true,
       enumerable: true,
       value: {
         origin: "http://test.com",
-        pathname: "/current/path", // This should be ignored if BASE_URL is set (usually / in tests)
+        pathname: pathname,
       },
     })
+  }
 
-    const plan: any = ["name", "source", "query"]
+  const plan: any = ["name", "source", "query"]
+
+  it("handles root path", () => {
+    setupLocation("/")
     const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/#plan=")
+  })
 
-    console.log("Generated URL:", url)
+  it("handles subdirectory path", () => {
+    setupLocation("/subdir/")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/subdir/#plan=")
+  })
 
-    expect(url).toContain("http://test.com")
-    expect(url).toContain("#plan=")
+  it("handles subdirectory path without trailing slash", () => {
+    setupLocation("/subdir")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/subdir/#plan=")
+  })
 
-    // Check if it ignores pathname when BASE_URL is present (assuming BASE_URL is /)
-    if (import.meta.env.BASE_URL === "/") {
-      expect(url).not.toContain("/current/path")
-      expect(url).toContain("http://test.com/#plan=")
-    } else if (import.meta.env.BASE_URL) {
-      // If BASE_URL is set to something else in test config
-      expect(url).toContain(import.meta.env.BASE_URL)
-    } else {
-      // Fallback to pathname
-      expect(url).toContain("/current/path")
-    }
+  it("handles index.html path", () => {
+    setupLocation("/dist/index.html")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/dist/index.html#plan=")
+  })
+
+  it("strips /plan route from root", () => {
+    setupLocation("/plan/123")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/#plan=")
+  })
+
+  it("strips /plan route from subdirectory", () => {
+    setupLocation("/subdir/plan/123")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/subdir/#plan=")
+  })
+
+  it("strips /compare route", () => {
+    setupLocation("/subdir/compare/1/2")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/subdir/#plan=")
+  })
+
+  it("strips /about route", () => {
+    setupLocation("/subdir/about")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/subdir/#plan=")
+  })
+
+  it("does NOT strip partial matches like /planning", () => {
+    setupLocation("/planning")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/planning/#plan=")
+  })
+
+  it("does NOT strip partial matches in subdirectory like /subdir/planning", () => {
+    setupLocation("/subdir/planning")
+    const url = compressPlanToUrl(plan)
+    expect(url).toContain("http://test.com/subdir/planning/#plan=")
   })
 })

@@ -4,14 +4,15 @@ import type { Plan } from "@/../example/src/types"
 export function compressPlanToUrl(plan: Plan): string {
   const data = JSON.stringify(plan)
   const compressed = LZString.compressToEncodedURIComponent(data)
-  const base = import.meta.env.BASE_URL ?? window.location.pathname
-  return (
-    window.location.origin +
-    base +
-    (base.endsWith("/") ? "" : "/") +
-    "#plan=" +
-    compressed
+  // Dynamic base derivation:
+  // Remove app-specific route suffixes (/plan..., /compare..., /about) from the current pathname.
+  // This preserves the deployment root (e.g. /subdir/) or file path (e.g. /dist/index.html).
+  const base = window.location.pathname.replace(
+    /\/(?:plan|compare|about)(?:$|\/.*$)/,
+    "",
   )
+  const separator = base.endsWith("/") || base.endsWith(".html") ? "" : "/"
+  return window.location.origin + base + separator + "#plan=" + compressed
 }
 
 export function decompressPlanFromUrl(urlHash: string): Plan | null {
