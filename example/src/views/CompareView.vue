@@ -18,8 +18,8 @@ const compareData = inject<{ plan1: PlanType | null; plan2: PlanType | null }>(
       v-if="compareData?.plan1 && compareData?.plan2"
       class="flex-grow-1 overflow-hidden"
     >
-      <splitpanes class="default-theme">
-        <pane min-size="20">
+      <Splitpanes class="default-theme">
+        <Pane min-size="20">
           <div class="d-flex flex-column h-100 border-end">
             <div
               class="compare-header p-2 bg-secondary text-white small d-flex justify-content-between align-items-center"
@@ -31,8 +31,8 @@ const compareData = inject<{ plan1: PlanType | null; plan2: PlanType | null }>(
               :plan-query="compareData.plan1[2]"
             />
           </div>
-        </pane>
-        <pane min-size="20">
+        </Pane>
+        <Pane min-size="20">
           <div class="d-flex flex-column h-100">
             <div
               class="compare-header p-2 bg-secondary text-white small d-flex justify-content-between align-items-center"
@@ -44,8 +44,8 @@ const compareData = inject<{ plan1: PlanType | null; plan2: PlanType | null }>(
               :plan-query="compareData.plan2[2]"
             />
           </div>
-        </pane>
-      </splitpanes>
+        </Pane>
+      </Splitpanes>
     </div>
     <div v-else class="p-5 text-center">
       <h3>Loading comparison...</h3>

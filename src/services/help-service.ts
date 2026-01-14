@@ -69,7 +69,6 @@ export const NODE_DESCRIPTIONS: INodeDescription = {
   // MySQL specific
   "TABLE SCAN": "MySQL reads all rows from the table.",
   "FULL TABLE SCAN": "MySQL reads all rows from the table.",
-  "INDEX SCAN": "MySQL reads all entries in the index.",
   "FULL INDEX SCAN": "MySQL reads all entries in the index.",
   "INDEX LOOKUP": "MySQL uses an index to find specific rows.",
   "INDEX RANGE SCAN":

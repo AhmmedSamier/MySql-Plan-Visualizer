@@ -31,11 +31,15 @@ const setPlanData = inject("setPlanData") as (
   query: string,
   id?: number,
 ) => void
+const currentPath = inject("currentPath") as Ref<string>
 
 const planInput = ref<string>("")
 const queryInput = ref<string>("")
 const planName = ref<string>("")
-const savedPlans = ref<Plan[]>([])
+
+type SavedPlan = Plan & { id?: number }
+
+const savedPlans = ref<SavedPlan[]>([])
 const pageSize = 11
 const maxVisiblePages = 5
 const currentPage = ref<number>(1)
@@ -44,7 +48,7 @@ const totalPages = computed(() => {
 })
 const hovered = ref<number | null>(null)
 const selectionMode = ref(false)
-const selection = ref<Plan[]>([])
+const selection = ref<SavedPlan[]>([])
 
 const paginatedPlans = computed(() => {
   const start = (currentPage.value - 1) * pageSize
@@ -100,10 +104,10 @@ async function submitPlan() {
   newPlan[0] =
     planName.value ||
     "New Plan - " +
-      new Date().toLocaleString("en-US", {
-        dateStyle: "medium",
-        timeStyle: "medium",
-      })
+    new Date().toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    })
   newPlan[1] = planInput.value
   newPlan[2] = queryInput.value
   newPlan[3] = new Date().toISOString()
@@ -344,11 +348,7 @@ function addMessage(text: string) {
           <i class="fas fa-info-circle me-2"></i>
           This is a serverless application - your plans never leave your
           browser.
-          <a
-            href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer"
-            class="alert-link"
-            >Learn more</a
-          >
+          <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer" class="alert-link">Learn more</a>
         </div>
 
         <!-- Input Form -->
@@ -368,41 +368,24 @@ function addMessage(text: string) {
                 <i class="fas fa-code me-2"></i>Execution Plan
               </span>
               <div class="dropdown ms-auto">
-                <button
-                  class="btn btn-outline-light dropdown-toggle btn-sm"
-                  type="button"
-                  id="dropdownMenuButton"
-                  data-bs-toggle="dropdown"
-                  aria-haspopup="true"
-                  aria-expanded="false"
-                >
+                <button class="btn btn-outline-light dropdown-toggle btn-sm" type="button" id="dropdownMenuButton"
+                  data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <i class="fas fa-file-code me-1"></i>Sample Plans
                 </button>
                 <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                  <a
-                    v-for="(sample, index) in samples"
-                    :key="index"
-                    class="dropdown-item"
-                    v-on:click.prevent="loadPlan(sample)"
-                    href=""
-                  >
+                  <a v-for="(sample, index) in samples" :key="index" class="dropdown-item"
+                    v-on:click.prevent="loadPlan(sample)" href="">
                     {{ sample[0] }}
                   </a>
                 </div>
               </div>
             </div>
             <div class="card-body">
-              <textarea
-                ref="planDropZoneRef"
-                :class="[
-                  'form-control',
-                  isOverPlanDropZone ? 'dropzone-over' : '',
-                ]"
-                id="planInput"
-                rows="6"
-                v-model="planInput"
-                placeholder="Paste your MySQL execution plan here (TREE or JSON format)&#10;Or drop a file..."
-              >
+              <textarea ref="planDropZoneRef" :class="[
+                'form-control',
+                isOverPlanDropZone ? 'dropzone-over' : '',
+              ]" id="planInput" rows="6" v-model="planInput"
+                placeholder="Paste your MySQL execution plan here (TREE or JSON format)&#10;Or drop a file...">
               </textarea>
               <small class="text-muted">
                 <i class="fas fa-info-circle me-1"></i>
@@ -419,17 +402,11 @@ function addMessage(text: string) {
                   <span class="badge bg-secondary ms-2">Optional</span>
                 </div>
                 <div class="card-body">
-                  <textarea
-                    ref="queryDropZoneRef"
-                    :class="[
-                      'form-control',
-                      isOverQueryDropZone ? 'dropzone-over' : '',
-                    ]"
-                    id="queryInput"
-                    rows="4"
-                    v-model="queryInput"
-                    placeholder="Paste your SQL query here (optional)&#10;Or drop a file..."
-                  >
+                  <textarea ref="queryDropZoneRef" :class="[
+                    'form-control',
+                    isOverQueryDropZone ? 'dropzone-over' : '',
+                  ]" id="queryInput" rows="4" v-model="queryInput"
+                    placeholder="Paste your SQL query here (optional)&#10;Or drop a file...">
                   </textarea>
                 </div>
               </div>
@@ -441,13 +418,8 @@ function addMessage(text: string) {
                   <span class="badge bg-secondary ms-2">Optional</span>
                 </div>
                 <div class="card-body">
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="planName"
-                    v-model="planName"
-                    placeholder="Name for this plan"
-                  />
+                  <input type="text" class="form-control" id="planName" v-model="planName"
+                    placeholder="Name for this plan" />
                 </div>
               </div>
             </div>
@@ -455,10 +427,7 @@ function addMessage(text: string) {
 
           <!-- Big Prominent Submit Button -->
           <div class="text-center mt-4">
-            <button
-              type="submit"
-              class="btn btn-lg mysql-submit-btn-premium px-5 py-3"
-            >
+            <button type="submit" class="btn btn-lg mysql-submit-btn-premium px-5 py-3">
               <FontAwesomeIcon :icon="faRocket" class="me-2" />
               <span>Visualize Plan</span>
               <FontAwesomeIcon :icon="faMagic" class="ms-2 opacity-75" />
@@ -473,223 +442,122 @@ function addMessage(text: string) {
               <FontAwesomeIcon :icon="faHistory" class="me-2" />Saved Plans
               <span class="badge bg-light text-dark ms-2">{{
                 savedPlans?.length
-              }}</span>
+                }}</span>
             </h5>
             <div class="ms-auto d-flex gap-2">
-              <button
-                v-if="savedPlans.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="selectionMode = !selectionMode"
-              >
-                <FontAwesomeIcon
-                  :icon="selectionMode ? faTimes : faCheckSquare"
-                  class="me-1"
-                />
+              <button v-if="savedPlans.length > 0" class="btn btn-sm btn-outline-light"
+                @click="selectionMode = !selectionMode">
+                <FontAwesomeIcon :icon="selectionMode ? faTimes : faCheckSquare" class="me-1" />
                 {{ selectionMode ? "Cancel" : "Select" }}
               </button>
-              <button
-                v-if="selectionMode && selection.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="deletePlans()"
-              >
+              <button v-if="selectionMode && selection.length > 0" class="btn btn-sm btn-outline-light"
+                @click="deletePlans()">
                 <FontAwesomeIcon :icon="faTrash" class="me-1" />Delete
               </button>
-              <button
-                v-if="selectionMode && selection.length === 2"
-                class="btn btn-sm btn-outline-light"
-                @click="compareSelectedPlans()"
-              >
+              <button v-if="selectionMode && selection.length === 2" class="btn btn-sm btn-outline-light"
+                @click="compareSelectedPlans()">
                 <FontAwesomeIcon :icon="faColumns" class="me-1" />Compare
               </button>
-              <button
-                v-if="selectionMode && selection.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="exportPlans()"
-              >
+              <button v-if="selectionMode && selection.length > 0" class="btn btn-sm btn-outline-light"
+                @click="exportPlans()">
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export
               </button>
-              <button
-                v-if="!selectionMode && savedPlans.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="exportPlans(savedPlans)"
-              >
+              <button v-if="!selectionMode && savedPlans.length > 0" class="btn btn-sm btn-outline-light"
+                @click="exportPlans(savedPlans)">
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export All
               </button>
-              <button
-                class="btn btn-sm btn-outline-light"
-                @click="triggerImport"
-              >
+              <button class="btn btn-sm btn-outline-light" @click="triggerImport">
                 <FontAwesomeIcon :icon="faUpload" class="me-1" />Import
               </button>
-              <button
-                v-if="savedPlans.length > 0 && !selectionMode"
-                class="btn btn-sm btn-outline-light"
-                @click="clearAllPlans"
-              >
+              <button v-if="savedPlans.length > 0 && !selectionMode" class="btn btn-sm btn-outline-light"
+                @click="clearAllPlans">
                 <FontAwesomeIcon :icon="faTrash" class="me-1" />Clear All
               </button>
             </div>
           </div>
           <div class="card-body">
-            <div
-              class="position-relative"
-              ref="savedPlansDropZoneRef"
-              :class="{ 'dropzone-over': isOverSavedPlansDropZone }"
-            >
-              <input
-                type="file"
-                ref="fileInput"
-                @change="handleImportFile"
-                accept="application/json"
-                style="display: none"
-              />
+            <div class="position-relative" ref="savedPlansDropZoneRef"
+              :class="{ 'dropzone-over': isOverSavedPlansDropZone }">
+              <input type="file" ref="fileInput" @change="handleImportFile" accept="application/json"
+                style="display: none" />
 
               <div>
-                <div
-                  class="alert alert-success py-1"
-                  v-for="message in messages"
-                  :key="message.id"
-                >
+                <div class="alert alert-success py-1" v-for="message in messages" :key="message.id">
                   <span v-html="message.text"></span>
                 </div>
               </div>
 
               <div class="list-group" v-cloak>
-                <a
-                  class="list-group-item list-group-item-action px-2 py-1 flex-column"
-                  :class="{ active: isSelected(plan[3]) }"
-                  v-for="(plan, index) in paginatedPlans"
-                  :key="plan[3]"
-                  href="#"
-                  @click.prevent="openOrSelectPlan(plan)"
-                  @mouseenter="hovered = index"
-                  @mouseleave="hovered = null"
-                >
+                <a class="list-group-item list-group-item-action px-2 py-1 flex-column"
+                  :class="{ active: isSelected(plan[3]) }" v-for="(plan, index) in paginatedPlans" :key="plan[3]"
+                  href="#" @click.prevent="openOrSelectPlan(plan)" @mouseenter="hovered = index"
+                  @mouseleave="hovered = null">
                   <div class="d-flex w-100 align-items-center">
-                    <input
-                      class="form-check-input me-3"
-                      type="checkbox"
-                      v-if="selectionMode"
-                      :checked="isSelected(plan[3])"
-                      @click.stop="togglePlanSelection(plan)"
-                    />
+                    <input class="form-check-input me-3" type="checkbox" v-if="selectionMode"
+                      :checked="isSelected(plan[3])" @click.stop="togglePlanSelection(plan)" />
                     <div>
                       <p class="mb-0">
                         {{ plan[0] }}
                       </p>
-                      <small
-                        :class="{
-                          'text-secondary': !isSelected(plan[3]),
-                        }"
-                      >
+                      <small :class="{
+                        'text-secondary': !isSelected(plan[3]),
+                      }">
                         created
                         <span :title="plan[3]?.toString()">
                           {{ time_ago(plan[3]) }}
                         </span>
                       </small>
                     </div>
-                    <div
-                      class="end-0 text-nowrap position-absolute z-1 p-2"
-                      v-if="hovered === index && !selectionMode"
-                    >
-                      <button
-                        class="btn btn-sm btn-outline-secondary py-0 me-1"
-                        v-tippy="'Export plan'"
-                        v-on:click.stop="exportPlans([plan])"
-                      >
+                    <div class="end-0 text-nowrap position-absolute z-1 p-2" v-if="hovered === index && !selectionMode">
+                      <button class="btn btn-sm btn-outline-secondary py-0 me-1" v-tippy="'Export plan'"
+                        v-on:click.stop="exportPlans([plan])">
                         <FontAwesomeIcon :icon="faUpload"></FontAwesomeIcon>
                       </button>
-                      <button
-                        class="btn btn-sm btn-outline-secondary py-0 me-1"
-                        v-tippy="'Delete plan'"
-                        v-on:click.stop="deletePlan(plan)"
-                      >
+                      <button class="btn btn-sm btn-outline-secondary py-0 me-1" v-tippy="'Delete plan'"
+                        v-on:click.stop="deletePlan(plan)">
                         <FontAwesomeIcon :icon="faTrash"></FontAwesomeIcon>
                       </button>
-                      <button
-                        class="btn btn-sm btn-outline-secondary py-0"
-                        v-tippy="'Edit plan details'"
-                        v-on:click.stop="editPlan(plan)"
-                      >
+                      <button class="btn btn-sm btn-outline-secondary py-0" v-tippy="'Edit plan details'"
+                        v-on:click.stop="editPlan(plan)">
                         <FontAwesomeIcon :icon="faEdit"></FontAwesomeIcon>
                       </button>
                     </div>
                   </div>
                 </a>
-                <div
-                  v-if="savedPlans.length === 0"
-                  class="text-center text-muted py-5"
-                >
-                  <FontAwesomeIcon
-                    :icon="faDownload"
-                    class="mb-2"
-                    size="2x"
-                  ></FontAwesomeIcon>
+                <div v-if="savedPlans.length === 0" class="text-center text-muted py-5">
+                  <FontAwesomeIcon :icon="faDownload" class="mb-2" size="2x"></FontAwesomeIcon>
                   <br />
                   Drop your JSON file here
                 </div>
                 <nav class="mt-3">
-                  <ul
-                    class="pagination pagination-sm justify-content-center mb-0"
-                  >
-                    <li
-                      class="page-item"
-                      :class="{ disabled: currentPage === 1 }"
-                    >
-                      <a
-                        class="page-link"
-                        href="#"
-                        @click="prevPage"
-                        aria-label="Previous"
-                      >
+                  <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                      <a class="page-link" href="#" @click="prevPage" aria-label="Previous">
                         <span aria-hidden="true">&laquo;</span>
                         <span class="sr-only">Previous</span>
                       </a>
                     </li>
-                    <li
-                      class="page-item"
-                      v-if="visiblePages[0] > 1"
-                      @click="goToPage(1)"
-                    >
+                    <li class="page-item" v-if="visiblePages[0] > 1" @click="goToPage(1)">
                       <a class="page-link" href="#">1</a>
                     </li>
                     <li class="page-item" v-if="visiblePages[0] > 2">
                       <a class="page-link"> … </a>
                     </li>
-                    <li
-                      class="page-item"
-                      v-for="page in visiblePages"
-                      :key="page"
-                      @click="goToPage(page)"
-                      :class="{ active: page === currentPage }"
-                    >
+                    <li class="page-item" v-for="page in visiblePages" :key="page" @click="goToPage(page)"
+                      :class="{ active: page === currentPage }">
                       <a class="page-link" href="#">{{ page }}</a>
                     </li>
-                    <li
-                      class="page-item"
-                      v-if="
-                        visiblePages[visiblePages.length - 1] < totalPages - 1
-                      "
-                    >
+                    <li class="page-item" v-if="
+                      visiblePages[visiblePages.length - 1] < totalPages - 1
+                    ">
                       <a class="page-link"> … </a>
                     </li>
-                    <li
-                      class="page-item"
-                      v-if="visiblePages[visiblePages.length - 1] < totalPages"
-                      @click="goToPage(totalPages)"
-                    >
+                    <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages"
+                      @click="goToPage(totalPages)">
                       <a class="page-link" href="#">{{ totalPages }}</a>
                     </li>
-                    <li
-                      class="page-item"
-                      :class="{ disabled: currentPage === totalPages }"
-                    >
-                      <a
-                        class="page-link"
-                        href="#"
-                        @click="nextPage"
-                        aria-labal="Next"
-                      >
+                    <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                      <a class="page-link" href="#" @click="nextPage" aria-labal="Next">
                         <span aria-hidden="true">&raquo;</span>
                         <span class="sr-only">Next</span>
                       </a>
@@ -710,7 +578,7 @@ function addMessage(text: string) {
   box-shadow: 0 0 5px rgba(81, 203, 238, 1);
   background-color: rgba(81, 203, 238, 0.05);
 
-  > * {
+  >* {
     opacity: 50%;
   }
 }
@@ -735,6 +603,7 @@ function addMessage(text: string) {
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0);

@@ -102,8 +102,8 @@ onMounted(async () => {
     const id1 = parseInt(compareMatches[1], 10)
     const id2 = parseInt(compareMatches[2], 10)
     const [p1, p2] = await Promise.all([idb.getPlan(id1), idb.getPlan(id2)])
-    compareData.plan1 = p1
-    compareData.plan2 = p2
+    compareData.plan1 = p1 || null
+    compareData.plan2 = p2 || null
     currentPath.value = `/compare/${id1}/${id2}`
   }
 })
