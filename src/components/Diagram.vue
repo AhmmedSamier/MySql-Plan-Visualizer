@@ -1,13 +1,6 @@
 <script lang="ts" setup>
 import _ from "lodash"
-import {
-  inject,
-  onBeforeMount,
-  provide,
-  reactive,
-  ref,
-  watch,
-} from "vue"
+import { inject, onBeforeMount, provide, reactive, ref, watch } from "vue"
 import { NodeProp, Metric } from "../enums"
 import { scrollChildIntoParentView } from "@/services/help-service"
 import type { Node } from "@/interfaces"
@@ -92,10 +85,7 @@ provide("scrollTo", scrollTo)
       </div>
     </div>
     <div class="overflow-auto flex-grow-1" ref="container">
-      <table
-        class="m-1"
-        :class="{ highlight: !!highlightedNodeId }"
-      >
+      <table class="m-1" :class="{ highlight: !!highlightedNodeId }">
         <tbody v-for="(flat, index) in store.flat" :key="index">
           <tr v-if="index === 0 && store.flat.length > 1">
             <th colspan="3" class="subplan">Main Query Plan</th>

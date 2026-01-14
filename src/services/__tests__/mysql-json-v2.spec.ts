@@ -99,32 +99,32 @@ describe("PlanService MySQL JSON V2", () => {
   test("can parse MySQL JSON V2 plan (pure execution_plan)", () => {
     const planService = new PlanService()
     const source = JSON.stringify({
-       execution_plan: {
-          steps: [
-            {
-               name: "join",
-               cost_info: { query_cost: "50.00" },
-               inputs: [
-                 {
-                   name: "filesort",
-                   cost_info: { query_cost: "20.00" },
-                   inputs: [
-                     {
-                       name: "table_scan",
-                       table_name: "t1",
-                       cost_info: { query_cost: "10.00" }
-                     }
-                   ]
-                 },
-                 {
-                   name: "table_scan",
-                   table_name: "t2",
-                   cost_info: { query_cost: "15.00" }
-                 }
-               ]
-            }
-          ]
-       }
+      execution_plan: {
+        steps: [
+          {
+            name: "join",
+            cost_info: { query_cost: "50.00" },
+            inputs: [
+              {
+                name: "filesort",
+                cost_info: { query_cost: "20.00" },
+                inputs: [
+                  {
+                    name: "table_scan",
+                    table_name: "t1",
+                    cost_info: { query_cost: "10.00" },
+                  },
+                ],
+              },
+              {
+                name: "table_scan",
+                table_name: "t2",
+                cost_info: { query_cost: "15.00" },
+              },
+            ],
+          },
+        ],
+      },
     })
 
     const r = planService.fromSource(source) as IPlanContent
@@ -143,7 +143,7 @@ describe("PlanService MySQL JSON V2", () => {
 
     const joinNode = steps[0]
     expect(joinNode[NodeProp.NODE_TYPE]).toBe("join") // "join" is not in ACCESS_TYPE_MAP, so uses name.
-    expect(joinNode[NodeProp.TOTAL_COST]).toBe(50.00)
+    expect(joinNode[NodeProp.TOTAL_COST]).toBe(50.0)
 
     const joinInputs = joinNode[NodeProp.PLANS]
     expect(joinInputs).toHaveLength(2)

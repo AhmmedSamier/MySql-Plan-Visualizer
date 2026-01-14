@@ -1,15 +1,7 @@
 import _ from "lodash"
 import { MysqlPlanService } from "@/services/mysql-plan-service"
-import {
-  EstimateDirection,
-  NodeProp,
-  WorkerProp,
-} from "@/enums"
-import type {
-  IPlan,
-  IPlanContent,
-  IPlanStats,
-} from "@/interfaces"
+import { EstimateDirection, NodeProp, WorkerProp } from "@/enums"
+import type { IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 import { Node, Worker } from "@/interfaces"
 
 interface NodeElement {
@@ -443,7 +435,8 @@ export class PlanService {
     if (mysqlService.isMySQL(value)) {
       const flat: Node[] = []
       const root = mysqlService.parseMySQL(value, flat)
-      return { Plan: root } as IPlanContent
+      // Return a plan content that preserves top-level metadata
+      return { ...value, Plan: root } as IPlanContent
     }
     if (!value.Plan) {
       throw new Error("Invalid plan")
@@ -530,8 +523,7 @@ export class PlanService {
     // We make the second cost and width optional.
     // Modified to support integer costs and scientific notation in rows/costs
     const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
-    const estimationPattern =
-      `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
+    const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
     const nonCapturingGroupOpen = "(?:"
     const nonCapturingGroupClose = ")"
     const openParenthesisPattern = "\\("

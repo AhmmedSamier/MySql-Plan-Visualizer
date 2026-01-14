@@ -2,19 +2,12 @@
 import _ from "lodash"
 import { computed, onBeforeMount, ref, watch } from "vue"
 import type { Node, Worker, ViewOptions } from "@/interfaces"
-import {
-  NodeProp,
-  EstimateDirection,
-  HighlightType,
-} from "@/enums"
+import { NodeProp, EstimateDirection, HighlightType } from "@/enums"
 import { cost, duration, factor, formatNodeProp, rows } from "@/filters"
 import { numberToColorHsl } from "@/services/color-service"
 import { store } from "@/store"
 
-export default function useNode(
-  node: Node,
-  viewOptions: ViewOptions,
-) {
+export default function useNode(node: Node, viewOptions: ViewOptions) {
   const executionTimePercent = ref<number>(NaN)
   // UI flags
   // calculated properties
@@ -48,9 +41,7 @@ export default function useNode(
           highlightValue.value = null
           break
         }
-        barWidth.value = Math.round(
-          value / store.stats.maxDuration * 100
-        )
+        barWidth.value = Math.round((value / store.stats.maxDuration) * 100)
         highlightValue.value = duration(value)
         break
       case HighlightType.ROWS:
@@ -59,10 +50,7 @@ export default function useNode(
           highlightValue.value = null
           break
         }
-        barWidth.value =
-          Math.round(
-            value / store.stats.maxRows * 100
-          ) || 0
+        barWidth.value = Math.round((value / store.stats.maxRows) * 100) || 0
         highlightValue.value = rows(value)
         break
       case HighlightType.COST:
@@ -71,9 +59,7 @@ export default function useNode(
           highlightValue.value = null
           break
         }
-        barWidth.value = Math.round(
-          value / store.stats.maxCost * 100
-        )
+        barWidth.value = Math.round((value / store.stats.maxCost) * 100)
         highlightValue.value = cost(value)
         break
     }
@@ -96,7 +82,7 @@ export default function useNode(
       nodeName += " " + node[NodeProp.SCAN_DIRECTION]
     }
     if (node[NodeProp.JOIN_TYPE]) {
-      nodeName = nodeName.replace("Join", `${node[NodeProp.JOIN_TYPE]} Join`);
+      nodeName = nodeName.replace("Join", `${node[NodeProp.JOIN_TYPE]} Join`)
     }
     return nodeName
   })

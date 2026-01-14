@@ -12,7 +12,9 @@ import {
 } from "@/symbols"
 import { keysToString, sortKeys } from "@/filters"
 import { HighlightType, NodeProp } from "@/enums"
-import { findNodeBySubplanName } from "@/services/help-service"
+import { findNodeBySubplanName, HelpService } from "@/services/help-service"
+const helpService = new HelpService()
+const getNodeTypeDescription = helpService.getNodeTypeDescription
 import useNode from "@/node"
 import { store } from "@/store"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
@@ -47,16 +49,8 @@ const node = reactive<Node>(props.node)
 const updateNodeSize =
   inject<(node: Node, size: [number, number]) => null>("updateNodeSize")
 
-const {
-  nodeName,
-  barWidth,
-  barColor,
-  highlightValue,
-  isNeverExecuted,
-  workersLaunchedCount,
-  workersPlannedCount,
-  workersPlannedCountReversed,
-} = useNode(node, viewOptions)
+const { nodeName, barWidth, barColor, highlightValue, isNeverExecuted } =
+  useNode(node, viewOptions)
 
 onMounted(async () => {
   updateSize(node)
@@ -115,7 +109,6 @@ function centerCte() {
         'text-start plan-node',
         {
           detailed: showDetails,
-          parallel: workersPlannedCount,
           selected: selectedNodeId == node.nodeId,
           highlight: highlightedNodeId == node.nodeId,
         },
@@ -125,17 +118,6 @@ function centerCte() {
         <b class="subplan-name fst-italic px-1">
           {{ node[NodeProp.SUBPLAN_NAME] }}
         </b>
-      </div>
-      <div class="workers text-secondary py-0 px-1" v-if="workersPlannedCount">
-        <div
-          v-for="index in workersPlannedCountReversed"
-          :key="index"
-          :style="{
-            top: 1 + index * 2 + 'px',
-            left: 1 + (index + 1) * 3 + 'px',
-          }"
-          :class="{ 'border-dashed': index >= workersLaunchedCount }"
-        ></div>
       </div>
       <div
         class="plan-node-body card"
@@ -176,6 +158,18 @@ function centerCte() {
               </a>
             </div>
           </header>
+          <div
+            v-if="
+              showDetails && getNodeTypeDescription(node[NodeProp.NODE_TYPE])
+            "
+            class="node-description mb-2"
+          >
+            <span class="node-type me-1">{{ node[NodeProp.NODE_TYPE] }}</span>
+            <span
+              class="text-muted small"
+              v-html="getNodeTypeDescription(node[NodeProp.NODE_TYPE])"
+            ></span>
+          </div>
           <div class="text-start font-monospace">
             <div
               v-if="

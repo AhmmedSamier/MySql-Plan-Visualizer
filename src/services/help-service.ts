@@ -7,7 +7,22 @@ export class HelpService {
   public nodeId = 0
 
   public getNodeTypeDescription(nodeType: string) {
-    return NODE_DESCRIPTIONS[nodeType.toUpperCase()]
+    if (!nodeType) {
+      return undefined
+    }
+    const upperNodeType = nodeType.toUpperCase()
+    // try exact match first
+    if (NODE_DESCRIPTIONS[upperNodeType]) {
+      return NODE_DESCRIPTIONS[upperNodeType]
+    }
+    // try to find a key that is contained in the node type
+    const key = Object.keys(NODE_DESCRIPTIONS).find((k) =>
+      upperNodeType.includes(k),
+    )
+    if (key) {
+      return NODE_DESCRIPTIONS[key]
+    }
+    return undefined
   }
 
   public getHelpMessage(helpMessage: string) {
@@ -22,6 +37,8 @@ interface INodeDescription {
 export const NODE_DESCRIPTIONS: INodeDescription = {
   LIMIT: "returns a specified number of rows from a record set.",
   SORT: "sorts a record set based on the specified sort key.",
+  "NESTED LOOPS":
+    "joins two tables by taking each row from the first table and searching for matching rows in the second table.",
   "NESTED LOOP": `merges two record sets by looping through every record in the first set and
    trying to find a match in the second set. All matching records are returned.`,
   "MERGE JOIN": `merges two record sets by first sorting them on a <strong>join key</strong>.`,
@@ -49,6 +66,35 @@ export const NODE_DESCRIPTIONS: INodeDescription = {
   MEMOIZE: `is used to cache the results of the inner side of a nested loop. It avoids executing underlying nodes when the results for the current parameters are already in the cache.`,
   GATHER: `reads the results of the parallel workers, in an undefined order.`,
   "GATHER MERGE": `reads the results of the parallel workers, preserving any ordering.`,
+  // MySQL specific
+  "TABLE SCAN": "MySQL reads all rows from the table.",
+  "FULL TABLE SCAN": "MySQL reads all rows from the table.",
+  "FULL INDEX SCAN": "MySQL reads all entries in the index.",
+  "INDEX LOOKUP": "MySQL uses an index to find specific rows.",
+  "INDEX RANGE SCAN":
+    "MySQL retrieves rows within a specific range of values using an index.",
+  "UNIQUE KEY LOOKUP":
+    "MySQL uses a unique index or primary key to find exactly one row.",
+  "CONSTANT LOOKUP":
+    "The table has at most one matching row, which is read at the start of the query.",
+  SYSTEM: "The table has only one row.",
+  "FULL TEXT SCAN": "MySQL performs a full-text search using a FULLTEXT index.",
+  "INDEX MERGE":
+    "MySQL uses multiple indexes to find rows and then merges the results.",
+  "UNIQUE SUBQUERY":
+    "Used for IN subqueries that return only one row from a unique index.",
+  "INDEX SUBQUERY":
+    "Similar to unique_subquery, but it works for non-unique indexes.",
+  DISTINCT: "Removes duplicate rows from the result set.",
+  FILTER:
+    "Evaluates a condition for each row and only keeps those that satisfy it.",
+  MATERIALIZE:
+    "Stores the results of a subquery or temporary table in memory for faster access.",
+  FILESORT:
+    "MySQL performs a sort operation that cannot be done using an index.",
+  "TEMPORARY TABLE":
+    "MySQL creates an internal temporary table to store intermediate results.",
+  RESULT: "The result of the query or a subquery.",
 }
 
 interface IHelpMessage {

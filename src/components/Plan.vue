@@ -29,7 +29,6 @@ import PlanStats from "@/components/PlanStats.vue"
 import Stats from "@/components/Stats.vue"
 import AnimatedEdge from "@/components/AnimatedEdge.vue"
 import KeyboardShortcuts from "@/components/KeyboardShortcuts.vue"
-import ThemeToggle from "@/components/ThemeToggle.vue"
 import { findNodeById } from "@/services/help-service"
 import { HighlightType, NodeProp, Orientation } from "@/enums"
 import { json_, mysql_ } from "@/filters"
@@ -47,7 +46,12 @@ import {
   faCompress,
   faExpand,
   faKeyboard,
+  faShareAlt,
+  faFileImage,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons"
+import * as htmlToImage from "html-to-image"
+import { compressPlanToUrl, copyToClipboard } from "@/services/share-service"
 
 setDefaultProps({ theme: "light" })
 
@@ -75,7 +79,6 @@ const rootNode = computed(() => store.plan && store.plan.content.Plan)
 const selectedNodeId = ref<number>(NaN)
 const selectedNode = ref<Node | undefined>(undefined)
 const highlightedNodeId = ref<number>(NaN)
-const isGridNotNew = localStorage.getItem("gridIsNotNew")
 const ready = ref(false)
 const showSearchInput = ref(false)
 const searchInput = ref("")
@@ -91,6 +94,7 @@ const viewOptions = reactive({
   highlightType: HighlightType.NONE,
   diagramWidth: 20,
   orientation: Orientation.TopToBottom,
+  showDiagram: true,
 })
 
 // Vertical padding between 2 nodes in the tree layout
@@ -754,6 +758,50 @@ function handleKeyDown(event: KeyboardEvent) {
     return
   }
 }
+
+const isShared = ref(false)
+function sharePlan() {
+  const plan: [string, string, string, string] = [
+    store.plan?.name || "Shared Plan",
+    props.planSource,
+    props.planQuery,
+    new Date().toISOString(),
+  ]
+  const url = compressPlanToUrl(plan)
+  copyToClipboard(url).then((success) => {
+    if (success) {
+      isShared.value = true
+      setTimeout(() => (isShared.value = false), 2000)
+    }
+  })
+}
+
+const isExporting = ref(false)
+function exportPng() {
+  if (!rootEl.value) return
+  isExporting.value = true
+  // Hide some elements before capture if needed
+  htmlToImage
+    .toPng(rootEl.value, {
+      backgroundColor: "#f8f9fa",
+      filter: (node) => {
+        // Exclude the toolbar itself if we want a clean capture
+        return !(node instanceof HTMLElement && node.id === "header-tools")
+      },
+    })
+    .then((dataUrl) => {
+      const link = document.createElement("a")
+      link.download = `mysql-plan-${new Date().getTime()}.png`
+      link.href = dataUrl
+      link.click()
+    })
+    .catch((error) => {
+      console.error("Oops, something went wrong!", error)
+    })
+    .finally(() => {
+      isExporting.value = false
+    })
+}
 </script>
 
 <template>
@@ -797,8 +845,8 @@ function handleKeyDown(event: KeyboardEvent) {
     v-else
     ref="rootEl"
   >
-    <div class="d-flex align-items-center border-bottom mysql-header py-2">
-      <ul class="nav nav-tabs border-0 flex-grow-1">
+    <Teleport to="#header-tabs">
+      <ul class="nav nav-tabs mysql-tabs flex-nowrap border-0">
         <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
@@ -815,19 +863,13 @@ function handleKeyDown(event: KeyboardEvent) {
             >Grid</a
           >
         </li>
-        <li class="nav-item p-1">
+        <li class="nav-item p-1" v-if="store.plan?.content.Diagram">
           <a
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'diagram' }"
             href="#diagram"
+            >Diagram</a
           >
-            Diagram
-            <span
-              v-if="!isGridNotNew"
-              class="badge rounded-pill text-bg-warning"
-              >New</span
-            >
-          </a>
         </li>
         <li class="nav-item p-1">
           <a
@@ -840,7 +882,7 @@ function handleKeyDown(event: KeyboardEvent) {
         <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
-            :class="{ active: activeTab === 'query', disabled: !store.query }"
+            :class="{ active: activeTab === 'query' }"
             href="#query"
             >Query</a
           >
@@ -854,13 +896,28 @@ function handleKeyDown(event: KeyboardEvent) {
           >
         </li>
       </ul>
-      <div class="ms-auto me-3 d-flex align-items-center gap-2">
-        <a href="./" class="btn btn-sm mysql-header-btn">
-          <i class="fas fa-plus-circle me-1"></i>New Plan
-        </a>
-        <a href="/about" class="btn btn-sm mysql-header-btn-link">About</a>
-        <ThemeToggle />
-      </div>
+    </Teleport>
+    <div id="header-tools" class="d-flex align-items-center me-2 gap-2">
+      <button
+        class="btn btn-sm"
+        :class="isShared ? 'btn-success' : 'btn-outline-primary'"
+        @click="sharePlan"
+        title="Copy permalink to clipboard"
+        style="white-space: nowrap"
+      >
+        <FontAwesomeIcon :icon="isShared ? faCheck : faShareAlt" class="me-1" />
+        {{ isShared ? "Copied!" : "Share" }}
+      </button>
+      <button
+        class="btn btn-sm btn-outline-primary"
+        @click="exportPng"
+        :disabled="isExporting"
+        title="Export as PNG"
+        style="white-space: nowrap"
+      >
+        <FontAwesomeIcon :icon="faFileImage" class="me-1" :spin="isExporting" />
+        {{ isExporting ? "Exporting..." : "Export PNG" }}
+      </button>
     </div>
     <div class="tab-content flex-grow-1 d-flex overflow-hidden">
       <div
@@ -879,14 +936,43 @@ function handleKeyDown(event: KeyboardEvent) {
                 <Pane
                   :size="viewOptions.diagramWidth"
                   class="d-flex flex-column"
-                  v-if="store.plan"
+                  v-if="store.plan && viewOptions.showDiagram"
                 >
                   <Diagram
                     ref="diagram"
                     class="d-flex flex-column flex-grow-1 overflow-hidden plan-diagram"
                   />
                 </Pane>
-                <Pane ref="planEl" class="plan grab-bing position-relative">
+                <Pane
+                  ref="planEl"
+                  class="plan grab-bing position-relative"
+                  style="overflow: visible !important"
+                >
+                  <!-- Sidebar Toggle Button -->
+                  <button
+                    class="btn rounded-circle shadow-sm position-absolute d-flex align-items-center justify-content-center"
+                    :style="{
+                      left: viewOptions.showDiagram ? '-15px' : '5px',
+                      top: '15px',
+                      width: '30px',
+                      height: '30px',
+                      padding: '0',
+                      zIndex: '9999',
+                      border: '2px solid white',
+                      backgroundColor: '#00758f',
+                      transition: 'all 0.2s ease',
+                    }"
+                    @click="viewOptions.showDiagram = !viewOptions.showDiagram"
+                    :title="viewOptions.showDiagram ? 'Hide Grid' : 'Show Grid'"
+                  >
+                    <FontAwesomeIcon
+                      :icon="
+                        viewOptions.showDiagram ? faChevronLeft : faChevronRight
+                      "
+                      size="xs"
+                      color="white"
+                    />
+                  </button>
                   <div
                     class="position-absolute m-1 p-1 bottom-0 end-0 rounded bg-white d-flex"
                     v-if="store.plan"
@@ -1266,118 +1352,86 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 // MySQL Header Styling
-.mysql-header {
-  background: linear-gradient(
-    135deg,
-    var(--mysql-blue) 0%,
-    darken(#00758f, 8%) 100%
-  );
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.mysql-tabs {
+  border: none;
+  gap: 0.25rem;
 
-  [data-theme="dark"] & {
-    background: linear-gradient(
-      135deg,
-      darken(#00758f, 15%) 0%,
-      darken(#00758f, 25%) 100%
-    );
-  }
-}
+  .nav-link {
+    color: rgba(255, 255, 255, 0.75);
+    border: none !important;
+    border-radius: 4px;
+    padding: 0.25rem 0.75rem !important;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 0.9rem;
 
-.mysql-brand {
-  .mysql-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    white-space: nowrap;
-
-    .mysql-icon {
-      font-size: 1.5rem;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    &:hover {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.1);
     }
-  }
-}
 
-.mysql-header {
-  .nav-tabs {
-    border: none;
+    &.active {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.15);
+      box-shadow: inset 0 -2px 0 white;
+      border-radius: 0;
+      font-weight: 600;
 
-    .nav-link {
-      color: rgba(255, 255, 255, 0.85);
-      border: none;
-      border-radius: 6px 6px 0 0;
-      transition: all 0.2s ease;
-      font-weight: 500;
-
-      &:hover {
-        color: white;
+      [data-theme="dark"] & {
         background-color: rgba(255, 255, 255, 0.1);
       }
+    }
 
-      &.active {
-        color: var(--mysql-blue);
-        background-color: white;
-        font-weight: 600;
-
-        [data-theme="dark"] & {
-          background-color: var(--bg-color);
-          color: var(--mysql-light-blue);
-        }
-      }
-
-      &.disabled {
-        color: rgba(255, 255, 255, 0.4);
-        cursor: not-allowed;
-      }
+    &.disabled {
+      color: rgba(255, 255, 255, 0.3) !important;
+      cursor: not-allowed;
     }
   }
+}
 
-  .mysql-version {
-    a {
-      color: rgba(255, 255, 255, 0.9);
-      transition: color 0.2s ease;
-
-      &:hover {
-        color: white;
-      }
-    }
-  }
-
-  .mysql-header-btn {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    font-weight: 500;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.3);
-      color: white;
-      border-color: rgba(255, 255, 255, 0.5);
-      transform: translateY(-1px);
-    }
-  }
-
-  .mysql-header-btn-link {
-    background-color: transparent;
+.mysql-version {
+  a {
     color: rgba(255, 255, 255, 0.9);
-    border: none;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease;
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
       color: white;
     }
   }
+}
 
-  .header-divider {
-    width: 1px;
-    height: 24px;
+.mysql-header-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
     background-color: rgba(255, 255, 255, 0.3);
-    margin: 0 0.25rem;
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
   }
+}
+
+.mysql-header-btn-link {
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 0 0.25rem;
 }
 </style>

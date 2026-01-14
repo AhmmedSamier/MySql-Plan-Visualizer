@@ -1,14 +1,9 @@
 import _ from "lodash"
-import { reactive } from 'vue'
+import { reactive } from "vue"
 import { PlanService } from "@/services/plan-service"
-import type {
-  Node,
-  IPlan,
-  IPlanContent,
-  IPlanStats,
-} from "@/interfaces"
+import type { Node, IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 
-type FlattenedNodeMap = Map<number, FlattenedPlanNode>;
+type FlattenedNodeMap = Map<number, FlattenedPlanNode>
 
 interface Store {
   plan?: IPlan
@@ -20,22 +15,24 @@ interface Store {
 }
 
 export interface FlattenedPlanNode {
-  node: Node;
+  node: Node
 
   /** Ancestry path */
-  path: number[];
+  path: number[]
 
   /** Branch continuation flags per depth */
-  branches: boolean[];
+  branches: boolean[]
 
-  level: number;
+  level: number
 }
 
 const planService = new PlanService()
 
-
-function flattenPlan(root: Node, nodeById: FlattenedNodeMap): FlattenedPlanNode[] {
-  const result: FlattenedPlanNode[] = [];
+function flattenPlan(
+  root: Node,
+  nodeById: FlattenedNodeMap,
+): FlattenedPlanNode[] {
+  const result: FlattenedPlanNode[] = []
 
   const visit = (
     node: Node,
@@ -43,7 +40,7 @@ function flattenPlan(root: Node, nodeById: FlattenedNodeMap): FlattenedPlanNode[
     branches: boolean[],
     level: number,
   ): void => {
-    const currentPath = [...path, node.nodeId];
+    const currentPath = [...path, node.nodeId]
 
     const flattenedNode = {
       node,
@@ -51,40 +48,39 @@ function flattenPlan(root: Node, nodeById: FlattenedNodeMap): FlattenedPlanNode[
       branches,
       level,
     }
-    result.push(flattenedNode);
+    result.push(flattenedNode)
     nodeById.set(node.nodeId, flattenedNode)
 
-    const children = node.Plans ?? [];
+    const children = node.Plans ?? []
     children.forEach((child, index) => {
-      const childIsLast = index === children.length - 1;
+      const childIsLast = index === children.length - 1
 
       visit(
         child,
         currentPath,
         [
           ...branches,
-          !childIsLast // ← pipe continues if not last
+          !childIsLast, // ← pipe continues if not last
         ],
-        level + 1
-      );
-    });
-  };
+        level + 1,
+      )
+    })
+  }
 
-  visit(root, [], [], 0);
-  return result;
+  visit(root, [], [], 0)
+  return result
 }
 
 function initStats(): IPlanStats {
   return {
     executionTime: NaN,
-    planningTime:  NaN,
-    maxRows:  NaN,
-    maxCost:  NaN,
-    maxDuration:  NaN,
-    maxEstimateFactor:  NaN,
+    planningTime: NaN,
+    maxRows: NaN,
+    maxCost: NaN,
+    maxDuration: NaN,
+    maxEstimateFactor: NaN,
   }
 }
-
 
 export const store = reactive<Store>({
   flat: [],
@@ -93,7 +89,7 @@ export const store = reactive<Store>({
   parse(source: string, query: string) {
     store.stats = initStats()
     store.flat = []
-    const nodeById = new Map();
+    const nodeById = new Map()
     let planJson: IPlanContent
     try {
       planJson = planService.fromSource(source) as IPlanContent
@@ -106,21 +102,28 @@ export const store = reactive<Store>({
 
     const content = store.plan.content
     store.stats = {
-      executionTime: (content["Execution Time"] as number) || (content["Total Runtime"] as number) || NaN,
-      planningTime:  (content["Planning Time"] as number) || NaN,
-      maxRows:  content.maxRows || NaN,
-      maxCost:  content.maxCost || NaN,
-      maxDuration:  content.maxDuration || NaN,
-      maxEstimateFactor:  content.maxEstimateFactor || NaN,
+      executionTime:
+        (content["Execution Time"] as number) ||
+        (content["Total Runtime"] as number) ||
+        (content["execution_time"] as number) ||
+        NaN,
+      planningTime:
+        (content["Planning Time"] as number) ||
+        (content["planning_time"] as number) ||
+        NaN,
+      maxRows: content.maxRows || NaN,
+      maxCost: content.maxCost || NaN,
+      maxDuration: content.maxDuration || NaN,
+      maxEstimateFactor: content.maxEstimateFactor || NaN,
     }
 
     const flatPlans = []
     flatPlans.push(flattenPlan(store.plan.content.Plan, nodeById))
     _.each(store.plan.ctes, (cte) => {
-        flatPlans.push(flattenPlan(cte, nodeById))
+      flatPlans.push(flattenPlan(cte, nodeById))
     })
     store.flat = flatPlans
 
     store.nodeById = nodeById
-  }
+  },
 })

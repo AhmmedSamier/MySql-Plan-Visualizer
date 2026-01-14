@@ -187,9 +187,15 @@ export class MysqlPlanService {
     }
 
     // Map rows
-    if (data.rows_examined_per_scan || data.rows_produced_per_join || data.estimated_rows) {
+    if (
+      data.rows_examined_per_scan ||
+      data.rows_produced_per_join ||
+      data.estimated_rows
+    ) {
       node[NodeProp.PLAN_ROWS] =
-        data.rows_examined_per_scan || data.rows_produced_per_join || data.estimated_rows
+        data.rows_examined_per_scan ||
+        data.rows_produced_per_join ||
+        data.estimated_rows
     }
 
     if (data.actual_rows) {

@@ -1,22 +1,25 @@
 <script lang="ts" setup>
 import { computed, inject, useTemplateRef, ref, onMounted, watch } from "vue"
-import type { Ref } from "vue"
+import { type Ref } from "vue"
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
-import { Tippy } from "vue-tippy"
 import { directive as vTippy } from "vue-tippy"
 import { useDropZone } from "@vueuse/core"
 
 import { time_ago } from "../utils"
-import MainLayout from "../layouts/MainLayout.vue"
 import type { Plan, Sample } from "../types"
 import VersionCheck from "../components/VersionCheck.vue"
 import {
   faEdit,
-  faInfoCircle,
   faTrash,
   faDownload,
   faUpload,
+  faRocket,
+  faMagic,
+  faHistory,
+  faCheckSquare,
+  faTimes,
+  faColumns,
 } from "@fortawesome/free-solid-svg-icons"
 import samples from "../samples.ts"
 
@@ -28,11 +31,15 @@ const setPlanData = inject("setPlanData") as (
   query: string,
   id?: number,
 ) => void
+const currentPath = inject("currentPath") as Ref<string>
 
 const planInput = ref<string>("")
 const queryInput = ref<string>("")
 const planName = ref<string>("")
-const savedPlans = ref<Plan[]>([])
+
+type SavedPlan = Plan & { id?: number }
+
+const savedPlans = ref<SavedPlan[]>([])
 const pageSize = 11
 const maxVisiblePages = 5
 const currentPage = ref<number>(1)
@@ -41,7 +48,7 @@ const totalPages = computed(() => {
 })
 const hovered = ref<number | null>(null)
 const selectionMode = ref(false)
-const selection = ref<Plan[]>([])
+const selection = ref<SavedPlan[]>([])
 
 const paginatedPlans = computed(() => {
   const start = (currentPage.value - 1) * pageSize
@@ -97,10 +104,10 @@ async function submitPlan() {
   newPlan[0] =
     planName.value ||
     "New Plan - " +
-      new Date().toLocaleString("en-US", {
-        dateStyle: "medium",
-        timeStyle: "medium",
-      })
+    new Date().toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    })
   newPlan[1] = planInput.value
   newPlan[2] = queryInput.value
   newPlan[3] = new Date().toISOString()
@@ -193,7 +200,27 @@ async function deletePlan(plan: Plan) {
   loadPlans()
 }
 
-function onDrop(files: File[] | null, input: Ref) {
+async function clearAllPlans() {
+  if (
+    confirm(
+      "Are you sure you want to delete ALL saved plans? This cannot be undone.",
+    )
+  ) {
+    await idb.clearPlans()
+    loadPlans()
+    currentPage.value = 1
+    addMessage("All plans cleared")
+  }
+}
+
+function compareSelectedPlans() {
+  if (selection.value.length !== 2) return
+  const id1 = selection.value[0].id
+  const id2 = selection.value[1].id
+  currentPath.value = `/compare/${id1}/${id2}`
+}
+
+function onDrop(files: File[] | null, input: Ref<string>) {
   if (files) {
     const reader = new FileReader()
     reader.onload = () => {
@@ -296,29 +323,21 @@ function addMessage(text: string) {
 </script>
 
 <template>
-  <MainLayout>
-    <div class="mysql-home-page">
-      <!-- Hero Section -->
-      <div class="mysql-hero">
-        <div class="container">
-          <div class="hero-content text-center">
+  <div class="mysql-home-page">
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <!-- Hero Section -->
+          <div class="text-center mb-5">
+            <!-- Dolphin Emoji centered -->
             <div class="hero-icon mb-3">🐬</div>
-            <h1 class="hero-title">MySQL Plan Visualizer</h1>
-            <p class="hero-subtitle">
-              Analyze and optimize your MySQL query execution plans with
-              interactive visualizations
+            <h1 class="display-4 fw-bold mb-3 text-gradient">
+              MySQL Plan Visualizer
+            </h1>
+            <p class="lead text-secondary mx-auto" style="max-width: 600px">
+              Transform your nested MySQL execution plans into intuitive,
+              beautiful, and actionable visualizations. Fix slow queries faster.
             </p>
-            <div class="hero-features mt-4">
-              <span class="feature-badge">
-                <i class="fas fa-chart-line"></i> Performance Analysis
-              </span>
-              <span class="feature-badge">
-                <i class="fas fa-project-diagram"></i> Interactive Diagrams
-              </span>
-              <span class="feature-badge">
-                <i class="fas fa-database"></i> MySQL Optimized
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -329,11 +348,7 @@ function addMessage(text: string) {
           <i class="fas fa-info-circle me-2"></i>
           This is a serverless application - your plans never leave your
           browser.
-          <a
-            href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer"
-            class="alert-link"
-            >Learn more</a
-          >
+          <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer" class="alert-link">Learn more</a>
         </div>
 
         <!-- Input Form -->
@@ -353,41 +368,24 @@ function addMessage(text: string) {
                 <i class="fas fa-code me-2"></i>Execution Plan
               </span>
               <div class="dropdown ms-auto">
-                <button
-                  class="btn btn-outline-light dropdown-toggle btn-sm"
-                  type="button"
-                  id="dropdownMenuButton"
-                  data-bs-toggle="dropdown"
-                  aria-haspopup="true"
-                  aria-expanded="false"
-                >
+                <button class="btn btn-outline-light dropdown-toggle btn-sm" type="button" id="dropdownMenuButton"
+                  data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <i class="fas fa-file-code me-1"></i>Sample Plans
                 </button>
                 <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                  <a
-                    v-for="(sample, index) in samples"
-                    :key="index"
-                    class="dropdown-item"
-                    v-on:click.prevent="loadPlan(sample)"
-                    href=""
-                  >
+                  <a v-for="(sample, index) in samples" :key="index" class="dropdown-item"
+                    v-on:click.prevent="loadPlan(sample)" href="">
                     {{ sample[0] }}
                   </a>
                 </div>
               </div>
             </div>
             <div class="card-body">
-              <textarea
-                ref="planDropZoneRef"
-                :class="[
-                  'form-control',
-                  isOverPlanDropZone ? 'dropzone-over' : '',
-                ]"
-                id="planInput"
-                rows="6"
-                v-model="planInput"
-                placeholder="Paste your MySQL execution plan here (TREE or JSON format)&#10;Or drop a file..."
-              >
+              <textarea ref="planDropZoneRef" :class="[
+                'form-control',
+                isOverPlanDropZone ? 'dropzone-over' : '',
+              ]" id="planInput" rows="6" v-model="planInput"
+                placeholder="Paste your MySQL execution plan here (TREE or JSON format)&#10;Or drop a file...">
               </textarea>
               <small class="text-muted">
                 <i class="fas fa-info-circle me-1"></i>
@@ -404,17 +402,11 @@ function addMessage(text: string) {
                   <span class="badge bg-secondary ms-2">Optional</span>
                 </div>
                 <div class="card-body">
-                  <textarea
-                    ref="queryDropZoneRef"
-                    :class="[
-                      'form-control',
-                      isOverQueryDropZone ? 'dropzone-over' : '',
-                    ]"
-                    id="queryInput"
-                    rows="4"
-                    v-model="queryInput"
-                    placeholder="Paste your SQL query here (optional)&#10;Or drop a file..."
-                  >
+                  <textarea ref="queryDropZoneRef" :class="[
+                    'form-control',
+                    isOverQueryDropZone ? 'dropzone-over' : '',
+                  ]" id="queryInput" rows="4" v-model="queryInput"
+                    placeholder="Paste your SQL query here (optional)&#10;Or drop a file...">
                   </textarea>
                 </div>
               </div>
@@ -426,24 +418,20 @@ function addMessage(text: string) {
                   <span class="badge bg-secondary ms-2">Optional</span>
                 </div>
                 <div class="card-body">
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="planName"
-                    v-model="planName"
-                    placeholder="Name for this plan"
-                  />
-                  <div class="mt-3">
-                    <button
-                      type="submit"
-                      class="btn btn-primary w-100 mysql-submit-btn"
-                    >
-                      <i class="fas fa-chart-line me-2"></i>Visualize Plan
-                    </button>
-                  </div>
+                  <input type="text" class="form-control" id="planName" v-model="planName"
+                    placeholder="Name for this plan" />
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Big Prominent Submit Button -->
+          <div class="text-center mt-4">
+            <button type="submit" class="btn btn-lg mysql-submit-btn-premium px-5 py-3">
+              <FontAwesomeIcon :icon="faRocket" class="me-2" />
+              <span>Visualize Plan</span>
+              <FontAwesomeIcon :icon="faMagic" class="ms-2 opacity-75" />
+            </button>
           </div>
         </form>
 
@@ -451,305 +439,176 @@ function addMessage(text: string) {
         <div class="card mysql-history-card mt-5 mb-5">
           <div class="card-header d-flex align-items-center">
             <h5 class="mb-0">
-              <i class="fas fa-history me-2"></i>Saved Plans
+              <FontAwesomeIcon :icon="faHistory" class="me-2" />Saved Plans
               <span class="badge bg-light text-dark ms-2">{{
                 savedPlans?.length
-              }}</span>
+                }}</span>
             </h5>
             <div class="ms-auto d-flex gap-2">
-              <button
-                v-if="savedPlans.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="selectionMode = !selectionMode"
-              >
-                <i
-                  :class="
-                    selectionMode ? 'fas fa-times' : 'fas fa-check-square'
-                  "
-                  class="me-1"
-                ></i>
+              <button v-if="savedPlans.length > 0" class="btn btn-sm btn-outline-light"
+                @click="selectionMode = !selectionMode">
+                <FontAwesomeIcon :icon="selectionMode ? faTimes : faCheckSquare" class="me-1" />
                 {{ selectionMode ? "Cancel" : "Select" }}
               </button>
-              <button
-                v-if="selectionMode && selection.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="deletePlans()"
-              >
+              <button v-if="selectionMode && selection.length > 0" class="btn btn-sm btn-outline-light"
+                @click="deletePlans()">
                 <FontAwesomeIcon :icon="faTrash" class="me-1" />Delete
               </button>
-              <button
-                v-if="selectionMode && selection.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="exportPlans()"
-              >
+              <button v-if="selectionMode && selection.length === 2" class="btn btn-sm btn-outline-light"
+                @click="compareSelectedPlans()">
+                <FontAwesomeIcon :icon="faColumns" class="me-1" />Compare
+              </button>
+              <button v-if="selectionMode && selection.length > 0" class="btn btn-sm btn-outline-light"
+                @click="exportPlans()">
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export
               </button>
-              <button
-                v-if="!selectionMode && savedPlans.length > 0"
-                class="btn btn-sm btn-outline-light"
-                @click="exportPlans(savedPlans)"
-              >
+              <button v-if="!selectionMode && savedPlans.length > 0" class="btn btn-sm btn-outline-light"
+                @click="exportPlans(savedPlans)">
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export All
               </button>
-              <button
-                class="btn btn-sm btn-outline-light"
-                @click="triggerImport"
-              >
+              <button class="btn btn-sm btn-outline-light" @click="triggerImport">
                 <FontAwesomeIcon :icon="faUpload" class="me-1" />Import
+              </button>
+              <button v-if="savedPlans.length > 0 && !selectionMode" class="btn btn-sm btn-outline-light"
+                @click="clearAllPlans">
+                <FontAwesomeIcon :icon="faTrash" class="me-1" />Clear All
               </button>
             </div>
           </div>
           <div class="card-body">
-            <div
-              class="position-relative"
-              ref="savedPlansDropZoneRef"
-              :class="{ 'dropzone-over': isOverSavedPlansDropZone }"
-            >
-              <input
-                type="file"
-                ref="fileInput"
-                @change="handleImportFile"
-                accept="application/json"
-                style="display: none"
-              />
+            <div class="position-relative" ref="savedPlansDropZoneRef"
+              :class="{ 'dropzone-over': isOverSavedPlansDropZone }">
+              <input type="file" ref="fileInput" @change="handleImportFile" accept="application/json"
+                style="display: none" />
 
-              <nav>
-                <ul class="pagination pagination-sm justify-content-end mb-2">
-                  <li
-                    class="page-item"
-                    :class="{ disabled: currentPage === 1 }"
-                  >
-                    <a
-                      class="page-link"
-                      href="#"
-                      @click="prevPage"
-                      aria-label="Previous"
-                    >
-                      <span aria-hidden="true">&laquo;</span>
-                      <span class="sr-only">Previous</span>
-                    </a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-if="visiblePages[0] > 1"
-                    @click="goToPage(1)"
-                  >
-                    <a class="page-link" href="#">1</a>
-                  </li>
-                  <li class="page-item" v-if="visiblePages[0] > 2">
-                    <a class="page-link"> … </a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-for="page in visiblePages"
-                    :key="page"
-                    @click="goToPage(page)"
-                    :class="{ active: page === currentPage }"
-                  >
-                    <a class="page-link" href="#">{{ page }}</a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-if="
-                      visiblePages[visiblePages.length - 1] < totalPages - 1
-                    "
-                  >
-                    <a class="page-link"> … </a>
-                  </li>
-                  <li
-                    class="page-item"
-                    v-if="visiblePages[visiblePages.length - 1] < totalPages"
-                    @click="goToPage(totalPages)"
-                  >
-                    <a class="page-link" href="#">{{ totalPages }}</a>
-                  </li>
-                  <li
-                    class="page-item"
-                    :class="{ disabled: currentPage === totalPages }"
-                  >
-                    <a
-                      class="page-link"
-                      href="#"
-                      @click="nextPage"
-                      aria-labal="Next"
-                    >
-                      <span aria-hidden="true">&raquo;</span>
-                      <span class="sr-only">Next</span>
-                    </a>
-                  </li>
-                </ul>
-              </nav>
               <div>
-                <div
-                  class="alert alert-success py-1"
-                  v-for="message in messages"
-                  :key="message.id"
-                >
+                <div class="alert alert-success py-1" v-for="message in messages" :key="message.id">
                   <span v-html="message.text"></span>
                 </div>
               </div>
 
               <div class="list-group" v-cloak>
-                <a
-                  class="list-group-item list-group-item-action px-2 py-1 flex-column"
-                  :class="{ active: isSelected(plan[3]) }"
-                  v-for="(plan, index) in paginatedPlans"
-                  :key="plan[3]"
-                  href="#"
-                  @click.prevent="openOrSelectPlan(plan)"
-                  @mouseenter="hovered = index"
-                  @mouseleave="hovered = null"
-                >
+                <a class="list-group-item list-group-item-action px-2 py-1 flex-column"
+                  :class="{ active: isSelected(plan[3]) }" v-for="(plan, index) in paginatedPlans" :key="plan[3]"
+                  href="#" @click.prevent="openOrSelectPlan(plan)" @mouseenter="hovered = index"
+                  @mouseleave="hovered = null">
                   <div class="d-flex w-100 align-items-center">
-                    <input
-                      class="form-check-input me-3"
-                      type="checkbox"
-                      v-if="selectionMode"
-                      :value="plan"
-                      v-model="selection"
-                      @click.stop
-                    />
+                    <input class="form-check-input me-3" type="checkbox" v-if="selectionMode"
+                      :checked="isSelected(plan[3])" @click.stop="togglePlanSelection(plan)" />
                     <div>
                       <p class="mb-0">
                         {{ plan[0] }}
                       </p>
-                      <small
-                        :class="{
-                          'text-secondary': !isSelected(plan[3]),
-                        }"
-                      >
+                      <small :class="{
+                        'text-secondary': !isSelected(plan[3]),
+                      }">
                         created
                         <span :title="plan[3]?.toString()">
                           {{ time_ago(plan[3]) }}
                         </span>
                       </small>
                     </div>
-                    <div
-                      class="end-0 text-nowrap position-absolute z-1 p-2"
-                      v-if="hovered === index && !selectionMode"
-                    >
-                      <button
-                        class="btn btn-sm btn-outline-secondary py-0 me-1"
-                        v-tippy="'Export plan'"
-                        v-on:click.stop="exportPlans([plan])"
-                      >
+                    <div class="end-0 text-nowrap position-absolute z-1 p-2" v-if="hovered === index && !selectionMode">
+                      <button class="btn btn-sm btn-outline-secondary py-0 me-1" v-tippy="'Export plan'"
+                        v-on:click.stop="exportPlans([plan])">
                         <FontAwesomeIcon :icon="faUpload"></FontAwesomeIcon>
                       </button>
-                      <button
-                        class="btn btn-sm btn-outline-secondary py-0 me-1"
-                        v-tippy="'Delete plan'"
-                        v-on:click.stop="deletePlan(plan)"
-                      >
+                      <button class="btn btn-sm btn-outline-secondary py-0 me-1" v-tippy="'Delete plan'"
+                        v-on:click.stop="deletePlan(plan)">
                         <FontAwesomeIcon :icon="faTrash"></FontAwesomeIcon>
                       </button>
-                      <button
-                        class="btn btn-sm btn-outline-secondary py-0"
-                        v-tippy="'Edit plan details'"
-                        v-on:click.stop="editPlan(plan)"
-                      >
+                      <button class="btn btn-sm btn-outline-secondary py-0" v-tippy="'Edit plan details'"
+                        v-on:click.stop="editPlan(plan)">
                         <FontAwesomeIcon :icon="faEdit"></FontAwesomeIcon>
                       </button>
                     </div>
                   </div>
                 </a>
-                <div
-                  v-if="savedPlans.length === 0"
-                  class="text-center text-muted py-5"
-                >
-                  <FontAwesomeIcon
-                    :icon="faDownload"
-                    class="mb-2"
-                    size="2x"
-                  ></FontAwesomeIcon>
+                <div v-if="savedPlans.length === 0" class="text-center text-muted py-5">
+                  <FontAwesomeIcon :icon="faDownload" class="mb-2" size="2x"></FontAwesomeIcon>
                   <br />
                   Drop your JSON file here
                 </div>
+                <nav class="mt-3">
+                  <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                      <a class="page-link" href="#" @click="prevPage" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                        <span class="sr-only">Previous</span>
+                      </a>
+                    </li>
+                    <li class="page-item" v-if="visiblePages[0] > 1" @click="goToPage(1)">
+                      <a class="page-link" href="#">1</a>
+                    </li>
+                    <li class="page-item" v-if="visiblePages[0] > 2">
+                      <a class="page-link"> … </a>
+                    </li>
+                    <li class="page-item" v-for="page in visiblePages" :key="page" @click="goToPage(page)"
+                      :class="{ active: page === currentPage }">
+                      <a class="page-link" href="#">{{ page }}</a>
+                    </li>
+                    <li class="page-item" v-if="
+                      visiblePages[visiblePages.length - 1] < totalPages - 1
+                    ">
+                      <a class="page-link"> … </a>
+                    </li>
+                    <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages"
+                      @click="goToPage(totalPages)">
+                      <a class="page-link" href="#">{{ totalPages }}</a>
+                    </li>
+                    <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                      <a class="page-link" href="#" @click="nextPage" aria-labal="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                        <span class="sr-only">Next</span>
+                      </a>
+                    </li>
+                  </ul>
+                </nav>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </MainLayout>
+  </div>
 </template>
 
 <style scoped lang="scss">
 .dropzone-over {
   box-shadow: 0 0 5px rgba(81, 203, 238, 1);
   background-color: rgba(81, 203, 238, 0.05);
-  > * {
+
+  >* {
     opacity: 50%;
   }
 }
 
-// MySQL Home Page Styling
 .mysql-home-page {
   background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
   min-height: 100vh;
 }
 
-.mysql-hero {
-  background: linear-gradient(135deg, #00758f 0%, #005a6f 100%);
-  color: white;
-  padding: 3rem 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.hero-icon {
+  font-size: 4rem;
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 5px 15px rgba(0, 117, 143, 0.3));
+}
 
-  .hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-  }
-
-  .hero-icon {
-    font-size: 4rem;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-    animation: float 3s ease-in-out infinite;
-  }
-
-  .hero-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .hero-subtitle {
-    font-size: 1.2rem;
-    opacity: 0.95;
-    margin-bottom: 0;
-  }
-
-  .hero-features {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .feature-badge {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-
-    i {
-      margin-right: 0.5rem;
-    }
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: translateY(-2px);
-    }
-  }
+.text-gradient {
+  background: linear-gradient(135deg, #00758f 0%, #00a4db 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -814,16 +673,46 @@ function addMessage(text: string) {
     }
   }
 
-  .mysql-submit-btn {
+  .mysql-submit-btn-premium {
     background: linear-gradient(135deg, #00758f 0%, #00a4db 100%);
     border: none;
-    font-weight: 600;
-    padding: 0.75rem;
-    transition: all 0.2s ease;
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 117, 143, 0.3);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 117, 143, 0.4);
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 8px 25px rgba(0, 117, 143, 0.5);
+      background: linear-gradient(135deg, #008caf 0%, #00b4f1 100%);
+    }
+
+    &:active {
+      transform: translateY(-1px) scale(0.98);
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.1);
+      transform: rotate(45deg);
+      transition: all 0.5s ease;
+      opacity: 0;
+    }
+
+    &:hover::after {
+      left: 100%;
+      opacity: 1;
     }
   }
 }
@@ -840,6 +729,118 @@ function addMessage(text: string) {
     font-weight: 600;
     border: none;
     padding: 0.75rem 1rem;
+  }
+}
+
+// Dark Mode Support
+[data-theme="dark"] {
+  .mysql-home-page {
+    background: linear-gradient(180deg, #0b0e14 0%, #151921 100%);
+    color: #e1e1e1;
+  }
+
+  .mysql-tip-card {
+    background: #1a1f29;
+    border-left-color: #f29111;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    .text-secondary {
+      color: #b0b0b0 !important;
+    }
+  }
+
+  .mysql-input-card,
+  .mysql-history-card {
+    background-color: #1a1f29;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+    .card-body {
+      background-color: #1a1f29;
+    }
+
+    textarea,
+    input {
+      background-color: #0b0e14;
+      border-color: #2d333b;
+      color: #e1e1e1;
+
+      &:focus {
+        border-color: #00a4db;
+        background-color: #0b0e14;
+      }
+
+      &::placeholder {
+        color: #57606a;
+      }
+    }
+  }
+
+  .text-secondary {
+    color: #909090 !important;
+  }
+
+  .text-muted {
+    color: #606060 !important;
+  }
+
+  .alert-info.mysql-info-alert {
+    background-color: rgba(0, 117, 143, 0.1);
+    border-color: #00758f;
+    color: #00a4db;
+
+    .alert-link {
+      color: #00a4db;
+      text-decoration: underline;
+    }
+  }
+
+  .list-group-item {
+    background-color: #1a1f21;
+    border-color: #2d333b;
+    color: #e1e1e1;
+
+    &.active {
+      background-color: #0d1117;
+      border-color: #00a4db;
+    }
+
+    &:hover:not(.active) {
+      background-color: #21262d;
+      color: white;
+    }
+
+    .text-muted {
+      color: #8b949e !important;
+    }
+  }
+
+  .pagination {
+    .page-link {
+      background-color: #161b22;
+      border-color: #30363d;
+      color: #58a6ff;
+
+      &:hover {
+        background-color: #21262d;
+      }
+    }
+
+    .page-item.active .page-link {
+      background-color: #1f6feb;
+      border-color: #388bfd;
+    }
+
+    .page-item.disabled .page-link {
+      background-color: #0d1117;
+      border-color: #30363d;
+      color: #484f58;
+    }
+  }
+
+  .alert-success {
+    background-color: rgba(63, 185, 80, 0.1);
+    border-color: #238636;
+    color: #3fb950;
   }
 }
 </style>

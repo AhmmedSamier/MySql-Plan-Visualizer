@@ -1,6 +1,7 @@
 @use "sass:math";
 
 $compact-width: 50px;
+
 .plan-node {
   cursor: default;
   text-decoration: none;
@@ -11,7 +12,7 @@ $compact-width: 50px;
   margin-bottom: 4px;
   overflow-wrap: break-word;
   word-wrap: break-word;
-  width: 240px;
+  width: 260px;
 
   .plan-node-body {
     position: relative;
@@ -73,9 +74,11 @@ $compact-width: 50px;
   &:hover,
   &.highlight {
     $hover-color: rgba(0, 0, 0, 0.4);
+
     .plan-node-body {
       box-shadow: 1px 1px 5px 0px $hover-color;
     }
+
     .workers > div {
       border-color: rgba($hover-color, 0.2);
     }
@@ -99,7 +102,11 @@ $compact-width: 50px;
 
     .node-type {
       font-weight: 600;
-      background: linear-gradient(135deg, var(--mysql-blue) 0%, var(--mysql-light-blue) 100%);
+      background: linear-gradient(
+        135deg,
+        var(--mysql-blue) 0%,
+        var(--mysql-light-blue) 100%
+      );
       color: #fff;
       padding: 0 $padding-base;
       border-radius: 3px;
@@ -158,6 +165,7 @@ $compact-width: 50px;
     position: absolute;
     top: 0;
     right: -5px;
+
     > div {
       position: absolute;
       top: 0;
@@ -181,14 +189,17 @@ $compact-width: 50px;
     .fa-chevron-right {
       display: inline-block;
     }
+
     .fa-chevron-down {
       display: none;
     }
   }
+
   button[aria-expanded="true"] {
     .fa-chevron-right {
       display: none !important;
     }
+
     .fa-chevron-down {
       display: inline-block !important;
     }

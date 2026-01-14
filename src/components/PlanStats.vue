@@ -24,60 +24,58 @@ const planningTimeClass = (percent: number) => {
   }
   return false
 }
-
 </script>
 
 <template>
-  <div
-    class="plan-stats flex-shrink-0 d-flex border-bottom border-top align-items-center"
-    v-if="store.stats"
-  >
-    <div class="d-inline-block px-2">
-      Execution time:
-      <template v-if="!store.stats.executionTime">
-        <span class="text-secondary">
-          N/A
-          <FontAwesomeIcon
-            :icon="faInfoCircle"
-            class="cursor-help"
-            v-tippy="getHelpMessage('missing execution time')"
-          ></FontAwesomeIcon>
-        </span>
-      </template>
-      <template v-else>
-        <span
-          class="stat-value"
-          v-html="duration(store.stats.executionTime)"
-        ></span>
-      </template>
-    </div>
-    <div class="d-inline-block border-start px-2">
-      Planning time:
-      <template v-if="!store.stats.planningTime">
-        <span class="text-secondary">
-          N/A
-          <FontAwesomeIcon
-            :icon="faInfoCircle"
-            class="cursor-help"
-            v-tippy="getHelpMessage('missing planning time')"
-          ></FontAwesomeIcon>
-        </span>
-      </template>
-      <template v-else>
-        <span class="stat-value">
+  <Teleport to="#header-stats">
+    <div class="plan-stats d-flex align-items-center" v-if="store.stats">
+      <div class="d-inline-block px-2 text-nowrap">
+        Execution:
+        <template v-if="!store.stats.executionTime">
+          <span class="text-white-50">
+            N/A
+            <FontAwesomeIcon
+              :icon="faInfoCircle"
+              class="cursor-help"
+              v-tippy="getHelpMessage('missing execution time')"
+            ></FontAwesomeIcon>
+          </span>
+        </template>
+        <template v-else>
           <span
-            :class="
-              'mb-0 p-0 px-1 alert ' +
-              planningTimeClass(
-                (store.stats.planningTime /
-                  (store.stats.executionTime as number)) *
-                  100,
-              )
-            "
-            v-html="duration(store.stats.planningTime)"
+            class="stat-value text-white"
+            v-html="duration(store.stats.executionTime)"
           ></span>
-        </span>
-      </template>
+        </template>
+      </div>
+      <div class="d-inline-block border-start border-white-25 px-2 text-nowrap">
+        Planning:
+        <template v-if="!store.stats.planningTime">
+          <span class="text-white-50">
+            N/A
+            <FontAwesomeIcon
+              :icon="faInfoCircle"
+              class="cursor-help"
+              v-tippy="getHelpMessage('missing planning time')"
+            ></FontAwesomeIcon>
+          </span>
+        </template>
+        <template v-else>
+          <span class="stat-value text-white">
+            <span
+              :class="
+                'mb-0 p-0 px-1 alert ' +
+                planningTimeClass(
+                  (store.stats.planningTime /
+                    (store.stats.executionTime as number)) *
+                    100,
+                )
+              "
+              v-html="duration(store.stats.planningTime)"
+            ></span>
+          </span>
+        </template>
+      </div>
     </div>
-  </div>
+  </Teleport>
 </template>

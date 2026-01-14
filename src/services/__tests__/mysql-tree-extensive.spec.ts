@@ -21,14 +21,16 @@ describe("PlanService MySQL Tree Extensive", () => {
 
     // Root: Limit
     expect(plan[NodeProp.NODE_TYPE]).toBe("Limit: 10 row(s)")
-    expect(plan[NodeProp.TOTAL_COST]).toBe(1500.00)
+    expect(plan[NodeProp.TOTAL_COST]).toBe(1500.0)
     expect(plan[NodeProp.PLAN_ROWS]).toBe(10)
     expect(plan[NodeProp.ACTUAL_ROWS]).toBe(10)
     expect(plan[NodeProp.ACTUAL_TOTAL_TIME]).toBe(50.005)
 
     // Child: Sort
     const sortNode = plan[NodeProp.PLANS][0]
-    expect(sortNode[NodeProp.NODE_TYPE]).toBe("Sort: t1.col1, t2.col2, limit input to 10 row(s)")
+    expect(sortNode[NodeProp.NODE_TYPE]).toBe(
+      "Sort: t1.col1, t2.col2, limit input to 10 row(s)",
+    )
     expect(sortNode[NodeProp.PLAN_ROWS]).toBe(100)
 
     // Child: Stream results
@@ -71,24 +73,24 @@ describe("PlanService MySQL Tree Extensive", () => {
     const plan = r.Plan
 
     expect(plan[NodeProp.NODE_TYPE]).toBe("Nested loop inner join")
-    expect(plan[NodeProp.TOTAL_COST]).toBe(10.00)
+    expect(plan[NodeProp.TOTAL_COST]).toBe(10.0)
     expect(plan[NodeProp.ACTUAL_TOTAL_TIME]).toBeUndefined()
 
     const children = plan[NodeProp.PLANS]
     expect(children).toHaveLength(2)
-    expect(children[0][NodeProp.TOTAL_COST]).toBe(5.00)
+    expect(children[0][NodeProp.TOTAL_COST]).toBe(5.0)
   })
 
   test("can parse MySQL FORMAT=TREE plan with 'on table' syntax", () => {
-      // This tests if we are okay with the Node Type being long.
-      // Ideally we might want to extract table name if possible, but for now just testing current behavior.
-      const planService = new PlanService()
-      const source = `-> Index lookup on t1 using idx_a (a=10)  (cost=1.10 rows=1)`
-      const r = planService.fromSource(source) as IPlanContent
-      const plan = r.Plan
-      expect(plan[NodeProp.NODE_TYPE]).toBe("Index lookup")
-      expect(plan[NodeProp.RELATION_NAME]).toBe("t1")
-      expect(plan[NodeProp.INDEX_NAME]).toBe("idx_a")
-      expect(plan[NodeProp.ATTACHED_CONDITION]).toBe("(a=10)")
+    // This tests if we are okay with the Node Type being long.
+    // Ideally we might want to extract table name if possible, but for now just testing current behavior.
+    const planService = new PlanService()
+    const source = `-> Index lookup on t1 using idx_a (a=10)  (cost=1.10 rows=1)`
+    const r = planService.fromSource(source) as IPlanContent
+    const plan = r.Plan
+    expect(plan[NodeProp.NODE_TYPE]).toBe("Index lookup")
+    expect(plan[NodeProp.RELATION_NAME]).toBe("t1")
+    expect(plan[NodeProp.INDEX_NAME]).toBe("idx_a")
+    expect(plan[NodeProp.ATTACHED_CONDITION]).toBe("(a=10)")
   })
 })
