@@ -41,15 +41,16 @@ const currentPath = ref(getNormalizedPath(window.location.pathname))
 provide("currentPath", currentPath)
 
 const currentView = computed(() => {
-  if (currentPath.value.startsWith("/plan")) {
-    return PlanView
-  }
-  if (currentPath.value.startsWith("/compare")) {
-    return CompareView
-  }
   const path = currentPath.value.startsWith("/")
     ? currentPath.value
     : "/" + currentPath.value
+
+  if (path.startsWith("/plan")) {
+    return PlanView
+  }
+  if (path.startsWith("/compare")) {
+    return CompareView
+  }
   return routes[path] || HomeView
 })
 
@@ -121,13 +122,19 @@ watch(
   () => currentPath.value,
   (newPath) => {
     const base = import.meta.env.BASE_URL || "/"
-    const baseNoTrailing = base.endsWith("/") ? base.slice(0, -1) : base
-    const normalizedPath = newPath.startsWith("/") ? newPath : "/" + newPath
+    // Use base without trailing slash for concatenation
+    const baseNoTrailing = base.replace(/\/$/, "")
 
-    // Construct target path, ensuring no trailing slash for the base if the path is just "/"
-    let targetPath = baseNoTrailing + normalizedPath
-    if (newPath === "/" && baseNoTrailing) {
-      targetPath = baseNoTrailing
+    // Ensure newPath is normalized (starts with /)
+    const normalizedIdPath = newPath.startsWith("/") ? newPath : "/" + newPath
+
+    let targetPath = ""
+    if (normalizedIdPath === "/") {
+      // Return to the exact root base. 
+      // If base was "/something/", returning to "/something" often preserves the UI state better without server redirects.
+      targetPath = baseNoTrailing || "/"
+    } else {
+      targetPath = baseNoTrailing + normalizedIdPath
     }
 
     if (window.location.pathname !== targetPath) {
