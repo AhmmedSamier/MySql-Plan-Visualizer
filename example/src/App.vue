@@ -25,9 +25,19 @@ const routes: Record<string, Component> = {
 }
 
 const base = import.meta.env.BASE_URL || "/"
-const currentPath = ref(
-  window.location.pathname.replace(base, "/") || "/",
-)
+
+function getNormalizedPath(pathname: string): string {
+  if (pathname.startsWith(base)) {
+    return pathname.slice(base.length - 1) || "/"
+  }
+  const baseNoTrailing = base.endsWith("/") ? base.slice(0, -1) : base
+  if (pathname.startsWith(baseNoTrailing)) {
+    return pathname.slice(baseNoTrailing.length) || "/"
+  }
+  return pathname
+}
+
+const currentPath = ref(getNormalizedPath(window.location.pathname))
 provide("currentPath", currentPath)
 
 const currentView = computed(() => {
@@ -76,13 +86,11 @@ let handlePopState: () => void
 
 onMounted(async () => {
   handlePopState = () => {
-    const base = import.meta.env.BASE_URL || "/"
-    currentPath.value = window.location.pathname.replace(base, "/") || "/"
+    currentPath.value = getNormalizedPath(window.location.pathname)
   }
   window.addEventListener("popstate", handlePopState)
 
-  const base = import.meta.env.BASE_URL || "/"
-  const path = window.location.pathname.replace(base, "/")
+  const path = getNormalizedPath(window.location.pathname)
   const matches = path.match(/^\/plan\/(\d+)/)
   if (matches) {
     const planId = parseInt(matches[1], 10)
@@ -113,11 +121,15 @@ watch(
   () => currentPath.value,
   (newPath) => {
     const base = import.meta.env.BASE_URL || "/"
-    const normalizedBase = base.endsWith("/") ? base : base + "/"
-    // Ensure we don't end up with // if newPath is /
-    const normalizedPath = newPath.startsWith("/") ? newPath.slice(1) : newPath
-    const targetPath = normalizedBase + normalizedPath
-    
+    const baseNoTrailing = base.endsWith("/") ? base.slice(0, -1) : base
+    const normalizedPath = newPath.startsWith("/") ? newPath : "/" + newPath
+
+    // Construct target path, ensuring no trailing slash for the base if the path is just "/"
+    let targetPath = baseNoTrailing + normalizedPath
+    if (newPath === "/" && baseNoTrailing) {
+      targetPath = baseNoTrailing
+    }
+
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, "", targetPath)
     }
