@@ -24,8 +24,9 @@ const routes: Record<string, Component> = {
   "/about": AboutView,
 }
 
+const base = import.meta.env.BASE_URL || "/"
 const currentPath = ref(
-  window.location.pathname.replace(import.meta.env.BASE_URL || "/", "/") || "/",
+  window.location.pathname.replace(base, "/") || "/",
 )
 provide("currentPath", currentPath)
 
@@ -113,10 +114,12 @@ watch(
   (newPath) => {
     const base = import.meta.env.BASE_URL || "/"
     const normalizedBase = base.endsWith("/") ? base : base + "/"
+    // Ensure we don't end up with // if newPath is /
     const normalizedPath = newPath.startsWith("/") ? newPath.slice(1) : newPath
-    const url = new URL(normalizedBase + normalizedPath, window.location.origin)
-    if (window.location.pathname !== url.pathname) {
-      window.history.pushState({}, "", url.toString())
+    const targetPath = normalizedBase + normalizedPath
+    
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, "", targetPath)
     }
   },
 )
