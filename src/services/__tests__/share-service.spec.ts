@@ -28,19 +28,19 @@ describe("share-service", () => {
   it("handles root path", () => {
     setupLocation("/")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/#plan=")
+    expect(url).toContain("http://test.com/plan#plan=")
   })
 
   it("handles subdirectory path", () => {
     setupLocation("/subdir/")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/subdir/#plan=")
+    expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
   it("handles subdirectory path without trailing slash", () => {
     setupLocation("/subdir")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/subdir/#plan=")
+    expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
   it("handles index.html path", () => {
@@ -52,36 +52,36 @@ describe("share-service", () => {
   it("strips /plan route from root", () => {
     setupLocation("/plan/123")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/#plan=")
+    expect(url).toContain("http://test.com/plan#plan=")
   })
 
   it("strips /plan route from subdirectory", () => {
     setupLocation("/subdir/plan/123")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/subdir/#plan=")
+    expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
   it("strips /compare route", () => {
     setupLocation("/subdir/compare/1/2")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/subdir/#plan=")
+    expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
   it("strips /about route", () => {
     setupLocation("/subdir/about")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/subdir/#plan=")
+    expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
   it("does NOT strip partial matches like /planning", () => {
     setupLocation("/planning")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/planning/#plan=")
+    expect(url).toContain("http://test.com/planning/plan#plan=")
   })
 
   it("does NOT strip partial matches in subdirectory like /subdir/planning", () => {
     setupLocation("/subdir/planning")
     const url = compressPlanToUrl(plan)
-    expect(url).toContain("http://test.com/subdir/planning/#plan=")
+    expect(url).toContain("http://test.com/subdir/planning/plan#plan=")
   })
 })

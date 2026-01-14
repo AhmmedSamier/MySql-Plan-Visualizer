@@ -7,12 +7,19 @@ export function compressPlanToUrl(plan: Plan): string {
   // Dynamic base derivation:
   // Remove app-specific route suffixes (/plan..., /compare..., /about) from the current pathname.
   // This preserves the deployment root (e.g. /subdir/) or file path (e.g. /dist/index.html).
-  const base = window.location.pathname.replace(
+  let base = window.location.pathname.replace(
     /\/(?:plan|compare|about)(?:$|\/.*$)/,
     "",
   )
-  const separator = base.endsWith("/") || base.endsWith(".html") ? "" : "/"
-  return window.location.origin + base + separator + "#plan=" + compressed
+
+  if (base.endsWith(".html")) {
+    return window.location.origin + base + "#plan=" + compressed
+  }
+
+  // Ensure consistent handling of trailing slash before appending /plan
+  base = base.replace(/\/$/, "")
+
+  return window.location.origin + base + "/plan#plan=" + compressed
 }
 
 export function decompressPlanFromUrl(urlHash: string): Plan | null {
