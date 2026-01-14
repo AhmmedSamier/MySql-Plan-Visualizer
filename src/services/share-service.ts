@@ -4,8 +4,13 @@ import type { Plan } from "@/../example/src/types"
 export function compressPlanToUrl(plan: Plan): string {
   const data = JSON.stringify(plan)
   const compressed = LZString.compressToEncodedURIComponent(data)
+  const base = import.meta.env.BASE_URL ?? window.location.pathname
   return (
-    window.location.origin + window.location.pathname + "#plan=" + compressed
+    window.location.origin +
+    base +
+    (base.endsWith("/") ? "" : "/") +
+    "#plan=" +
+    compressed
   )
 }
 
