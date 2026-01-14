@@ -12,8 +12,10 @@ import {
 import AboutView from "./views/AboutView.vue"
 import HomeView from "./views/HomeView.vue"
 import PlanView from "./views/PlanView.vue"
-import type { ActivePlan } from "./types"
+import CompareView from "./views/CompareView.vue"
+import type { ActivePlan, Plan } from "./types"
 import idb from "./idb"
+import { decompressPlanFromUrl } from "./utils"
 
 import MainLayout from "./layouts/MainLayout.vue"
 
@@ -31,6 +33,9 @@ const currentView = computed(() => {
   if (currentPath.value.startsWith("/plan")) {
     return PlanView
   }
+  if (currentPath.value.startsWith("/compare")) {
+    return CompareView
+  }
   const path = currentPath.value.startsWith("/")
     ? currentPath.value
     : "/" + currentPath.value
@@ -40,6 +45,12 @@ const currentView = computed(() => {
 // Use reactive so that changes are reflected
 const planData = reactive<ActivePlan>(["", "", "", undefined])
 provide("planData", planData)
+
+const compareData = reactive<{ plan1: Plan | null; plan2: Plan | null }>({
+  plan1: null,
+  plan2: null,
+})
+provide("compareData", compareData)
 
 function setPlanData(name: string, plan: string, query: string, id?: number) {
   planData[0] = plan
@@ -78,6 +89,22 @@ onMounted(async () => {
     if (plan) {
       setPlanData(plan[0], plan[1], plan[2], planId)
     }
+  } else if (window.location.hash.startsWith("#plan=")) {
+    // Handle Permalink
+    const plan = decompressPlanFromUrl(window.location.hash)
+    if (plan) {
+      setPlanData(plan[0], plan[1], plan[2])
+    }
+  }
+
+  const compareMatches = path.match(/^\/compare\/(\d+)\/(\d+)/)
+  if (compareMatches) {
+    const id1 = parseInt(compareMatches[1], 10)
+    const id2 = parseInt(compareMatches[2], 10)
+    const [p1, p2] = await Promise.all([idb.getPlan(id1), idb.getPlan(id2)])
+    compareData.plan1 = p1
+    compareData.plan2 = p2
+    currentPath.value = `/compare/${id1}/${id2}`
   }
 })
 

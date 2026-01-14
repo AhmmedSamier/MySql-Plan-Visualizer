@@ -57,3 +57,5 @@ export function time_ago(time: string | number | Date): string | number | Date {
   }
   return time
 }
+
+export * from "../../src/services/share-service"
