@@ -814,7 +814,10 @@ function exportPng() {
         </h6>
         <div class="overflow-hidden d-flex w-100 h-100 position-relative mb-3">
           <div class="overflow-auto flex-grow-1">
-            <pre class="small p-2 mb-0" style="max-height: 200px"><code v-html="planSource"></code></pre>
+            <pre
+              class="small p-2 mb-0"
+              style="max-height: 200px"
+            ><code v-html="planSource"></code></pre>
           </div>
           <Copy :content="planSource" />
         </div>
@@ -827,60 +830,124 @@ function exportPng() {
             <LogoImage />
             MysqlPlanVisualizer <i>version {{ version }}</i>
           </span>
-          <a href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer/issues/new?template=parsing_error.md&labels=parsing&title=Failed+to+parse+plan"
-            target="_blank" class="btn btn-primary ms-auto">Open an issue on Github</a>
+          <a
+            href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer/issues/new?template=parsing_error.md&labels=parsing&title=Failed+to+parse+plan"
+            target="_blank"
+            class="btn btn-primary ms-auto"
+            >Open an issue on Github</a
+          >
         </div>
       </div>
     </div>
   </div>
-  <div class="plan-container d-flex flex-column overflow-hidden flex-grow-1 bg-light" v-else ref="rootEl">
+  <div
+    class="plan-container d-flex flex-column overflow-hidden flex-grow-1 bg-light"
+    v-else
+    ref="rootEl"
+  >
     <Teleport to="#header-tabs">
       <ul class="nav nav-tabs mysql-tabs flex-nowrap border-0">
         <li class="nav-item p-1">
-          <a class="nav-link px-2 py-0" :class="{ active: activeTab === 'plan' }" href="#plan">Plan</a>
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'plan' }"
+            href="#plan"
+            >Plan</a
+          >
         </li>
         <li class="nav-item p-1">
-          <a class="nav-link px-2 py-0" :class="{ active: activeTab === 'grid' }" href="#grid">Grid</a>
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'grid' }"
+            href="#grid"
+            >Grid</a
+          >
         </li>
         <li class="nav-item p-1" v-if="store.plan?.content.Diagram">
-          <a class="nav-link px-2 py-0" :class="{ active: activeTab === 'diagram' }" href="#diagram">Diagram</a>
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'diagram' }"
+            href="#diagram"
+            >Diagram</a
+          >
         </li>
         <li class="nav-item p-1">
-          <a class="nav-link px-2 py-0" :class="{ active: activeTab === 'raw' }" href="#raw">Raw</a>
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'raw' }"
+            href="#raw"
+            >Raw</a
+          >
         </li>
         <li class="nav-item p-1">
-          <a class="nav-link px-2 py-0" :class="{ active: activeTab === 'query' }" href="#query">Query</a>
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'query' }"
+            href="#query"
+            >Query</a
+          >
         </li>
         <li class="nav-item p-1">
-          <a class="nav-link px-2 py-0" :class="{ active: activeTab === 'stats' }" href="#stats">Stats</a>
+          <a
+            class="nav-link px-2 py-0"
+            :class="{ active: activeTab === 'stats' }"
+            href="#stats"
+            >Stats</a
+          >
         </li>
       </ul>
     </Teleport>
     <div id="header-tools" class="d-flex align-items-center me-2 gap-2">
-      <button class="btn btn-sm" :class="isShared ? 'btn-success' : 'btn-outline-primary'" @click="sharePlan"
-        title="Copy permalink to clipboard" style="white-space: nowrap">
+      <button
+        class="btn btn-sm"
+        :class="isShared ? 'btn-success' : 'btn-outline-primary'"
+        @click="sharePlan"
+        title="Copy permalink to clipboard"
+        style="white-space: nowrap"
+      >
         <FontAwesomeIcon :icon="isShared ? faCheck : faShareAlt" class="me-1" />
         {{ isShared ? "Copied!" : "Share" }}
       </button>
-      <button class="btn btn-sm btn-outline-primary" @click="exportPng" :disabled="isExporting" title="Export as PNG"
-        style="white-space: nowrap">
+      <button
+        class="btn btn-sm btn-outline-primary"
+        @click="exportPng"
+        :disabled="isExporting"
+        title="Export as PNG"
+        style="white-space: nowrap"
+      >
         <FontAwesomeIcon :icon="faFileImage" class="me-1" :spin="isExporting" />
         {{ isExporting ? "Exporting..." : "Export PNG" }}
       </button>
     </div>
     <div class="tab-content flex-grow-1 d-flex overflow-hidden">
-      <div class="tab-pane flex-grow-1 overflow-hidden" :class="{ 'show active d-flex': activeTab === 'plan' }">
+      <div
+        class="tab-pane flex-grow-1 overflow-hidden"
+        :class="{ 'show active d-flex': activeTab === 'plan' }"
+      >
         <!-- Plan tab -->
         <div class="d-flex flex-column flex-grow-1 overflow-hidden">
           <PlanStats />
           <div class="flex-grow-1 d-flex overflow-hidden">
             <div class="flex-grow-1 overflow-hidden">
-              <Splitpanes class="default-theme" @resize="viewOptions.diagramWidth = $event[0].size">
-                <Pane :size="viewOptions.diagramWidth" class="d-flex flex-column"
-                  v-if="store.plan && viewOptions.showDiagram">
-                  <Diagram ref="diagram" class="d-flex flex-column flex-grow-1 overflow-hidden plan-diagram" />
+              <Splitpanes
+                class="default-theme"
+                @resize="viewOptions.diagramWidth = $event[0].size"
+              >
+                <Pane
+                  :size="viewOptions.diagramWidth"
+                  class="d-flex flex-column"
+                  v-if="store.plan && viewOptions.showDiagram"
+                >
+                  <Diagram
+                    ref="diagram"
+                    class="d-flex flex-column flex-grow-1 overflow-hidden plan-diagram"
+                  />
                 </Pane>
-                <Pane ref="planEl" class="plan grab-bing position-relative" style="overflow: visible !important">
+                <Pane
+                  ref="planEl"
+                  class="plan grab-bing position-relative"
+                  style="overflow: visible !important"
+                >
                   <!-- Sidebar Toggle Button -->
                   <button
                     class="btn rounded-circle shadow-sm position-absolute d-flex align-items-center justify-content-center"
@@ -894,130 +961,226 @@ function exportPng() {
                       border: '2px solid white',
                       backgroundColor: '#00758f',
                       transition: 'all 0.2s ease',
-                    }" @click="viewOptions.showDiagram = !viewOptions.showDiagram"
-                    :title="viewOptions.showDiagram ? 'Hide Grid' : 'Show Grid'">
-                    <FontAwesomeIcon :icon="viewOptions.showDiagram ? faChevronLeft : faChevronRight
-                      " size="xs" color="white" />
+                    }"
+                    @click="viewOptions.showDiagram = !viewOptions.showDiagram"
+                    :title="viewOptions.showDiagram ? 'Hide Grid' : 'Show Grid'"
+                  >
+                    <FontAwesomeIcon
+                      :icon="
+                        viewOptions.showDiagram ? faChevronLeft : faChevronRight
+                      "
+                      size="xs"
+                      color="white"
+                    />
                   </button>
-                  <div class="position-absolute m-1 p-1 bottom-0 end-0 rounded bg-white d-flex" v-if="store.plan">
+                  <div
+                    class="position-absolute m-1 p-1 bottom-0 end-0 rounded bg-white d-flex"
+                    v-if="store.plan"
+                  >
                     <div class="btn-group btn-group-xs">
-                      <button class="btn btn-outline-secondary" :class="{
-                        active:
-                          viewOptions.highlightType === HighlightType.NONE,
-                      }" v-on:click="
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.highlightType === HighlightType.NONE,
+                        }"
+                        v-on:click="
                           viewOptions.highlightType = HighlightType.NONE
-                          ">
+                        "
+                      >
                         none
                       </button>
-                      <button class="btn btn-outline-secondary" :class="{
-                        active:
-                          viewOptions.highlightType ===
-                          HighlightType.DURATION,
-                      }" v-on:click="
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.highlightType ===
+                            HighlightType.DURATION,
+                        }"
+                        v-on:click="
                           viewOptions.highlightType = HighlightType.DURATION
-                          " :disabled="!store.plan?.isAnalyze">
+                        "
+                        :disabled="!store.plan?.isAnalyze"
+                      >
                         duration
                       </button>
-                      <button class="btn btn-outline-secondary" :class="{
-                        active:
-                          viewOptions.highlightType === HighlightType.ROWS,
-                      }" v-on:click="
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.highlightType === HighlightType.ROWS,
+                        }"
+                        v-on:click="
                           viewOptions.highlightType = HighlightType.ROWS
-                          " :disabled="!rootNode ||
+                        "
+                        :disabled="
+                          !rootNode ||
                           rootNode[NodeProp.ACTUAL_ROWS] === undefined
-                          ">
+                        "
+                      >
                         rows
                       </button>
-                      <button class="btn btn-outline-secondary" :class="{
-                        active:
-                          viewOptions.highlightType === HighlightType.COST,
-                      }" v-on:click="
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.highlightType === HighlightType.COST,
+                        }"
+                        v-on:click="
                           viewOptions.highlightType = HighlightType.COST
-                          ">
+                        "
+                      >
                         cost
                       </button>
                     </div>
                   </div>
-                  <div class="position-absolute m-1 p-1 bottom-0 start-0 rounded bg-white d-flex" v-if="store.plan">
+                  <div
+                    class="position-absolute m-1 p-1 bottom-0 start-0 rounded bg-white d-flex"
+                    v-if="store.plan"
+                  >
                     <div class="btn-group btn-group-xs">
-                      <button class="btn btn-outline-secondary" :class="{
-                        active:
-                          viewOptions.orientation === Orientation.TopToBottom,
-                      }" v-on:click="
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.orientation === Orientation.TopToBottom,
+                        }"
+                        v-on:click="
                           viewOptions.orientation = Orientation.TopToBottom
-                          " title="Vertical Layout">
+                        "
+                        title="Vertical Layout"
+                      >
                         Vertical
                       </button>
-                      <button class="btn btn-outline-secondary" :class="{
-                        active:
-                          viewOptions.orientation === Orientation.LeftToRight,
-                      }" v-on:click="
+                      <button
+                        class="btn btn-outline-secondary"
+                        :class="{
+                          active:
+                            viewOptions.orientation === Orientation.LeftToRight,
+                        }"
+                        v-on:click="
                           viewOptions.orientation = Orientation.LeftToRight
-                          " title="Horizontal Layout">
+                        "
+                        title="Horizontal Layout"
+                      >
                         Horizontal
                       </button>
                     </div>
                   </div>
-                  <div class="position-absolute m-1 p-1 bottom-0 end-0 d-flex flex-column"
-                    style="margin-bottom: 50px !important" v-if="store.plan">
-                    <button class="btn btn-light btn-sm mb-1" title="Search (Ctrl+F)"
-                      aria-label="Search nodes in the plan" @click="toggleSearch">
+                  <div
+                    class="position-absolute m-1 p-1 bottom-0 end-0 d-flex flex-column"
+                    style="margin-bottom: 50px !important"
+                    v-if="store.plan"
+                  >
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Search (Ctrl+F)"
+                      aria-label="Search nodes in the plan"
+                      @click="toggleSearch"
+                    >
                       <FontAwesomeIcon :icon="faSearch" />
                     </button>
-                    <button class="btn btn-light btn-sm mb-1" title="Collapse All (C)" aria-label="Collapse all nodes"
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Collapse All (C)"
+                      aria-label="Collapse all nodes"
                       @click="
                         toggleDetails = {
                           show: false,
                           counter: toggleDetails.counter + 1,
                         }
-                        ">
+                      "
+                    >
                       <FontAwesomeIcon :icon="faCompress" />
                     </button>
-                    <button class="btn btn-light btn-sm mb-1" title="Expand All (E)" aria-label="Expand all nodes"
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Expand All (E)"
+                      aria-label="Expand all nodes"
                       @click="
                         toggleDetails = {
                           show: true,
                           counter: toggleDetails.counter + 1,
                         }
-                        ">
+                      "
+                    >
                       <FontAwesomeIcon :icon="faExpand" />
                     </button>
-                    <button class="btn btn-light btn-sm mb-1" title="Zoom In (+)"
-                      aria-label="Zoom in on the plan diagram" @click="zoomIn">
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Zoom In (+)"
+                      aria-label="Zoom in on the plan diagram"
+                      @click="zoomIn"
+                    >
                       <FontAwesomeIcon :icon="faPlus" />
                     </button>
-                    <button class="btn btn-light btn-sm mb-1" title="Zoom Out (-)"
-                      aria-label="Zoom out on the plan diagram" @click="zoomOut">
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Zoom Out (-)"
+                      aria-label="Zoom out on the plan diagram"
+                      @click="zoomOut"
+                    >
                       <FontAwesomeIcon :icon="faMinus" />
                     </button>
-                    <button class="btn btn-light btn-sm mb-1" title="Fit to Screen (0)"
-                      aria-label="Fit plan diagram to screen" @click="fitToScreen">
+                    <button
+                      class="btn btn-light btn-sm mb-1"
+                      title="Fit to Screen (0)"
+                      aria-label="Fit plan diagram to screen"
+                      @click="fitToScreen"
+                    >
                       <FontAwesomeIcon :icon="faArrowsAlt" />
                     </button>
-                    <button class="btn btn-light btn-sm" title="Keyboard Shortcuts (?)"
-                      aria-label="Show keyboard shortcuts help" @click="keyboardShortcutsRef?.show()">
+                    <button
+                      class="btn btn-light btn-sm"
+                      title="Keyboard Shortcuts (?)"
+                      aria-label="Show keyboard shortcuts help"
+                      @click="keyboardShortcutsRef?.show()"
+                    >
                       <FontAwesomeIcon :icon="faKeyboard" />
                     </button>
                   </div>
-                  <div class="position-absolute m-1 p-1 top-0 end-0 bg-white border rounded shadow-sm"
-                    v-if="showSearchInput" style="z-index: 100; min-width: 250px">
+                  <div
+                    class="position-absolute m-1 p-1 top-0 end-0 bg-white border rounded shadow-sm"
+                    v-if="showSearchInput"
+                    style="z-index: 100; min-width: 250px"
+                  >
                     <div class="input-group input-group-sm">
-                      <input type="text" class="form-control" placeholder="Search nodes..." v-model="searchInput"
-                        ref="searchInputRef" @keydown.enter.prevent="nextSearchMatch"
-                        @keydown.esc.prevent="showSearchInput = false" />
-                      <button class="btn btn-outline-secondary" type="button" @click="prevSearchMatch"
-                        :disabled="searchResults.length === 0">
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Search nodes..."
+                        v-model="searchInput"
+                        ref="searchInputRef"
+                        @keydown.enter.prevent="nextSearchMatch"
+                        @keydown.esc.prevent="showSearchInput = false"
+                      />
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="prevSearchMatch"
+                        :disabled="searchResults.length === 0"
+                      >
                         <FontAwesomeIcon :icon="faChevronLeft" />
                       </button>
-                      <button class="btn btn-outline-secondary" type="button" @click="nextSearchMatch"
-                        :disabled="searchResults.length === 0">
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="nextSearchMatch"
+                        :disabled="searchResults.length === 0"
+                      >
                         <FontAwesomeIcon :icon="faChevronRight" />
                       </button>
-                      <button class="btn btn-outline-secondary" type="button" @click="showSearchInput = false">
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="showSearchInput = false"
+                      >
                         <FontAwesomeIcon :icon="faTimes" />
                       </button>
                     </div>
-                    <div class="small text-secondary mt-1 px-1 d-flex justify-content-between">
+                    <div
+                      class="small text-secondary mt-1 px-1 d-flex justify-content-between"
+                    >
                       <span v-if="searchResults.length > 0">
                         {{ currentSearchIndex + 1 }} /
                         {{ searchResults.length }} matches
@@ -1031,38 +1194,91 @@ function exportPng() {
                   <svg width="100%" height="100%" :class="{ ready }">
                     <g :transform="transform">
                       <!-- Links -->
-                      <AnimatedEdge v-for="(link, index) in toCteLinks" :key="`${store.plan?.id}_linkcte${index}`"
-                        :d="lineGen(link)" stroke-color="#B3D7D7" :stroke-width="edgeWeight(
-                          link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
-                        )
-                          " :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]" />
-                      <AnimatedEdge v-for="(link, index) in layoutRootNode?.links()"
-                        :key="`${store.plan?.id}_link${index}`" :d="lineGen(link)" :class="{
-                          'never-executed': isNeverExecuted(link.target.data),
-                        }" stroke-color="grey" :stroke-width="edgeWeight(
-                          link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
-                        )
-                          " :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]" />
-                      <foreignObject v-for="(item, index) in layoutRootNode?.descendants()"
-                        :key="`${store.plan?.id}_${index}`" :x="getNodeX(item)" :y="getNodeY(item)"
-                        :width="getNodeWidth(item)" height="1" ref="root">
-                        <PlanNode :node="item.data" class="d-flex justify-content-center position-fixed" />
-                      </foreignObject>
-                      <g v-for="cte in ctes" :key="cte.data.nodeId">
-                        <rect :x="getLayoutExtent(cte)[0] - padding / 4" :y="getLayoutExtent(cte)[2] - padding / 2"
-                          :width="getLayoutExtent(cte)[1] -
-                            getLayoutExtent(cte)[0] +
-                            padding / 2
-                            " :height="getLayoutExtent(cte)[3] - getLayoutExtent(cte)[2]
-                            " stroke="#cfcfcf" stroke-width="2" fill="#cfcfcf" fill-opacity="10%" rx="5" ry="5"></rect>
-                        <AnimatedEdge v-for="(link, index) in cte.links()" :key="`${store.plan?.id}_link${index}`"
-                          :d="lineGen(link)" stroke-color="grey" :stroke-width="edgeWeight(
+                      <AnimatedEdge
+                        v-for="(link, index) in toCteLinks"
+                        :key="`${store.plan?.id}_linkcte${index}`"
+                        :d="lineGen(link)"
+                        stroke-color="#B3D7D7"
+                        :stroke-width="
+                          edgeWeight(
                             link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
                           )
-                            " :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]" />
-                        <foreignObject v-for="(item, index) in cte.descendants()" :key="`${store.plan?.id}_${index}`"
-                          :x="getNodeX(item)" :y="getNodeY(item)" :width="getNodeWidth(item)" height="1" ref="root">
-                          <PlanNode :node="item.data" class="d-flex justify-content-center position-fixed" />
+                        "
+                        :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
+                      />
+                      <AnimatedEdge
+                        v-for="(link, index) in layoutRootNode?.links()"
+                        :key="`${store.plan?.id}_link${index}`"
+                        :d="lineGen(link)"
+                        :class="{
+                          'never-executed': isNeverExecuted(link.target.data),
+                        }"
+                        stroke-color="grey"
+                        :stroke-width="
+                          edgeWeight(
+                            link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
+                          )
+                        "
+                        :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
+                      />
+                      <foreignObject
+                        v-for="(item, index) in layoutRootNode?.descendants()"
+                        :key="`${store.plan?.id}_${index}`"
+                        :x="getNodeX(item)"
+                        :y="getNodeY(item)"
+                        :width="getNodeWidth(item)"
+                        height="1"
+                        ref="root"
+                      >
+                        <PlanNode
+                          :node="item.data"
+                          class="d-flex justify-content-center position-fixed"
+                        />
+                      </foreignObject>
+                      <g v-for="cte in ctes" :key="cte.data.nodeId">
+                        <rect
+                          :x="getLayoutExtent(cte)[0] - padding / 4"
+                          :y="getLayoutExtent(cte)[2] - padding / 2"
+                          :width="
+                            getLayoutExtent(cte)[1] -
+                            getLayoutExtent(cte)[0] +
+                            padding / 2
+                          "
+                          :height="
+                            getLayoutExtent(cte)[3] - getLayoutExtent(cte)[2]
+                          "
+                          stroke="#cfcfcf"
+                          stroke-width="2"
+                          fill="#cfcfcf"
+                          fill-opacity="10%"
+                          rx="5"
+                          ry="5"
+                        ></rect>
+                        <AnimatedEdge
+                          v-for="(link, index) in cte.links()"
+                          :key="`${store.plan?.id}_link${index}`"
+                          :d="lineGen(link)"
+                          stroke-color="grey"
+                          :stroke-width="
+                            edgeWeight(
+                              link.target.data[NodeProp.ACTUAL_ROWS_REVISED],
+                            )
+                          "
+                          :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
+                        />
+                        <foreignObject
+                          v-for="(item, index) in cte.descendants()"
+                          :key="`${store.plan?.id}_${index}`"
+                          :x="getNodeX(item)"
+                          :y="getNodeY(item)"
+                          :width="getNodeWidth(item)"
+                          height="1"
+                          ref="root"
+                        >
+                          <PlanNode
+                            :node="item.data"
+                            class="d-flex justify-content-center position-fixed"
+                          />
                         </foreignObject>
                       </g>
                     </g>
@@ -1074,32 +1290,47 @@ function exportPng() {
           <!-- end Plan tab -->
         </div>
       </div>
-      <div class="tab-pane flex-grow-1 overflow-hidden position-relative"
-        :class="{ 'show active': activeTab === 'grid' }" v-if="activeTab === 'grid'">
+      <div
+        class="tab-pane flex-grow-1 overflow-hidden position-relative"
+        :class="{ 'show active': activeTab === 'grid' }"
+        v-if="activeTab === 'grid'"
+      >
         <div class="overflow-hidden d-flex w-100 h-100 flex-column">
           <PlanStats />
           <Grid class="flex-grow-1 overflow-auto plan-grid" />
         </div>
       </div>
-      <div class="tab-pane flex-grow-1 overflow-hidden position-relative"
-        :class="{ 'show active': activeTab === 'raw' }">
+      <div
+        class="tab-pane flex-grow-1 overflow-hidden position-relative"
+        :class="{ 'show active': activeTab === 'raw' }"
+      >
         <div class="overflow-hidden d-flex w-100 h-100">
           <div class="overflow-auto flex-grow-1">
-            <pre class="small p-2 mb-0"><code v-html="json_(planSource)"></code></pre>
+            <pre
+              class="small p-2 mb-0"
+            ><code v-html="json_(planSource)"></code></pre>
           </div>
           <Copy :content="planSource" />
         </div>
       </div>
-      <div class="tab-pane flex-grow-1 overflow-hidden position-relative"
-        :class="{ 'show active': activeTab === 'query' }" v-if="store.query">
+      <div
+        class="tab-pane flex-grow-1 overflow-hidden position-relative"
+        :class="{ 'show active': activeTab === 'query' }"
+        v-if="store.query"
+      >
         <div class="overflow-hidden d-flex w-100 h-100">
           <div class="overflow-auto flex-grow-1">
-            <pre class="small p-2 mb-0"><code v-html="mysql_(store.query)"></code></pre>
+            <pre
+              class="small p-2 mb-0"
+            ><code v-html="mysql_(store.query)"></code></pre>
           </div>
         </div>
         <Copy :content="store.query" />
       </div>
-      <div class="tab-pane flex-grow-1 overflow-auto" :class="{ 'show active': activeTab === 'stats' }">
+      <div
+        class="tab-pane flex-grow-1 overflow-auto"
+        :class="{ 'show active': activeTab === 'stats' }"
+      >
         <Stats v-if="store.plan" />
       </div>
     </div>
@@ -1114,7 +1345,6 @@ function exportPng() {
 @import "highlight.js/scss/stackoverflow-light.scss";
 
 .ready {
-
   rect,
   foreignObject {
     transition: all 0.2s ease-in-out;
