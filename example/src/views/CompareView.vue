@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { inject } from "vue"
 import Plan from "@/components/Plan.vue"
+import VLink from "../components/VLink.vue"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
 import type { Plan as PlanType } from "../types"
@@ -11,38 +12,25 @@ const compareData = inject<{ plan1: PlanType | null; plan2: PlanType | null }>(
 </script>
 
 <template>
-  <div
-    class="compare-view-container d-flex flex-column flex-grow-1 overflow-hidden"
-  >
-    <div
-      v-if="compareData?.plan1 && compareData?.plan2"
-      class="flex-grow-1 overflow-hidden"
-    >
+  <div class="compare-view-container d-flex flex-column flex-grow-1 overflow-hidden">
+    <div v-if="compareData?.plan1 && compareData?.plan2" class="flex-grow-1 overflow-hidden">
       <Splitpanes class="default-theme">
         <Pane min-size="20">
           <div class="d-flex flex-column h-100 border-end">
             <div
-              class="compare-header p-2 bg-secondary text-white small d-flex justify-content-between align-items-center"
-            >
+              class="compare-header p-2 bg-secondary text-white small d-flex justify-content-between align-items-center">
               <span><strong>Plan A:</strong> {{ compareData.plan1[0] }}</span>
             </div>
-            <Plan
-              :plan-source="compareData.plan1[1]"
-              :plan-query="compareData.plan1[2]"
-            />
+            <Plan :plan-source="compareData.plan1[1]" :plan-query="compareData.plan1[2]" />
           </div>
         </Pane>
         <Pane min-size="20">
           <div class="d-flex flex-column h-100">
             <div
-              class="compare-header p-2 bg-secondary text-white small d-flex justify-content-between align-items-center"
-            >
+              class="compare-header p-2 bg-secondary text-white small d-flex justify-content-between align-items-center">
               <span><strong>Plan B:</strong> {{ compareData.plan2[0] }}</span>
             </div>
-            <Plan
-              :plan-source="compareData.plan2[1]"
-              :plan-query="compareData.plan2[2]"
-            />
+            <Plan :plan-source="compareData.plan2[1]" :plan-query="compareData.plan2[2]" />
           </div>
         </Pane>
       </Splitpanes>
@@ -53,7 +41,7 @@ const compareData = inject<{ plan1: PlanType | null; plan2: PlanType | null }>(
         If this takes too long, try selecting the plans again from the Home
         view.
       </p>
-      <a href="/" class="btn btn-primary mt-3">Back to Home</a>
+      <VLink to="/" class="btn btn-primary mt-3">Back to Home</VLink>
     </div>
   </div>
 </template>

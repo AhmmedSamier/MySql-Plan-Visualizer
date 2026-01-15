@@ -27,14 +27,14 @@ const routes: Record<string, Component> = {
 const base = import.meta.env.BASE_URL || "/"
 
 function getNormalizedPath(pathname: string): string {
-  if (pathname.startsWith(base)) {
-    return pathname.slice(base.length - 1) || "/"
-  }
-  const baseNoTrailing = base.endsWith("/") ? base.slice(0, -1) : base
+  const base = import.meta.env.BASE_URL || "/"
+  const baseNoTrailing = base.replace(/\/$/, "")
+
   if (pathname.startsWith(baseNoTrailing)) {
-    return pathname.slice(baseNoTrailing.length) || "/"
+    const pathAfterBase = pathname.slice(baseNoTrailing.length)
+    return pathAfterBase.startsWith("/") ? pathAfterBase : "/" + pathAfterBase
   }
-  return pathname
+  return pathname || "/"
 }
 
 const currentPath = ref(getNormalizedPath(window.location.pathname))
@@ -130,9 +130,9 @@ watch(
 
     let targetPath = ""
     if (normalizedIdPath === "/") {
-      // Return to the exact root base. 
-      // If base was "/something/", returning to "/something" often preserves the UI state better without server redirects.
-      targetPath = baseNoTrailing || "/"
+      // Return to the exact root base.
+      // Ensuring it matches the BASE_URL precisely.
+      targetPath = base
     } else {
       targetPath = baseNoTrailing + normalizedIdPath
     }
