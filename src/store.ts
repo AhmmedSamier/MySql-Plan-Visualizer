@@ -9,7 +9,7 @@ interface Store {
   plan?: IPlan
   query?: string
   stats: IPlanStats
-  parse(source: string, query: string): void
+  parse(source: string, query: string): Promise<void>
   flat: FlattenedPlanNode[][]
   nodeById?: FlattenedNodeMap
 }
@@ -86,13 +86,13 @@ export const store = reactive<Store>({
   flat: [],
   stats: initStats(),
   nodeById: new Map(),
-  parse(source: string, query: string) {
+  async parse(source: string, query: string) {
     store.stats = initStats()
     store.flat = []
     const nodeById = new Map()
     let planJson: IPlanContent
     try {
-      planJson = planService.fromSource(source) as IPlanContent
+      planJson = (await planService.fromSourceAsync(source)) as IPlanContent
     } catch {
       store.plan = undefined
       return
