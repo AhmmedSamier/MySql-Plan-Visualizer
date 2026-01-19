@@ -73,6 +73,13 @@ describe("PlanService MySQL JSON V2", () => {
     const joinNode = findNode(plan, "join")
     expect(joinNode).toBeDefined()
     expect(joinNode[NodeProp.TOTAL_COST]).toBe(400.00)
+
+    // Check Root Cost (should come from query_block cost_info)
+    expect(plan[NodeProp.TOTAL_COST]).toBe(500.00)
+
+    // The root should have children (the execution plan steps)
+    expect(plan[NodeProp.PLANS]).toBeDefined()
+    expect(plan[NodeProp.PLANS]?.length).toBeGreaterThan(0)
   })
 
   test("can parse MySQL JSON V2 plan (pure execution_plan)", () => {
@@ -110,18 +117,13 @@ describe("PlanService MySQL JSON V2", () => {
     const plan = r.Plan
 
     // ParseV2 calls itself recursively.
-    // Top level: execution_plan object.
-    // It has `steps`. So it processes children.
-    // It maps other keys. `execution_plan` has no `name` so `mappedName` = "Unknown" or from `ACCESS_TYPE_MAP`.
-    // Wait, `parseV2` does: `const name = data.name || data.operation || "Unknown"`
-    // Top object has no name. So "Unknown".
     expect(plan[NodeProp.NODE_TYPE]).toBe("Unknown")
 
     const steps = plan[NodeProp.PLANS]
     expect(steps).toHaveLength(1)
 
     const joinNode = steps[0]
-    expect(joinNode[NodeProp.NODE_TYPE]).toBe("join") // "join" is not in ACCESS_TYPE_MAP, so uses name.
+    expect(joinNode[NodeProp.NODE_TYPE]).toBe("join")
     expect(joinNode[NodeProp.TOTAL_COST]).toBe(50.0)
 
     const joinInputs = joinNode[NodeProp.PLANS]
