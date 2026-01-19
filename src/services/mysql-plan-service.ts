@@ -107,6 +107,20 @@ export class MysqlPlanService {
       node = new Node("Distinct")
       node[NodeProp.PLANS] = [child]
       flat.push(node)
+    } else if (data.execution_plan) {
+      // V2 execution_plan inside V1 query_block
+      const nodeType = data.select_id ? `Select #${data.select_id}` : "Result"
+      node = new Node(nodeType)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ep = (data as any).execution_plan
+      const inputs = ep.steps || ep.inputs || ep.children || ep.substeps
+      if (inputs && Array.isArray(inputs)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        node[NodeProp.PLANS] = inputs.map((child: any) =>
+          this.parseV2(child, flat),
+        )
+      }
+      flat.push(node)
     } else {
       // Generic fallback or root query block properties
       const nodeType = data.select_id ? `Select #${data.select_id}` : "Result"
@@ -218,7 +232,7 @@ export class MysqlPlanService {
       node[NodeProp.ACTUAL_STARTUP_TIME] = data.actual_first_row_ms
     }
 
-    const inputs = data.inputs || data.steps || data.children
+    const inputs = data.inputs || data.steps || data.children || data.substeps
     if (inputs && Array.isArray(inputs)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       node[NodeProp.PLANS] = inputs.map((child: any) =>

@@ -43,57 +43,36 @@ describe("PlanService MySQL JSON V2", () => {
     const plan = r.Plan
 
     expect(plan).toBeDefined()
+    // The top node should probably be Select #1
+    expect(plan[NodeProp.NODE_TYPE]).toBe("Select #1")
 
-    // The parser `parseV2` uses `inputs` || `steps` || `children`
-    // Root `execution_plan` has `steps`.
-    // V2 parser is recursive.
+    // It should have children
+    const children = plan[NodeProp.PLANS]
+    expect(children).toBeDefined()
+    expect(children.length).toBeGreaterThan(0)
 
-    // Top level: The `query_block` is handled by `parseV1` which falls back to `parseV2` if no known keys found?
-    // Wait, `isMySQL` detects `query_block`. `parseMySQL` calls `parseV1`.
-    // `parseV1` checks `nested_loop`, `table`, etc.
-    // If none match, it returns a generic Node("Select #1") or "Result".
-    // AND it attaches `cost_info`.
+    // We expect to find the join node down the tree
+    // Note: The structure might be Select #1 -> execution_plan (maybe?) -> ...
+    // Or Select #1 -> join if we flatten properly.
 
-    // Ah, `parseV1` does NOT seem to look for `execution_plan` inside `query_block`.
-    // If `query_block` contains `execution_plan` (mixed V1/V2?), `parseV1` logic:
-    // } else {
-    //   const nodeType = data.select_id ? `Select #${data.select_id}` : "Result"
-    //   node = new Node(nodeType)
-    // }
+    // For now, let's just check if we can find the join node anywhere in the descendants.
 
-    // This implies `src/services/mysql-plan-service.ts` might fail to traverse `execution_plan` if it's nested inside `query_block` but not via `nested_loop`.
-    // Let's verify this assumption with the test.
+    // Helper to find node by type
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const findNode = (node: any, type: string): any => {
+      if (node[NodeProp.NODE_TYPE] === type) return node
+      if (node[NodeProp.PLANS]) {
+        for (const child of node[NodeProp.PLANS]) {
+          const found = findNode(child, type)
+          if (found) return found
+        }
+      }
+      return null
+    }
 
-    // If the input JSON has `query_block`, `parseMySQL` calls `parseV1`.
-    // `parseV1` looks for specific keys. If it doesn't find them, it creates a leaf node "Select #1".
-
-    // If the standard V2 output puts `execution_plan` INSIDE `query_block`, the current code might be buggy.
-    // Or maybe V2 output doesn't use `query_block` at top level?
-    // "MySQL V2 (explain_json_format_version=2) structure is flexible but usually tree-like"
-
-    // If I look at `isMySQL`:
-    // return _.has(data, "query_block") || _.has(data, "execution_plan") ...
-
-    // If I pass { query_block: { execution_plan: ... } }
-    // `parseMySQL` -> `parseV1(data.query_block)`
-    // `parseV1` checks `nested_loop`... no. `table`... no. `ordering`... no.
-    // It falls to `else` -> Node("Select #1").
-    // It returns that node. The children in `execution_plan` are IGNORED.
-
-    // THIS SEEMS LIKE A BUG or I misunderstand V2 format.
-    // If V2 format is:
-    // { "execution_plan": { ... } } (without query_block)
-    // Then `parseMySQL` calls `parseV2(data)`.
-    // `parseV2` maps fields and recurses on `inputs`|`steps`.
-
-    // Let's test the "pure" V2 format first (no query_block wrapper).
-    // Then I'll check if V2 with query_block is a real thing and if it fails.
-    // According to docs, `EXPLAIN FORMAT=JSON` is V1.
-    // `EXPLAIN FORMAT=JSON` with `explain_json_format_version=2` produces V2.
-    // V2 usually starts with `{"query_block": ...}` ? No, V2 is designed to be more like the TREE output but in JSON.
-    // Often it starts with `{ "execution_plan": ... }` or directly the plan object.
-
-    // I will write the test for `{ execution_plan: ... }` which the code seems designed to handle.
+    const joinNode = findNode(plan, "join")
+    expect(joinNode).toBeDefined()
+    expect(joinNode[NodeProp.TOTAL_COST]).toBe(400.00)
   })
 
   test("can parse MySQL JSON V2 plan (pure execution_plan)", () => {
