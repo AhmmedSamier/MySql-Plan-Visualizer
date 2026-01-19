@@ -36,12 +36,13 @@ export class MysqlPlanService {
       return this.parseV2(data.query_plan, flat)
     }
     if (_.has(data, "query_block")) {
-      // Check if query_block has 'inputs' or 'operation', if so, use parseV2 or a modified V1 logic?
-      // But standard V1 query_block doesn't usually have 'operation' string like that.
-      // It seems safe to say if it has 'operation' or 'inputs', we might want to process it recursively.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const queryBlock = (data as any).query_block
-      if (_.has(queryBlock, "inputs") || _.has(queryBlock, "operation")) {
+      if (
+        _.has(queryBlock, "inputs") ||
+        _.has(queryBlock, "operation") ||
+        _.has(queryBlock, "execution_plan")
+      ) {
         return this.parseV2(queryBlock, flat)
       }
       return this.parseV1(queryBlock, flat)
@@ -158,7 +159,10 @@ export class MysqlPlanService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private parseV2(data: any, flat: Node[]): Node {
     // V2 is likely tree based with 'inputs'
-    const name = data.name || data.operation || "Unknown"
+    let name = data.name || data.operation || "Unknown"
+    if (name === "Unknown" && data.select_id) {
+      name = `Select #${data.select_id}`
+    }
     const mappedName = ACCESS_TYPE_MAP[name] || name
     const node = new Node(mappedName)
 
@@ -218,7 +222,10 @@ export class MysqlPlanService {
       node[NodeProp.ACTUAL_STARTUP_TIME] = data.actual_first_row_ms
     }
 
-    const inputs = data.inputs || data.steps || data.children
+    let inputs = data.inputs || data.steps || data.children
+    if (!inputs && data.execution_plan) {
+      inputs = [data.execution_plan]
+    }
     if (inputs && Array.isArray(inputs)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       node[NodeProp.PLANS] = inputs.map((child: any) =>
