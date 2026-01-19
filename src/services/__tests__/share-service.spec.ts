@@ -28,7 +28,12 @@ describe("share-service", () => {
     })
   }
 
-  const plan: [string, string, string, string] = ["name", "source", "query", new Date().toISOString()]
+  const plan: [string, string, string, string] = [
+    "name",
+    "source",
+    "query",
+    new Date().toISOString(),
+  ]
 
   it("handles root path", () => {
     setupBase("/")

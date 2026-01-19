@@ -141,9 +141,9 @@ onMounted(() => {
   window.addEventListener("keydown", handleKeyDown)
 })
 
-function parseAndShow() {
+async function parseAndShow() {
   ready.value = false
-  store.parse(props.planSource, props.planQuery)
+  await store.parse(props.planSource, props.planQuery)
   const savedOptions = localStorage.getItem("viewOptions")
   if (savedOptions) {
     _.assignIn(viewOptions, JSON.parse(savedOptions))
