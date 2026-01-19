@@ -1,4 +1,3 @@
-import _ from "lodash"
 import type { IPlan, Node } from "@/interfaces"
 import { NodeProp } from "@/enums"
 import { nodePropTypes, PropType } from "@/enums"
@@ -303,10 +302,10 @@ export function findNodeById(plan: IPlan, id: number): Node | undefined {
       return child.Plans && child.Plans.some(iter)
     })
     if (!o && plan.ctes) {
-      _.each(plan.ctes, (cte) => {
+      for (const cte of plan.ctes) {
         if (cte.nodeId == id) {
           o = cte
-          return false
+          break
         } else if (cte.Plans) {
           cte.Plans.some(function iter(child: Node): boolean | undefined {
             if (child.nodeId === id) {
@@ -316,10 +315,10 @@ export function findNodeById(plan: IPlan, id: number): Node | undefined {
             return child.Plans && child.Plans.some(iter)
           })
           if (o) {
-            return false
+            break
           }
         }
-      })
+      }
     }
   }
   return o
@@ -329,16 +328,12 @@ export function findNodeBySubplanName(
   plan: IPlan,
   subplanName: string,
 ): Node | undefined {
-  let o: Node | undefined = undefined
   if (plan.ctes) {
-    _.each(plan.ctes, (cte) => {
-      if (cte[NodeProp.SUBPLAN_NAME] == "CTE " + subplanName) {
-        o = cte
-        return false
-      }
-    })
+    return plan.ctes.find(
+      (cte) => cte[NodeProp.SUBPLAN_NAME] == "CTE " + subplanName,
+    )
   }
-  return o
+  return undefined
 }
 
 // Returns the list of properties that have already been displayed either in

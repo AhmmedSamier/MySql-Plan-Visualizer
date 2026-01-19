@@ -1,4 +1,4 @@
-import _ from "lodash"
+import escape from "lodash/escape"
 import { EstimateDirection, nodePropTypes, PropType } from "@/enums"
 import hljs from "highlight.js/lib/core"
 import sql from "highlight.js/lib/languages/sql"
@@ -71,15 +71,14 @@ export function loops(value: number | undefined): string {
 
 export function factor(value: number): string {
   const f: string = parseFloat(value.toPrecision(2)).toLocaleString()
-  const compiled = _.template("${f}&nbsp;&times;")
-  return compiled({ f })
+  return `${f}&nbsp;&times;`
 }
 
 export function keysToString(value: string[] | string): string {
   if (!(value instanceof Array)) {
     value = [value]
   }
-  value = _.map(value, (v) => _.escape(v.replace(/(^\(|\)$)/g, "")))
+  value = value.map((v) => escape(v.replace(/(^\(|\)$)/g, "")))
   return value.join(", ")
 }
 
@@ -87,16 +86,18 @@ export function sortKeys(
   sort: string[],
   presort: string[] | undefined,
 ): string {
-  return _.map(sort, (v) => {
-    let result = _.escape(v)
-    if (presort) {
-      result +=
-        presort.indexOf(v) !== -1
-          ? '&nbsp;<span class="text-secondary">(presort)</span>'
-          : ""
-    }
-    return result
-  }).join(", ")
+  return sort
+    .map((v) => {
+      let result = escape(v)
+      if (presort) {
+        result +=
+          presort.indexOf(v) !== -1
+            ? '&nbsp;<span class="text-secondary">(presort)</span>'
+            : ""
+      }
+      return result
+    })
+    .join(", ")
 }
 
 export function truncate(text: string, length: number, clamp: string): string {
@@ -117,11 +118,10 @@ export function formatBytes(value: number, precision = 2) {
   const dm = precision < 0 ? 0 : precision
   const units = ["Bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
   const i = Math.floor(Math.log(value) / Math.log(k))
-  const compiled = _.template("${value} ${unit}")
   const valueString = parseFloat(
     (value / Math.pow(k, i)).toPrecision(dm),
   ).toLocaleString()
-  return compiled({ value: valueString, unit: units[i] })
+  return `${valueString}\u00A0${units[i]}`
 }
 
 export function blocksAsBytes(value: number): string {
@@ -144,19 +144,15 @@ export function percent(value: number): string {
   if (isNaN(value)) {
     return "-"
   }
-  return _.round(value * 100) + "%"
+  return Math.round(value * 100) + "%"
 }
 
 export function list(value: string[] | string): string {
   if (typeof value === "string") {
     value = value.split(/\s*,\s*/)
   }
-  const compiled = _.template(
-    "<% _.forEach(lines, function(line) { %><li><%= line %></li><% }); %>",
-  )
-  return (
-    '<ul class="list-unstyled mb-0">' + compiled({ lines: value }) + "</ul>"
-  )
+  const lines = value.map((line) => `<li>${line}</li>`).join("")
+  return '<ul class="list-unstyled mb-0">' + lines + "</ul>"
 }
 
 export function transferRate(value: number): string {
@@ -167,7 +163,7 @@ export function transferRate(value: number): string {
 }
 
 export function formatNodeProp(key: string, value: unknown): string {
-  if (_.has(nodePropTypes, key)) {
+  if (Object.prototype.hasOwnProperty.call(nodePropTypes, key)) {
     if (nodePropTypes[key] === PropType.duration) {
       return duration(value as number)
     } else if (nodePropTypes[key] === PropType.boolean) {
@@ -203,7 +199,7 @@ export function formatNodeProp(key: string, value: unknown): string {
       return transferRate(value as number)
     }
   }
-  return _.escape(value as unknown as string)
+  return escape(value as unknown as string)
 }
 
 export function durationClass(i: number): string {

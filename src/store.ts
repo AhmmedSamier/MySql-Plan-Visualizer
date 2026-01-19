@@ -1,4 +1,3 @@
-import _ from "lodash"
 import { reactive } from "vue"
 import { PlanService } from "@/services/plan-service"
 import type { Node, IPlan, IPlanContent, IPlanStats } from "@/interfaces"
@@ -119,7 +118,7 @@ export const store = reactive<Store>({
 
     const flatPlans = []
     flatPlans.push(flattenPlan(store.plan.content.Plan, nodeById))
-    _.each(store.plan.ctes, (cte) => {
+    store.plan.ctes.forEach((cte) => {
       flatPlans.push(flattenPlan(cte, nodeById))
     })
     store.flat = flatPlans

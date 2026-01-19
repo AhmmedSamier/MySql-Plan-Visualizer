@@ -1,5 +1,4 @@
 // Composable for PlanNode and PlanNodeDetail components
-import _ from "lodash"
 import { computed, onBeforeMount, ref, watch } from "vue"
 import type { Node, Worker, ViewOptions } from "@/interfaces"
 import { NodeProp, EstimateDirection, HighlightType } from "@/enums"
@@ -93,13 +92,13 @@ export default function useNode(node: Node, viewOptions: ViewOptions) {
       store.stats.executionTime ||
       (store.plan?.content?.Plan?.[NodeProp.ACTUAL_TOTAL_TIME] as number)
     const duration = node[NodeProp.EXCLUSIVE_DURATION] as number
-    executionTimePercent.value = _.round((duration / executionTime) * 100)
+    executionTimePercent.value = Math.round((duration / executionTime) * 100)
   }
 
   function calculateCost() {
     const maxTotalCost = store.plan?.content.maxTotalCost as number
     const cost = node[NodeProp.EXCLUSIVE_COST] as number
-    costPercent.value = _.round((cost / maxTotalCost) * 100)
+    costPercent.value = Math.round((cost / maxTotalCost) * 100)
   }
 
   type NodePropStrings = keyof typeof NodeProp
@@ -118,7 +117,7 @@ export default function useNode(node: Node, viewOptions: ViewOptions) {
       const removed = node[NodeProp[rowsRemovedProp]] as number
       rowsRemoved.value = removed
       const actual = node[NodeProp.ACTUAL_ROWS_REVISED]
-      rowsRemovedPercent.value = _.floor((removed / (removed + actual)) * 100)
+      rowsRemovedPercent.value = Math.floor((removed / (removed + actual)) * 100)
       if (rowsRemovedPercent.value === 100) {
         rowsRemovedPercentString.value = ">99"
       } else if (rowsRemovedPercent.value === 0) {

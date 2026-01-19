@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import _ from "lodash"
 import { inject, onBeforeMount, provide, reactive, ref, watch } from "vue"
 import { NodeProp, Metric } from "../enums"
 import { scrollChildIntoParentView } from "@/services/help-service"
@@ -24,7 +23,7 @@ const viewOptions = reactive({
 onBeforeMount((): void => {
   const savedOptions = localStorage.getItem("diagramViewOptions")
   if (savedOptions) {
-    _.assignIn(viewOptions, JSON.parse(savedOptions))
+    Object.assign(viewOptions, JSON.parse(savedOptions))
   }
 })
 
@@ -35,7 +34,10 @@ function onViewOptionsChanged() {
 }
 
 function isCTE(node: Node): boolean {
-  return _.startsWith(node[NodeProp.SUBPLAN_NAME], "CTE")
+  return (
+    typeof node[NodeProp.SUBPLAN_NAME] === "string" &&
+    node[NodeProp.SUBPLAN_NAME].startsWith("CTE")
+  )
 }
 
 function scrollTo(el: Element) {

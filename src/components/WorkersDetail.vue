@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { inject, reactive } from "vue"
-import _ from "lodash"
 import type { Node, ViewOptions } from "@/interfaces"
 import { NodeProp, WorkerProp } from "@/enums"
 import { ViewOptionsKey } from "@/symbols"
@@ -64,7 +63,7 @@ const { workersLaunchedCount, workersPlannedCount } = useNode(node, viewOptions)
   </div>
 
   <div
-    v-if="_.isArray(node[NodeProp.WORKERS])"
+    v-if="Array.isArray(node[NodeProp.WORKERS])"
     class="overflow-auto"
     style="max-height: 300px"
     @wheel.stop

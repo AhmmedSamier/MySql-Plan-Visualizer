@@ -7,7 +7,6 @@ import useNode from "@/node"
 import { store } from "@/store"
 import MiscDetail from "@/components/MiscDetail.vue"
 import { ViewOptionsKey } from "@/symbols"
-import _ from "lodash"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import {
   faAlignJustify,
@@ -73,12 +72,14 @@ const shouldShowPlannerEstimate = computed(() => {
 
 // create an array of node propeties so that they can be displayed in the view
 function calculateProps() {
-  nodeProps.value = _.chain(node)
-    .omit(NodeProp.PLANS)
-    .map((value, key) => {
-      return { key: key as keyof typeof NodeProp, value }
+  nodeProps.value = Object.keys(node)
+    .filter((key) => key !== NodeProp.PLANS)
+    .map((key) => {
+      return {
+        key: key as keyof typeof NodeProp,
+        value: node[key as keyof Node],
+      }
     })
-    .value()
 }
 
 watch(activeTab, () => {
@@ -234,7 +235,7 @@ watch(activeTab, () => {
           }"
         ></FontAwesomeIcon>
       </div>
-      <div v-if="!_.isUndefined(node[NodeProp.EXCLUSIVE_COST])">
+      <div v-if="node[NodeProp.EXCLUSIVE_COST] !== undefined">
         <FontAwesomeIcon
           fixed-width
           :icon="faDollarSign"
@@ -248,7 +249,7 @@ watch(activeTab, () => {
           >(Total: {{ formattedProp("TOTAL_COST") }})</span
         >
       </div>
-      <div v-if="node[NodeProp.ACTUAL_LOOPS] > 1">
+      <div v-if="(node[NodeProp.ACTUAL_LOOPS] as number) > 1">
         <FontAwesomeIcon
           fixed-width
           :icon="faUndo"

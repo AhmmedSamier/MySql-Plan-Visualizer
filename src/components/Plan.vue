@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import _ from "lodash"
+import min from "lodash/min"
+import max from "lodash/max"
 import {
   computed,
   reactive,
@@ -146,7 +147,7 @@ function parseAndShow() {
   store.parse(props.planSource, props.planQuery)
   const savedOptions = localStorage.getItem("viewOptions")
   if (savedOptions) {
-    _.assignIn(viewOptions, JSON.parse(savedOptions))
+    Object.assign(viewOptions, JSON.parse(savedOptions))
   }
   setActiveTab("plan")
 
@@ -161,10 +162,12 @@ function parseAndShow() {
     )
   }
   ctes.value = []
-  _.each(store.plan?.ctes, (cte) => {
-    const tree = layout.hierarchy(cte, (v: Node) => v.Plans)
-    ctes.value.push(tree)
-  })
+  if (store.plan?.ctes) {
+    store.plan.ctes.forEach((cte) => {
+      const tree = layout.hierarchy(cte, (v: Node) => v.Plans)
+      ctes.value.push(tree)
+    })
+  }
   nextTick(() => {
     initZoom()
     ready.value = true
@@ -179,7 +182,7 @@ function doLayout() {
     mainLayoutExtent[0],
     mainLayoutExtent[3] + padding,
   ]
-  _.each(ctes.value, (tree) => {
+  ctes.value.forEach((tree) => {
     const cteRootNode = layout(tree)
     const currentCteExtent = getLayoutExtent(cteRootNode)
     const currentWidth = currentCteExtent[1] - currentCteExtent[0]
@@ -198,14 +201,14 @@ function doLayout() {
       node.y = temp
     }
     layoutRootNode.value.each(swap)
-    _.each(ctes.value, (tree) => tree.each(swap))
+    ctes.value.forEach((tree) => tree.each(swap))
   }
 
   // compute links from node to CTE
   toCteLinks.value = []
-  _.each(layoutRootNode.value.descendants(), (source) => {
-    if (_.has(source.data, NodeProp.CTE_NAME)) {
-      const cte = _.find(ctes.value, (cteNode) => {
+  layoutRootNode.value.descendants().forEach((source) => {
+    if (Object.prototype.hasOwnProperty.call(source.data, NodeProp.CTE_NAME)) {
+      const cte = ctes.value.find((cteNode) => {
         return (
           cteNode.data[NodeProp.SUBPLAN_NAME] ==
           "CTE " + source.data[NodeProp.CTE_NAME]
@@ -221,10 +224,15 @@ function doLayout() {
   })
 
   // compute links from node in CTE to other CTE
-  _.each(ctes.value, (cte) => {
-    _.each(cte.descendants(), (sourceCte) => {
-      if (_.has(sourceCte.data, NodeProp.CTE_NAME)) {
-        const targetCte = _.find(ctes.value, (cteNode) => {
+  ctes.value.forEach((cte) => {
+    cte.descendants().forEach((sourceCte) => {
+      if (
+        Object.prototype.hasOwnProperty.call(
+          sourceCte.data,
+          NodeProp.CTE_NAME,
+        )
+      ) {
+        const targetCte = ctes.value.find((cteNode) => {
           return (
             cteNode.data[NodeProp.SUBPLAN_NAME] ==
             "CTE " + sourceCte.data[NodeProp.CTE_NAME]
@@ -421,10 +429,12 @@ function centerNode(nodeId: number): void {
 function findTreeNode(nodeId: number) {
   const trees = [layoutRootNode.value].concat(ctes.value)
   let found: undefined | FlexHierarchyPointNode<Node> = undefined
-  _.each(trees, (tree) => {
-    found = _.find(tree?.descendants(), (o) => o.data.nodeId == nodeId)
-    return !found
-  })
+  // Iterate with for...of to support break (though simple loop is fine)
+  for (const tree of trees) {
+    if (!tree) continue
+    found = tree.descendants().find((o) => o.data.nodeId == nodeId)
+    if (found) break
+  }
   return found
 }
 
@@ -437,31 +447,31 @@ function getLayoutExtent(
 ): [number, number, number, number] {
   if (viewOptions.orientation === Orientation.LeftToRight) {
     const minX =
-      _.min(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+      min(
+        layoutRootNode.descendants().map((childNode) => {
           return childNode.x
         }),
       ) || 0
 
     const maxX =
-      _.max(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+      max(
+        layoutRootNode.descendants().map((childNode) => {
           // Width is ySize - padding
           return childNode.x + (childNode.ySize - padding)
         }),
       ) || 0
 
     const minY =
-      _.min(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+      min(
+        layoutRootNode.descendants().map((childNode) => {
           // Height is xSize. centered at y.
           return childNode.y - childNode.xSize / 2
         }),
       ) || 0
 
     const maxY =
-      _.max(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+      max(
+        layoutRootNode.descendants().map((childNode) => {
           return childNode.y + childNode.xSize / 2
         }),
       ) || 0
@@ -469,29 +479,29 @@ function getLayoutExtent(
   }
 
   const minX =
-    _.min(
-      _.map(layoutRootNode.descendants(), (childNode) => {
+    min(
+      layoutRootNode.descendants().map((childNode) => {
         return childNode.x - childNode.xSize / 2
       }),
     ) || 0
 
   const maxX =
-    _.max(
-      _.map(layoutRootNode.descendants(), (childNode) => {
+    max(
+      layoutRootNode.descendants().map((childNode) => {
         return childNode.x + childNode.xSize / 2
       }),
     ) || 0
 
   const minY =
-    _.min(
-      _.map(layoutRootNode.descendants(), (childNode) => {
+    min(
+      layoutRootNode.descendants().map((childNode) => {
         return childNode.y
       }),
     ) || 0
 
   const maxY =
-    _.max(
-      _.map(layoutRootNode.descendants(), (childNode) => {
+    max(
+      layoutRootNode.descendants().map((childNode) => {
         return childNode.y + childNode.ySize
       }),
     ) || 0
@@ -519,7 +529,7 @@ watch(
         .descendants()
         .map((item: FlexHierarchyPointNode<Node>) => item.data.size),
     )
-    _.each(ctes.value, (tree) => {
+    ctes.value.forEach((tree) => {
       data.concat(
         tree
           .descendants()

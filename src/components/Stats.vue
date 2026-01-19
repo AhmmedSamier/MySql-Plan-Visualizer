@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import _ from "lodash"
+import sumBy from "lodash/sumBy"
+import groupBy from "lodash/groupBy"
 import { computed } from "vue"
 import type { Node, StatsTableItemType } from "@/interfaces"
 import { NodeProp, SortDirection } from "@/enums"
@@ -14,23 +15,23 @@ const executionTime = computed(
     (store.plan?.content.Plan?.[NodeProp.ACTUAL_TOTAL_TIME] as number),
 )
 
-const nodes = computed(() => _.flatten(store.flat).map((row) => row.node))
+const nodes = computed(() => store.flat.flat().map((row) => row.node))
 
 function durationPercent(nodes: Node[]) {
-  return _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION) / executionTime.value
+  return sumBy(nodes, NodeProp.EXCLUSIVE_DURATION) / executionTime.value
 }
 
 const perTable = computed(() => {
-  const tables: { [key: string]: Node[] } = _.groupBy(
-    _.filter(nodes.value, (n) => n[NodeProp.RELATION_NAME] !== undefined),
+  const tables: { [key: string]: Node[] } = groupBy(
+    nodes.value.filter((n) => n[NodeProp.RELATION_NAME] !== undefined),
     NodeProp.RELATION_NAME,
   )
   const values: StatsTableItemType[] = []
-  _.each(tables, (nodes, tableName) => {
+  Object.entries(tables).forEach(([tableName, nodes]) => {
     values.push({
       name: tableName,
       count: nodes.length,
-      time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+      time: sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
       timePercent: durationPercent(nodes),
       nodes,
     })
@@ -39,16 +40,16 @@ const perTable = computed(() => {
 })
 
 const perFunction = computed(() => {
-  const functions: { [key: string]: Node[] } = _.groupBy(
-    _.filter(nodes.value, (n) => n[NodeProp.FUNCTION_NAME] !== undefined),
+  const functions: { [key: string]: Node[] } = groupBy(
+    nodes.value.filter((n) => n[NodeProp.FUNCTION_NAME] !== undefined),
     NodeProp.FUNCTION_NAME,
   )
   const values: StatsTableItemType[] = []
-  _.each(functions, (nodes, functionName) => {
+  Object.entries(functions).forEach(([functionName, nodes]) => {
     values.push({
       name: functionName,
       count: nodes.length,
-      time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+      time: sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
       timePercent: durationPercent(nodes),
       nodes,
     })
@@ -57,16 +58,16 @@ const perFunction = computed(() => {
 })
 
 const perNodeType = computed(() => {
-  const nodeTypes: { [key: string]: Node[] } = _.groupBy(
+  const nodeTypes: { [key: string]: Node[] } = groupBy(
     nodes.value,
     NodeProp.NODE_TYPE,
   )
   const values: StatsTableItemType[] = []
-  _.each(nodeTypes, (nodes, nodeType) => {
+  Object.entries(nodeTypes).forEach(([nodeType, nodes]) => {
     values.push({
       name: nodeType,
       count: nodes.length,
-      time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+      time: sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
       timePercent: durationPercent(nodes),
       nodes,
     })
@@ -75,16 +76,16 @@ const perNodeType = computed(() => {
 })
 
 const perIndex = computed(() => {
-  const indexes: { [key: string]: Node[] } = _.groupBy(
-    _.filter(nodes.value, (n) => n[NodeProp.INDEX_NAME] !== undefined),
+  const indexes: { [key: string]: Node[] } = groupBy(
+    nodes.value.filter((n) => n[NodeProp.INDEX_NAME] !== undefined),
     NodeProp.INDEX_NAME,
   )
   const values: StatsTableItemType[] = []
-  _.each(indexes, (nodes, indexName) => {
+  Object.entries(indexes).forEach(([indexName, nodes]) => {
     values.push({
       name: indexName,
       count: nodes.length,
-      time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+      time: sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
       timePercent: durationPercent(nodes),
       nodes,
     })

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import _ from "lodash"
+import orderBy from "lodash/orderBy"
 import { computed, provide, ref } from "vue"
 import { SortDirection } from "@/enums"
 
@@ -18,7 +18,7 @@ provide("dir", dir)
 provide("sortBy", sortBy)
 
 const sortedValues = computed((): object[] => {
-  return _.orderBy(props.values, sort.value, dir.value)
+  return orderBy(props.values, sort.value, dir.value)
 })
 
 function sortBy(s: string) {

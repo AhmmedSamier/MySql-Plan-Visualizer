@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import _ from "lodash"
 import { computed, onMounted } from "vue"
 import type { Node } from "@/interfaces"
 import GridRow from "@/components/GridRow.vue"
@@ -13,52 +12,55 @@ onMounted((): void => {
 })
 
 function isCTE(node: Node): boolean {
-  return _.startsWith(node[NodeProp.SUBPLAN_NAME], "CTE")
+  return (
+    typeof node[NodeProp.SUBPLAN_NAME] === "string" &&
+    node[NodeProp.SUBPLAN_NAME].startsWith("CTE")
+  )
 }
 
 const hasTime = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
-      return row.node[NodeProp.EXCLUSIVE_DURATION] || 0 > 1
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
+      return !!row.node[NodeProp.EXCLUSIVE_DURATION]
     })
   })
 })
 
 const hasRows = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
-      return row.node[NodeProp.ACTUAL_ROWS_REVISED] || 0 > 1
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
+      return !!row.node[NodeProp.ACTUAL_ROWS_REVISED]
     })
   })
 })
 
 const hasEstimation = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
-      return row.node[NodeProp.PLANNER_ESTIMATE_FACTOR] || 0 > 1
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
+      return !!row.node[NodeProp.PLANNER_ESTIMATE_FACTOR]
     })
   })
 })
 
 const hasLoops = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
-      return row.node[NodeProp.ACTUAL_LOOPS] > 1
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
+      return (row.node[NodeProp.ACTUAL_LOOPS] as number) > 1
     })
   })
 })
 
 const hasCost = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
-      return row.node[NodeProp.EXCLUSIVE_COST] > 1
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
+      return (row.node[NodeProp.EXCLUSIVE_COST] as number) > 1
     })
   })
 })
 
 const hasFilter = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
       return (
         row.node[NodeProp.ROWS_REMOVED_BY_FILTER] ||
         row.node[NodeProp.ROWS_REMOVED_BY_JOIN_FILTER] ||
@@ -69,8 +71,8 @@ const hasFilter = computed((): boolean => {
 })
 
 const hasHeapFetches = computed((): boolean => {
-  return _.some(store.flat, (plan: FlattenedPlanNode[]) => {
-    return _.some(plan, (row: FlattenedPlanNode) => {
+  return store.flat.some((plan: FlattenedPlanNode[]) => {
+    return plan.some((row: FlattenedPlanNode) => {
       return row.node[NodeProp.HEAP_FETCHES]
     })
   })

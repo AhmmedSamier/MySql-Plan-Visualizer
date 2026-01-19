@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { onBeforeMount, reactive, ref } from "vue"
-import _ from "lodash"
 import type { Node } from "@/interfaces"
 import { NodeProp } from "@/enums"
 import { shouldShowProp } from "@/services/help-service"
@@ -25,13 +24,14 @@ onBeforeMount(() => {
 
 // create an array of node propeties so that they can be displayed in the view
 function calculateProps() {
-  nodeProps.value = _.chain(node)
-    .omit(NodeProp.PLANS)
-    .omit(NodeProp.WORKERS)
-    .map((value, key) => {
-      return { key: key as keyof typeof NodeProp, value }
+  nodeProps.value = Object.keys(node)
+    .filter((key) => key !== NodeProp.PLANS && key !== NodeProp.WORKERS)
+    .map((key) => {
+      return {
+        key: key as keyof typeof NodeProp,
+        value: node[key as keyof Node],
+      }
     })
-    .value()
 }
 </script>
 <template>

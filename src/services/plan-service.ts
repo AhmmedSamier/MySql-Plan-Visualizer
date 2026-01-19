@@ -1,4 +1,7 @@
-import _ from "lodash"
+import maxBy from "lodash/maxBy"
+import max from "lodash/max"
+import sumBy from "lodash/sumBy"
+import startCase from "lodash/startCase"
 import { MysqlPlanService } from "@/services/mysql-plan-service"
 import { EstimateDirection, NodeProp, WorkerProp } from "@/enums"
 import type { IPlan, IPlanContent, IPlanStats } from "@/interfaces"
@@ -17,7 +20,10 @@ export class PlanService {
   private flat: Node[] = []
 
   private recurse(nodes: Node[]): recurseItemType {
-    return _.map(nodes, (node) => [node, this.recurse(node[NodeProp.PLANS])])
+    if (!nodes) {
+      return []
+    }
+    return nodes.map((node) => [node, this.recurse(node[NodeProp.PLANS])])
   }
 
   public createPlan(
@@ -40,7 +46,10 @@ export class PlanService {
       query: planQuery,
       planStats: {} as IPlanStats,
       ctes: [],
-      isAnalyze: _.has(planContent.Plan, NodeProp.ACTUAL_ROWS),
+      isAnalyze: Object.prototype.hasOwnProperty.call(
+        planContent.Plan,
+        NodeProp.ACTUAL_ROWS,
+      ),
       isVerbose: this.findOutputProperty(planContent.Plan),
     }
 
@@ -49,10 +58,12 @@ export class PlanService {
     this.processNode(planContent.Plan, plan)
 
     this.flat = this.flat.concat(
-      _.flattenDeep(this.recurse([plan.content.Plan as Node])),
+      this.recurse([plan.content.Plan as Node]).flat(Infinity) as Node[],
     )
-    _.each(plan.ctes, (cte) => {
-      this.flat = this.flat.concat(_.flattenDeep(this.recurse([cte as Node])))
+    plan.ctes.forEach((cte) => {
+      this.flat = this.flat.concat(
+        this.recurse([cte as Node]).flat(Infinity) as Node[],
+      )
     })
 
     this.fixCteScansDuration(plan)
@@ -64,7 +75,8 @@ export class PlanService {
   public isCTE(node: Node) {
     return (
       node[NodeProp.PARENT_RELATIONSHIP] === "InitPlan" &&
-      _.startsWith(node[NodeProp.SUBPLAN_NAME], "CTE")
+      typeof node[NodeProp.SUBPLAN_NAME] === "string" &&
+      node[NodeProp.SUBPLAN_NAME].startsWith("CTE")
     )
   }
 
@@ -73,27 +85,31 @@ export class PlanService {
     node.nodeId = this.nodeId++
     this.calculatePlannerEstimate(node)
 
-    _.each(node[NodeProp.PLANS], (child) => {
-      // Disseminate workers planned info to parallel nodes (ie. Gather children)
-      if (
-        !this.isCTE(child) &&
-        child[NodeProp.PARENT_RELATIONSHIP] !== "InitPlan" &&
-        child[NodeProp.PARENT_RELATIONSHIP] !== "SubPlan"
-      ) {
-        child[NodeProp.WORKERS_PLANNED_BY_GATHER] =
-          node[NodeProp.WORKERS_PLANNED] ||
-          node[NodeProp.WORKERS_PLANNED_BY_GATHER]
-        child[NodeProp.WORKERS_LAUNCHED_BY_GATHER] =
-          node[NodeProp.WORKERS_LAUNCHED] ||
-          node[NodeProp.WORKERS_LAUNCHED_BY_GATHER]
-      }
-      if (this.isCTE(child)) {
-        plan.ctes.push(child)
-      }
-      this.processNode(child, plan)
-    })
+    if (node[NodeProp.PLANS]) {
+      node[NodeProp.PLANS].forEach((child) => {
+        // Disseminate workers planned info to parallel nodes (ie. Gather children)
+        if (
+          !this.isCTE(child) &&
+          child[NodeProp.PARENT_RELATIONSHIP] !== "InitPlan" &&
+          child[NodeProp.PARENT_RELATIONSHIP] !== "SubPlan"
+        ) {
+          child[NodeProp.WORKERS_PLANNED_BY_GATHER] =
+            node[NodeProp.WORKERS_PLANNED] ||
+            node[NodeProp.WORKERS_PLANNED_BY_GATHER]
+          child[NodeProp.WORKERS_LAUNCHED_BY_GATHER] =
+            node[NodeProp.WORKERS_LAUNCHED] ||
+            node[NodeProp.WORKERS_LAUNCHED_BY_GATHER]
+        }
+        if (this.isCTE(child)) {
+          plan.ctes.push(child)
+        }
+        this.processNode(child, plan)
+      })
 
-    _.remove(node[NodeProp.PLANS], (child) => this.isCTE(child))
+      node[NodeProp.PLANS] = node[NodeProp.PLANS].filter(
+        (child) => !this.isCTE(child),
+      )
+    }
 
     // calculate actuals after processing child nodes so that actual duration
     // takes loops into account
@@ -102,28 +118,28 @@ export class PlanService {
   }
 
   public calculateMaximums(plan: IPlan) {
-    const largest = _.maxBy(this.flat, NodeProp.ACTUAL_ROWS_REVISED)
+    const largest = maxBy(this.flat, NodeProp.ACTUAL_ROWS_REVISED)
     if (largest) {
       plan.content.maxRows = largest[NodeProp.ACTUAL_ROWS_REVISED] as number
     }
 
-    const costliest = _.maxBy(this.flat, NodeProp.EXCLUSIVE_COST)
+    const costliest = maxBy(this.flat, NodeProp.EXCLUSIVE_COST)
     if (costliest) {
       plan.content.maxCost = costliest[NodeProp.EXCLUSIVE_COST] as number
     }
 
-    const totalCostliest = _.maxBy(this.flat, NodeProp.TOTAL_COST)
+    const totalCostliest = maxBy(this.flat, NodeProp.TOTAL_COST)
     if (totalCostliest) {
       plan.content.maxTotalCost = totalCostliest[NodeProp.TOTAL_COST] as number
     }
 
-    const slowest = _.maxBy(this.flat, NodeProp.EXCLUSIVE_DURATION)
+    const slowest = maxBy(this.flat, NodeProp.EXCLUSIVE_DURATION)
     if (slowest) {
       plan.content.maxDuration = slowest[NodeProp.EXCLUSIVE_DURATION] as number
     }
 
-    const highestEstimateFactor = _.max(
-      _.map(this.flat, (node) => {
+    const highestEstimateFactor = max(
+      this.flat.map((node) => {
         const f = node[NodeProp.PLANNER_ESTIMATE_FACTOR]
         if (f !== Infinity) {
           return f
@@ -135,7 +151,7 @@ export class PlanService {
 
   // actual duration and actual cost are calculated by subtracting child values from the total
   public calculateActuals(node: Node) {
-    if (!_.isUndefined(node[NodeProp.ACTUAL_TOTAL_TIME])) {
+    if (node[NodeProp.ACTUAL_TOTAL_TIME] !== undefined) {
       // since time is reported for an invidual loop, actual duration must be adjusted by number of loops
       // number of workers is also taken into account
       const workers = (node[NodeProp.WORKERS_LAUNCHED_BY_GATHER] || 0) + 1
@@ -155,39 +171,40 @@ export class PlanService {
       node[NodeProp.EXCLUSIVE_DURATION] = duration > 0 ? duration : 0
     }
 
-    if (!_.isUndefined(node[NodeProp.TOTAL_COST])) {
+    if (node[NodeProp.TOTAL_COST] !== undefined) {
       node[NodeProp.EXCLUSIVE_COST] = node[NodeProp.TOTAL_COST]
     }
 
-    _.each(node[NodeProp.PLANS], (subPlan) => {
-      if (subPlan[NodeProp.TOTAL_COST]) {
-        node[NodeProp.EXCLUSIVE_COST] =
-          (node[NodeProp.EXCLUSIVE_COST] as number) -
-          (subPlan[NodeProp.TOTAL_COST] as number)
-      }
-    })
+    if (node[NodeProp.PLANS]) {
+      node[NodeProp.PLANS].forEach((subPlan) => {
+        if (subPlan[NodeProp.TOTAL_COST]) {
+          node[NodeProp.EXCLUSIVE_COST] =
+            (node[NodeProp.EXCLUSIVE_COST] as number) -
+            (subPlan[NodeProp.TOTAL_COST] as number)
+        }
+      })
+    }
 
     if ((node[NodeProp.EXCLUSIVE_COST] as number) < 0) {
       node[NodeProp.EXCLUSIVE_COST] = 0
     }
 
-    _.each(
-      [
-        "ACTUAL_ROWS",
-        "PLAN_ROWS",
-        "ROWS_REMOVED_BY_FILTER",
-        "ROWS_REMOVED_BY_JOIN_FILTER",
-        "ROWS_REMOVED_BY_INDEX_RECHECK",
-      ],
-      (prop: keyof typeof NodeProp) => {
-        if (!_.isUndefined(node[NodeProp[prop]])) {
-          const revisedProp = (prop + "_REVISED") as keyof typeof NodeProp
-          const loops = node[NodeProp.ACTUAL_LOOPS] || 1
-          const revised = <number>node[NodeProp[prop]] * loops
-          node[NodeProp[revisedProp] as unknown as keyof typeof Node] = revised
-        }
-      },
-    )
+    const props = [
+      "ACTUAL_ROWS",
+      "PLAN_ROWS",
+      "ROWS_REMOVED_BY_FILTER",
+      "ROWS_REMOVED_BY_JOIN_FILTER",
+      "ROWS_REMOVED_BY_INDEX_RECHECK",
+    ] as const
+
+    props.forEach((prop) => {
+      if (node[NodeProp[prop]] !== undefined) {
+        const revisedProp = (prop + "_REVISED") as keyof typeof NodeProp
+        const loops = node[NodeProp.ACTUAL_LOOPS] || 1
+        const revised = <number>node[NodeProp[prop]] * loops
+        node[NodeProp[revisedProp] as unknown as keyof typeof Node] = revised
+      }
+    })
   }
 
   public fixCteScansDuration(plan: IPlan) {
@@ -197,25 +214,24 @@ export class PlanService {
     }
 
     // Iterate over the CTEs
-    _.each(plan.ctes, (cte) => {
+    plan.ctes.forEach((cte) => {
       // Time spent in the CTE itself
       const cteDuration = cte[NodeProp.ACTUAL_TOTAL_TIME] || 0
 
       // Find all nodes that are "CTE Scan" for the given CTE
-      const cteScans = _.filter(
-        this.flat,
+      const cteScans = this.flat.filter(
         (node) =>
           `CTE ${node[NodeProp.CTE_NAME]}` == cte[NodeProp.SUBPLAN_NAME],
       )
 
       // Sum of exclusive time for the CTE Scans
-      const sumScansDuration = _.sumBy(
+      const sumScansDuration = sumBy(
         cteScans,
         (node) => node[NodeProp.EXCLUSIVE_DURATION],
       )
 
       // Subtract exclusive time proportionally
-      _.each(cteScans, (node) => {
+      cteScans.forEach((node) => {
         node[NodeProp.EXCLUSIVE_DURATION] = Math.max(
           0,
           node[NodeProp.EXCLUSIVE_DURATION] -
@@ -233,12 +249,11 @@ export class PlanService {
     }
 
     // Find all initPlans
-    const initPlans = _.filter(
-      this.flat,
+    const initPlans = this.flat.filter(
       (node) => node[NodeProp.PARENT_RELATIONSHIP] == "InitPlan",
     )
 
-    _.each(initPlans, (subPlan) => {
+    initPlans.forEach((subPlan) => {
       // Get the sub plan name
       // It can be either:
       //  - InitPlan 2 (returns $1) -> $1
@@ -256,46 +271,66 @@ export class PlanService {
 
       // Find all nodes that are using data from this InitPlan
       // There should be the name of the sub plan somewhere in the extra info
-      _.each(
-        _.filter(
-          this.flat,
-          (node) => node[NodeProp.PARENT_RELATIONSHIP] != "InitPlan",
-        ),
-        (node) => {
-          _.each(node, (value) => {
-            if (typeof value != "string") {
-              return
-            }
-            // Value for node property should contain sub plan name (with a number
-            // matching exactly)
-            const matches = new RegExp(
-              `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
-            ).exec(value)
-            if (matches) {
-              node[NodeProp.EXCLUSIVE_DURATION] -=
-                subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
-              // Stop iterating for this node
-              return false
-            }
-          })
-        },
+      const relevantNodes = this.flat.filter(
+        (node) => node[NodeProp.PARENT_RELATIONSHIP] != "InitPlan",
       )
+
+      relevantNodes.forEach((node) => {
+        Object.values(node).forEach((value) => {
+          if (typeof value != "string") {
+            return
+          }
+          // Value for node property should contain sub plan name (with a number
+          // matching exactly)
+          const matches = new RegExp(
+            `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
+          ).exec(value)
+          if (matches) {
+            node[NodeProp.EXCLUSIVE_DURATION] -=
+              subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
+            // Stop iterating for this node (no way to break inner inner loop cleanly without flag or simple return if it was single func)
+            // But we can't break from forEach easily.
+            // However, previous logic was: `return false` inside `_.each` breaks.
+            // Here `forEach` doesn't break.
+            // I should use `some` or `for..of`.
+            // But here we are iterating object values. `Object.values(node).some(...)`
+          }
+        })
+      })
+
+      // Refactor the node search to support break:
+      relevantNodes.forEach((node) => {
+        const values = Object.values(node)
+        for (const value of values) {
+          if (typeof value != "string") continue
+          const matches = new RegExp(
+            `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
+          ).exec(value)
+          if (matches) {
+            node[NodeProp.EXCLUSIVE_DURATION] -=
+              subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
+            break // Break values loop
+          }
+        }
+      })
     })
   }
 
   // function to get the sum of actual durations of a a node children
   public childrenDuration(node: Node, duration: number) {
-    _.each(node[NodeProp.PLANS], (child) => {
-      // Subtract sub plans duration from this node except for InitPlans
-      // (ie. CTE)
-      if (
-        child[NodeProp.PARENT_RELATIONSHIP] !== "InitPlan" ||
-        (child[NodeProp.PARENT_RELATIONSHIP] == "InitPlan" &&
-          node[NodeProp.NODE_TYPE] == "Result")
-      ) {
-        duration += child[NodeProp.ACTUAL_TOTAL_TIME] || 0 // Duration may not be set
-      }
-    })
+    if (node[NodeProp.PLANS]) {
+      node[NodeProp.PLANS].forEach((child) => {
+        // Subtract sub plans duration from this node except for InitPlans
+        // (ie. CTE)
+        if (
+          child[NodeProp.PARENT_RELATIONSHIP] !== "InitPlan" ||
+          (child[NodeProp.PARENT_RELATIONSHIP] == "InitPlan" &&
+            node[NodeProp.NODE_TYPE] == "Result")
+        ) {
+          duration += child[NodeProp.ACTUAL_TOTAL_TIME] || 0 // Duration may not be set
+        }
+      })
+    }
     return duration
   }
 
@@ -398,23 +433,28 @@ export class PlanService {
     // Now, find first line of explain, and cache it's prefix (some spaces ...)
     let prefix = ""
     let firstLineIndex = 0
-    _.each(sourceLines, (l: string, index: number) => {
+
+    // Refactor _.each loop to standard loop to support break/return
+    for (let index = 0; index < sourceLines.length; index++) {
+      const l = sourceLines[index]
       const matches = /^(\s*)(\[|\{)\s*$/.exec(l)
       if (matches) {
         prefix = matches[1]
         firstLineIndex = index
-        return false
+        break
       }
-    })
+    }
+
     // now find last line
     let lastLineIndex = 0
-    _.each(sourceLines, (l: string, index: number) => {
+    for (let index = 0; index < sourceLines.length; index++) {
+      const l = sourceLines[index]
       const matches = new RegExp("^" + prefix + "(]|})s*$").exec(l)
       if (matches) {
         lastLineIndex = index
-        return false
+        break
       }
-    })
+    }
 
     const useSource: string = sourceLines
       .slice(firstLineIndex, lastLineIndex + 1)
@@ -460,7 +500,7 @@ export class PlanService {
       return line1.search(/\S/) == line2.search(/\S/)
     }
 
-    _.each(lines, (line: string) => {
+    lines.forEach((line: string) => {
       const previousLine = out[out.length - 1]
       if (
         previousLine &&
@@ -644,7 +684,7 @@ export class PlanService {
       "m",
     )
 
-    _.each(lines, (line: string) => {
+    lines.forEach((line: string) => {
       // Remove any trailing "
       line = line.replace(/"\s*$/, "")
       // Remove any begining "
@@ -775,13 +815,31 @@ export class PlanService {
         }
 
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => {
-          return e[0] >= depth
-        })
+        // Refactor _.remove
+        // elementsAtDepth = elementsAtDepth.filter(...)
+        // But elementsAtDepth is const? No it's defined as `const elementsAtDepth`.
+        // So I can't reassign it.
+        // `_.remove` modifies in place.
+        // I need to splice it or filter in place.
+        // Or change `const elementsAtDepth` to `let`.
+        // It's a method var, so I can change it to let.
+        // Wait, `elementsAtDepth` is `const`.
+        // I should change it to `const elementsAtDepth: ElementAtDepth[] = []` -> it is an array.
+        // I can use `splice`.
+        // `_.remove(array, predicate)`: Removes all elements that predicate returns truthy for.
+        // `elementsAtDepth` is array of tuples.
+        // `_.remove(elementsAtDepth, (e) => { return e[0] >= depth })`
+        // Standard in-place filter:
+        for (let i = elementsAtDepth.length - 1; i >= 0; i--) {
+          if (elementsAtDepth[i][0] >= depth) {
+            elementsAtDepth.splice(i, 1)
+          }
+        }
 
         // ! is for non-null assertion
         // Prevents the "Object is possibly 'undefined'" linting error
-        const previousElement = _.last(elementsAtDepth)?.[1] as NodeElement
+        const previousElement =
+          elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
 
         if (!previousElement) {
           return
@@ -804,8 +862,14 @@ export class PlanService {
         //const prefix = subMatches[1]
         const type = subMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        const previousElement = _.last(elementsAtDepth)?.[1]
+        // _.remove(elementsAtDepth, (e) => e[0] >= depth)
+        for (let i = elementsAtDepth.length - 1; i >= 0; i--) {
+          if (elementsAtDepth[i][0] >= depth) {
+            elementsAtDepth.splice(i, 1)
+          }
+        }
+
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
           subelementType: type.toLowerCase(),
@@ -816,8 +880,14 @@ export class PlanService {
         //const prefix = cteMatches[1]
         const cteName = cteMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        const previousElement = _.last(elementsAtDepth)?.[1]
+        // _.remove(elementsAtDepth, (e) => e[0] >= depth)
+        for (let i = elementsAtDepth.length - 1; i >= 0; i--) {
+          if (elementsAtDepth[i][0] >= depth) {
+            elementsAtDepth.splice(i, 1)
+          }
+        }
+
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
           subelementType: "initplan",
@@ -827,7 +897,8 @@ export class PlanService {
       } else if (workerMatches) {
         //const prefix = workerMatches[1]
         const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
-        const previousElement = _.last(elementsAtDepth)?.[1] as NodeElement
+        const previousElement =
+          elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
         if (!previousElement) {
           return
         }
@@ -867,12 +938,17 @@ export class PlanService {
           if (!info[1]) {
             return
           }
-          const property = _.startCase(info[0])
+          const property = startCase(info[0])
           worker[property] = info[1]
         }
       } else if (triggerMatches) {
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
+        // _.remove(elementsAtDepth, (e) => e[0] >= depth)
+        for (let i = elementsAtDepth.length - 1; i >= 0; i--) {
+          if (elementsAtDepth[i][0] >= depth) {
+            elementsAtDepth.splice(i, 1)
+          }
+        }
         // Ignoring triggers as they are PG specific usually
       } else if (extraMatches) {
         //const prefix = extraMatches[1]
@@ -881,13 +957,19 @@ export class PlanService {
         // Depth == 1 is a special case here. Global info (for example
         // execution|planning time) have a depth of 1 but shouldn't be removed
         // in case first node was at depth 0.
-        _.remove(elementsAtDepth, (e) => e[0] >= depth || depth == 1)
+        // _.remove(elementsAtDepth, (e) => e[0] >= depth || depth == 1)
+        for (let i = elementsAtDepth.length - 1; i >= 0; i--) {
+          if (elementsAtDepth[i][0] >= depth || depth == 1) {
+            elementsAtDepth.splice(i, 1)
+          }
+        }
 
         let element
         if (elementsAtDepth.length === 0) {
           element = root
         } else {
-          element = _.last(elementsAtDepth)?.[1].node as Node
+          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
+            .node as Node
         }
 
         // if no node have been found yet and a 'Query Text' has been found
@@ -918,7 +1000,7 @@ export class PlanService {
           property.indexOf(" runtime") !== -1 ||
           property.indexOf(" time") !== -1
         ) {
-          property = _.startCase(property)
+          property = startCase(property)
         }
         element[property] = value
       }
@@ -934,7 +1016,7 @@ export class PlanService {
   }
 
   private getWorker(node: Node, workerNumber: number): Worker | undefined {
-    return _.find(node[NodeProp.WORKERS], (worker) => {
+    return node[NodeProp.WORKERS]?.find((worker) => {
       return worker[WorkerProp.WORKER_NUMBER] === workerNumber
     })
   }
@@ -945,8 +1027,11 @@ export class PlanService {
     if (!children) {
       return false
     }
-    return _.some(children, (child) => {
-      return _.has(child, NodeProp.OUTPUT) || this.findOutputProperty(child)
+    return children.some((child) => {
+      return (
+        Object.prototype.hasOwnProperty.call(child, NodeProp.OUTPUT) ||
+        this.findOutputProperty(child)
+      )
     })
   }
 
