@@ -45,7 +45,7 @@ describe("PlanService MySQL JSON V2", () => {
     expect(plan).toBeDefined()
 
     // Check Root Cost (should come from query_block cost_info)
-    expect(plan[NodeProp.TOTAL_COST]).toBe(500.00)
+    expect(plan[NodeProp.TOTAL_COST]).toBe(500.0)
 
     // The root should have children (the execution plan steps)
     expect(plan[NodeProp.PLANS]).toBeDefined()
