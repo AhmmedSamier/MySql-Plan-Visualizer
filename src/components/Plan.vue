@@ -152,7 +152,7 @@ async function parseAndShow() {
   await store.parse(props.planSource, props.planQuery)
   const savedOptions = localStorage.getItem("viewOptions")
   if (savedOptions) {
-    _.assignIn(viewOptions, JSON.parse(savedOptions))
+    Object.assign(viewOptions, JSON.parse(savedOptions))
   }
   setActiveTab("plan")
 
