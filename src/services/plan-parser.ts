@@ -369,11 +369,19 @@ export class PlanParser {
         const totalCost2 = nodeMatches[NodeMatch.EstimatedTotalCost2]
 
         if (startupCost1) {
-          newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost1)
-          newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost1 || startupCost1) // If total is missing, use start (single cost value)
+          if (totalCost1) {
+            newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost1)
+            newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost1)
+          } else {
+            newNode[NodeProp.TOTAL_COST] = parseFloat(startupCost1)
+          }
         } else if (startupCost2) {
-          newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost2)
-          newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost2 || startupCost2)
+          if (totalCost2) {
+            newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost2)
+            newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost2)
+          } else {
+            newNode[NodeProp.TOTAL_COST] = parseFloat(startupCost2)
+          }
         }
 
         if (
