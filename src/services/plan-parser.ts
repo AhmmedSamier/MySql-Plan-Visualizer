@@ -176,7 +176,15 @@ export class PlanParser {
     // cases where input has been force-wrapped to some length.
     const out: string[] = []
     const lines = text.split(/\r?\n/)
-    const countChar = (str: string, ch: RegExp) => (str.match(ch) || []).length
+    const countChar = (str: string, ch: string) => {
+      let count = 0
+      let pos = str.indexOf(ch)
+      while (pos !== -1) {
+        count++
+        pos = str.indexOf(ch, pos + 1)
+      }
+      return count
+    }
     const closingFirst = (str: string) => {
       const closingParIndex = str.indexOf(")")
       const openingParIndex = str.indexOf("(")
@@ -191,7 +199,7 @@ export class PlanParser {
       const previousLine = out[out.length - 1]
       if (
         previousLine &&
-        countChar(previousLine, /\)/g) != countChar(previousLine, /\(/g)
+        countChar(previousLine, ")") != countChar(previousLine, "(")
       ) {
         // if number of opening/closing parenthesis doesn't match in the
         // previous line, this means the current line is the continuation of previous line
