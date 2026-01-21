@@ -116,6 +116,12 @@ const zoomListener = d3
     scale.value = e.transform.k
   })
 const layoutRootNode = ref<null | FlexHierarchyPointNode<Node>>(null)
+const rootDescendants = computed(() => {
+  return layoutRootNode.value?.descendants() || []
+})
+const rootLinks = computed(() => {
+  return layoutRootNode.value?.links() || []
+})
 const ctes = ref<FlexHierarchyPointNode<Node>[]>([])
 const toCteLinks = ref<FlexHierarchyPointLink<Node>[]>([])
 
@@ -141,12 +147,12 @@ onMounted(() => {
   window.addEventListener("keydown", handleKeyDown)
 })
 
-function parseAndShow() {
+async function parseAndShow() {
   ready.value = false
-  store.parse(props.planSource, props.planQuery)
+  await store.parse(props.planSource, props.planQuery)
   const savedOptions = localStorage.getItem("viewOptions")
   if (savedOptions) {
-    _.assignIn(viewOptions, JSON.parse(savedOptions))
+    Object.assign(viewOptions, JSON.parse(savedOptions))
   }
   setActiveTab("plan")
 
@@ -1207,7 +1213,7 @@ function exportPng() {
                         :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                       />
                       <AnimatedEdge
-                        v-for="(link, index) in layoutRootNode?.links()"
+                        v-for="(link, index) in rootLinks"
                         :key="`${store.plan?.id}_link${index}`"
                         :d="lineGen(link)"
                         :class="{
@@ -1222,7 +1228,7 @@ function exportPng() {
                         :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                       />
                       <foreignObject
-                        v-for="(item, index) in layoutRootNode?.descendants()"
+                        v-for="(item, index) in rootDescendants"
                         :key="`${store.plan?.id}_${index}`"
                         :x="getNodeX(item)"
                         :y="getNodeY(item)"

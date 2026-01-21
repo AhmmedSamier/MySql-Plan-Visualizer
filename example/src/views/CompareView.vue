@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { inject } from "vue"
 import Plan from "@/components/Plan.vue"
+import VLink from "../components/VLink.vue"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
 import type { Plan as PlanType } from "../types"
@@ -53,7 +54,7 @@ const compareData = inject<{ plan1: PlanType | null; plan2: PlanType | null }>(
         If this takes too long, try selecting the plans again from the Home
         view.
       </p>
-      <a href="/" class="btn btn-primary mt-3">Back to Home</a>
+      <VLink to="/" class="btn btn-primary mt-3">Back to Home</VLink>
     </div>
   </div>
 </template>

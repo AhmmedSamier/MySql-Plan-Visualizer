@@ -19,8 +19,9 @@ const go = (event: Event) => {
 
 const href = computed(() => {
   const base = import.meta.env.BASE_URL || "/"
-  const path = props.to.startsWith("/") ? props.to.slice(1) : props.to
-  return base + path
+  const baseNoTrailing = base.replace(/\/$/, "")
+  const normalizedTo = props.to.startsWith("/") ? props.to : "/" + props.to
+  return baseNoTrailing + normalizedTo
 })
 </script>
 

@@ -24,21 +24,33 @@ const routes: Record<string, Component> = {
   "/about": AboutView,
 }
 
-const currentPath = ref(
-  window.location.pathname.replace(import.meta.env.BASE_URL || "/", "/") || "/",
-)
+const base = import.meta.env.BASE_URL || "/"
+
+function getNormalizedPath(pathname: string): string {
+  const base = import.meta.env.BASE_URL || "/"
+  const baseNoTrailing = base.replace(/\/$/, "")
+
+  if (pathname.startsWith(baseNoTrailing)) {
+    const pathAfterBase = pathname.slice(baseNoTrailing.length)
+    return pathAfterBase.startsWith("/") ? pathAfterBase : "/" + pathAfterBase
+  }
+  return pathname || "/"
+}
+
+const currentPath = ref(getNormalizedPath(window.location.pathname))
 provide("currentPath", currentPath)
 
 const currentView = computed(() => {
-  if (currentPath.value.startsWith("/plan")) {
-    return PlanView
-  }
-  if (currentPath.value.startsWith("/compare")) {
-    return CompareView
-  }
   const path = currentPath.value.startsWith("/")
     ? currentPath.value
     : "/" + currentPath.value
+
+  if (path.startsWith("/plan")) {
+    return PlanView
+  }
+  if (path.startsWith("/compare")) {
+    return CompareView
+  }
   return routes[path] || HomeView
 })
 
@@ -75,13 +87,11 @@ let handlePopState: () => void
 
 onMounted(async () => {
   handlePopState = () => {
-    const base = import.meta.env.BASE_URL || "/"
-    currentPath.value = window.location.pathname.replace(base, "/") || "/"
+    currentPath.value = getNormalizedPath(window.location.pathname)
   }
   window.addEventListener("popstate", handlePopState)
 
-  const base = import.meta.env.BASE_URL || "/"
-  const path = window.location.pathname.replace(base, "/")
+  const path = getNormalizedPath(window.location.pathname)
   const matches = path.match(/^\/plan\/(\d+)/)
   if (matches) {
     const planId = parseInt(matches[1], 10)
@@ -112,11 +122,23 @@ watch(
   () => currentPath.value,
   (newPath) => {
     const base = import.meta.env.BASE_URL || "/"
-    const normalizedBase = base.endsWith("/") ? base : base + "/"
-    const normalizedPath = newPath.startsWith("/") ? newPath.slice(1) : newPath
-    const url = new URL(normalizedBase + normalizedPath, window.location.origin)
-    if (window.location.pathname !== url.pathname) {
-      window.history.pushState({}, "", url.toString())
+    // Use base without trailing slash for concatenation
+    const baseNoTrailing = base.replace(/\/$/, "")
+
+    // Ensure newPath is normalized (starts with /)
+    const normalizedIdPath = newPath.startsWith("/") ? newPath : "/" + newPath
+
+    let targetPath = ""
+    if (normalizedIdPath === "/") {
+      // Return to the exact root base.
+      // Ensuring it matches the BASE_URL precisely.
+      targetPath = base
+    } else {
+      targetPath = baseNoTrailing + normalizedIdPath
+    }
+
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, "", targetPath)
     }
   },
 )

@@ -4,9 +4,16 @@ import type { Plan } from "@/../example/src/types"
 export function compressPlanToUrl(plan: Plan): string {
   const data = JSON.stringify(plan)
   const compressed = LZString.compressToEncodedURIComponent(data)
-  return (
-    window.location.origin + window.location.pathname + "#plan=" + compressed
-  )
+  const base = import.meta.env.BASE_URL || "/"
+
+  if (base.endsWith(".html")) {
+    return window.location.origin + base + "#plan=" + compressed
+  }
+
+  // Ensure consistent handling of trailing slash
+  const normalizedBase = base.endsWith("/") ? base : base + "/"
+
+  return window.location.origin + normalizedBase + "plan#plan=" + compressed
 }
 
 export function decompressPlanFromUrl(urlHash: string): Plan | null {
