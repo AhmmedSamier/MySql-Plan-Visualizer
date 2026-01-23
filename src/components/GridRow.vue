@@ -12,8 +12,8 @@ import TimeTooltip from "@/components/tooltip/TimeTooltip.vue"
 import useNode from "@/node"
 import { Tippy, directive as vTippy } from "vue-tippy"
 import { HelpService } from "@/services/help-service"
-import { store } from "@/store"
-import type { FlattenedPlanNode } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store, FlattenedPlanNode } from "@/store"
 const helpService = new HelpService()
 const getNodeTypeDescription = helpService.getNodeTypeDescription
 
@@ -24,6 +24,7 @@ interface Props {
 const props = defineProps<Props>()
 const node = props.row.node
 
+const store = inject(StoreKey) as Store
 const viewOptions = inject(ViewOptionsKey) as ViewOptions
 
 // UI flags

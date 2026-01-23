@@ -1,7 +1,7 @@
 import type { Plan } from "./types"
 
 const DB_NAME = "mpv"
-const DB_VERSION = 1
+const DB_VERSION = 2
 let DB: IDBDatabase | null = null
 
 function deepEqual<T>(a: T, b: T): boolean {
@@ -27,10 +27,18 @@ export default {
         resolve(DB)
       }
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         console.log("onupgradeneeded")
         const db = request.result
-        db.createObjectStore("plans", { autoIncrement: true, keyPath: "id" })
+        if (event.oldVersion < 1) {
+          db.createObjectStore("plans", { autoIncrement: true, keyPath: "id" })
+        }
+        if (event.oldVersion < 2) {
+          db.createObjectStore("recent_plans", {
+            autoIncrement: true,
+            keyPath: "id",
+          })
+        }
       }
     })
   },
@@ -66,7 +74,10 @@ export default {
       store.openCursor().onsuccess = (e) => {
         const cursor = (e.target as IDBRequest).result
         if (cursor) {
-          plans.push(cursor.value)
+          const plan = cursor.value
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(plan as any).id = cursor.key
+          plans.push(plan)
           cursor.continue()
         }
       }
@@ -82,7 +93,12 @@ export default {
       const request = store.get(id)
 
       request.onsuccess = () => {
-        resolve(request.result)
+        const plan = request.result
+        if (plan) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(plan as any).id = id
+        }
+        resolve(plan)
       }
     })
   },
@@ -128,11 +144,6 @@ export default {
         return
       }
 
-      // We need to process sequentially or handle async inside loop
-      // But openCursor is async.
-      // Simpler approach: Load all existing plans and compare in memory
-      // This matches the previous logic more or less but cleaner.
-
       const getAllReq = store.getAll()
       getAllReq.onsuccess = () => {
         const existingPlans = getAllReq.result as Plan[]
@@ -167,6 +178,113 @@ export default {
       }
 
       const store = trans.objectStore("plans")
+      store.clear()
+    })
+  },
+
+  async saveRecentPlan(plan: Plan): Promise<number> {
+    const db = await this.getDb()
+    return new Promise<number>((resolve, reject) => {
+      const trans = db.transaction(["recent_plans"], "readwrite")
+      const store = trans.objectStore("recent_plans")
+
+      const keysReq = store.getAllKeys()
+
+      keysReq.onsuccess = () => {
+        const keys = keysReq.result
+        if (keys.length >= 10) {
+          const oldestKey = keys[0]
+          store.delete(oldestKey)
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const planToSave = [...plan] as any
+        const request = store.add(planToSave)
+
+        request.onsuccess = () => {
+          resolve(request.result as number)
+        }
+        request.onerror = () => {
+          reject(request.error)
+        }
+      }
+
+      trans.onerror = () => {
+        reject(trans.error)
+      }
+    })
+  },
+
+  async getRecentPlan(id: number): Promise<Plan | undefined> {
+    const db = await this.getDb()
+
+    return new Promise((resolve) => {
+      const trans = db.transaction(["recent_plans"], "readonly")
+      const store = trans.objectStore("recent_plans")
+      const request = store.get(id)
+
+      request.onsuccess = () => {
+        const plan = request.result
+        if (plan) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(plan as any).id = id
+        }
+        resolve(plan)
+      }
+    })
+  },
+
+  async getRecentPlans(): Promise<Plan[]> {
+    const db = await this.getDb()
+
+    return new Promise((resolve) => {
+      const trans = db.transaction(["recent_plans"], "readonly")
+      trans.oncomplete = () => {
+        resolve(plans.reverse())
+      }
+
+      const store = trans.objectStore("recent_plans")
+      const plans: Plan[] = []
+
+      store.openCursor().onsuccess = (e) => {
+        const cursor = (e.target as IDBRequest).result
+        if (cursor) {
+          const plan = cursor.value
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(plan as any).id = cursor.key
+          plans.push(plan)
+          cursor.continue()
+        }
+      }
+    })
+  },
+
+  async deleteRecentPlan(plan: Plan & { id?: number }): Promise<void> {
+    const db = await this.getDb()
+
+    return new Promise<void>((resolve) => {
+      const trans = db.transaction(["recent_plans"], "readwrite")
+      trans.oncomplete = () => {
+        resolve()
+      }
+
+      const store = trans.objectStore("recent_plans")
+      if (plan.id) {
+        store.delete(plan.id)
+      }
+    })
+  },
+
+  async clearRecentPlans(): Promise<void> {
+    const db = await this.getDb()
+
+    return new Promise<void>((resolve) => {
+      const trans = db.transaction(["recent_plans"], "readwrite")
+      trans.oncomplete = () => {
+        resolve()
+      }
+
+      const store = trans.objectStore("recent_plans")
       store.clear()
     })
   },

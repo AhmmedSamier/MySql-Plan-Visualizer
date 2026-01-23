@@ -5,7 +5,7 @@ import type { Node, IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 
 type FlattenedNodeMap = Map<number, FlattenedPlanNode>
 
-interface Store {
+export interface Store {
   plan?: IPlan
   query?: string
   stats: IPlanStats
@@ -82,48 +82,56 @@ function initStats(): IPlanStats {
   }
 }
 
-export const store = reactive<Store>({
-  flat: [],
-  stats: initStats(),
-  nodeById: new Map(),
-  async parse(source: string, query: string) {
-    store.stats = initStats()
-    store.flat = []
-    const nodeById = new Map()
-    let planJson: IPlanContent
-    try {
-      planJson = (await planService.fromSourceAsync(source)) as IPlanContent
-    } catch {
+export function createStore(): Store {
+  const store = reactive<Store>({
+    flat: [],
+    stats: initStats(),
+    nodeById: new Map(),
+    async parse(source: string, query: string) {
       store.plan = undefined
-      return
-    }
-    store.query = planJson["Query Text"] || query
-    store.plan = planService.createPlan("", planJson, store.query)
+      store.stats = initStats()
+      store.flat = []
+      const nodeById = new Map()
+      let planJson: IPlanContent
+      try {
+        planJson = (await planService.fromSourceAsync(source)) as IPlanContent
+      } catch {
+        store.plan = undefined
+        return
+      }
+      store.query = planJson["Query Text"] || query
+      store.plan = planService.createPlan("", planJson, store.query)
 
-    const content = store.plan.content
-    store.stats = {
-      executionTime:
-        (content["Execution Time"] as number) ||
-        (content["Total Runtime"] as number) ||
-        (content["execution_time"] as number) ||
-        NaN,
-      planningTime:
-        (content["Planning Time"] as number) ||
-        (content["planning_time"] as number) ||
-        NaN,
-      maxRows: content.maxRows || NaN,
-      maxCost: content.maxCost || NaN,
-      maxDuration: content.maxDuration || NaN,
-      maxEstimateFactor: content.maxEstimateFactor || NaN,
-    }
+      const content = store.plan.content
+      store.stats = {
+        executionTime:
+          (content["Execution Time"] as number) ||
+          (content["Total Runtime"] as number) ||
+          (content["execution_time"] as number) ||
+          NaN,
+        planningTime:
+          (content["Planning Time"] as number) ||
+          (content["planning_time"] as number) ||
+          NaN,
+        maxRows: content.maxRows || NaN,
+        maxCost: content.maxCost || NaN,
+        maxDuration: content.maxDuration || NaN,
+        maxEstimateFactor: content.maxEstimateFactor || NaN,
+      }
 
-    const flatPlans = []
-    flatPlans.push(flattenPlan(store.plan.content.Plan, nodeById))
-    _.each(store.plan.ctes, (cte) => {
-      flatPlans.push(flattenPlan(cte, nodeById))
-    })
-    store.flat = flatPlans
+      const flatPlans = []
+      flatPlans.push(flattenPlan(store.plan.content.Plan, nodeById))
+      _.each(store.plan.ctes, (cte) => {
+        flattenPlan(cte, nodeById) // Just fill nodeById
+        flatPlans.push(flattenPlan(cte, nodeById))
+      })
+      store.flat = flatPlans
 
-    store.nodeById = nodeById
-  },
-})
+      store.nodeById = nodeById
+    },
+  })
+  return store
+}
+
+// Keep singleton for backward compatibility OR to use during refactor
+export const store = createStore()

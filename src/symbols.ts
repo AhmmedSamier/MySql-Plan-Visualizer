@@ -1,5 +1,6 @@
 import type { InjectionKey, Ref } from "vue"
 import type { ViewOptions } from "@/interfaces"
+import type { Store } from "@/store"
 
 export const SelectedNodeIdKey: InjectionKey<Ref<number>> =
   Symbol("selectedNodeId")
@@ -15,3 +16,5 @@ export const ViewOptionsKey: InjectionKey<ViewOptions> = Symbol("viewOptions")
 export const ToggleDetailsKey: InjectionKey<
   Ref<{ show: boolean; counter: number }>
 > = Symbol("toggleDetails")
+
+export const StoreKey: InjectionKey<Store> = Symbol("store")

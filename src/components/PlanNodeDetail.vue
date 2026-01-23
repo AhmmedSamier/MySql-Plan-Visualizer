@@ -4,9 +4,9 @@ import { directive as vTippy } from "vue-tippy"
 import type { Node, ViewOptions } from "@/interfaces"
 import { EstimateDirection, NodeProp } from "@/enums"
 import useNode from "@/node"
-import { store } from "@/store"
 import MiscDetail from "@/components/MiscDetail.vue"
-import { ViewOptionsKey } from "@/symbols"
+import { StoreKey, ViewOptionsKey } from "@/symbols"
+import type { Store } from "@/store"
 import _ from "lodash"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import {
@@ -22,6 +22,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons"
 
 const viewOptions = inject(ViewOptionsKey) as ViewOptions
+const store = inject(StoreKey) as Store
 
 interface Props {
   node: Node

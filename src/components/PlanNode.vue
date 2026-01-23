@@ -9,14 +9,15 @@ import {
   SelectNodeKey,
   ViewOptionsKey,
   ToggleDetailsKey,
+  StoreKey,
 } from "@/symbols"
+import type { Store } from "@/store"
 import { keysToString, sortKeys } from "@/filters"
 import { HighlightType, NodeProp } from "@/enums"
 import { findNodeBySubplanName, HelpService } from "@/services/help-service"
 const helpService = new HelpService()
 const getNodeTypeDescription = helpService.getNodeTypeDescription
 import useNode from "@/node"
-import { store } from "@/store"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import {
   faChevronDown,
@@ -26,6 +27,7 @@ import {
 
 const outerEl = ref<Element | null>(null) // The outer Element, useful for CTE and subplans
 
+const store = inject(StoreKey) as Store
 const selectedNodeId = inject(SelectedNodeIdKey)
 if (!selectedNodeId) {
   throw new Error(`Could not resolve ${SelectedNodeIdKey.description}`)

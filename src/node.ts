@@ -5,9 +5,12 @@ import type { Node, Worker, ViewOptions } from "@/interfaces"
 import { NodeProp, EstimateDirection, HighlightType } from "@/enums"
 import { cost, duration, factor, formatNodeProp, rows } from "@/filters"
 import { numberToColorHsl } from "@/services/color-service"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
+import { inject } from "vue"
 
 export default function useNode(node: Node, viewOptions: ViewOptions) {
+  const store = inject(StoreKey) as Store
   const executionTimePercent = ref<number>(NaN)
   // UI flags
   // calculated properties

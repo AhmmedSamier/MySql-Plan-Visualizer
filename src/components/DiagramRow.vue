@@ -13,7 +13,8 @@ import { EstimateDirection, NodeProp, Metric } from "../enums"
 import LevelDivider from "@/components/LevelDivider.vue"
 import TimeTooltip from "@/components/tooltip/TimeTooltip.vue"
 import useNode from "@/node"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
 import type { FlattenedPlanNode } from "@/store"
 
 import { Tippy } from "vue-tippy"
@@ -29,6 +30,7 @@ const node = props.row.node
 const diagramViewOptions = reactive(props.viewOptions)
 const rootEl = ref(null)
 
+const store = inject(StoreKey) as Store
 const selectedNodeId = inject(SelectedNodeIdKey)
 const selectNode = inject(SelectNodeKey)
 if (!selectNode) {
