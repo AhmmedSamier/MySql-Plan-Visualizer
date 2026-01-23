@@ -3,7 +3,7 @@ import { EstimateDirection, NodeProp, WorkerProp } from "@/enums"
 import type { IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 import { Node, Worker } from "@/interfaces"
 import { PlanParser } from "@/services/plan-parser"
-import ParserWorker from "@/workers/parser.worker?worker"
+// Worker is imported dynamically in fromSourceAsync to avoid load-time issues in tests
 
 type recurseItemType = Array<[Node, recurseItemType]>
 
@@ -324,7 +324,10 @@ export class PlanService {
   public async fromSourceAsync(source: string): Promise<IPlanContent> {
     if (typeof Worker !== "undefined") {
       try {
-        return await new Promise((resolve, reject) => {
+        return await new Promise(async (resolve, reject) => {
+          const { default: ParserWorker } = await import(
+            "@/workers/parser.worker?worker"
+          )
           const worker = new ParserWorker()
           worker.onmessage = (event) => {
             resolve(event.data)
