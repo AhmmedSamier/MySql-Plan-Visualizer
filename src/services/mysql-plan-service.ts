@@ -16,6 +16,18 @@ const ACCESS_TYPE_MAP: Record<string, string> = {
   index_subquery: "Index Subquery",
 }
 
+const V2_PROPERTIES_TO_COPY: string[] = [
+  "filtered",
+  "cost_info",
+  "attached_condition",
+  "used_columns",
+  "possible_keys",
+  "key",
+  "key_length",
+  "message",
+  "select_id",
+]
+
 export class MysqlPlanService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public isMySQL(data: any): boolean {
@@ -176,13 +188,12 @@ export class MysqlPlanService {
       }
     }
 
-    // Generic mapping
-    _.each(data, (val, key) => {
-      if (typeof val !== "object" && key !== "inputs" && key !== "steps") {
-        // naive map
-        node[key] = val
+    // Naive map of properties
+    for (const prop of V2_PROPERTIES_TO_COPY) {
+      if (data[prop]) {
+        node[prop] = data[prop]
       }
-    })
+    }
 
     // Explicit mappings
     if (data.table_name) {
