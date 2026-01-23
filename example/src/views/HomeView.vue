@@ -41,30 +41,22 @@ const planName = ref<string>("")
 type SavedPlan = Plan & { id?: number }
 
 const savedPlans = ref<SavedPlan[]>([])
-const recentPlans = ref<SavedPlan[]>([])
-const activeHistoryTab = ref<"saved" | "recent">("saved")
+const selectionMode = ref(false)
+const selection = ref<SavedPlan[]>([])
 
 const pageSize = 11
 const maxVisiblePages = 5
 const currentPage = ref<number>(1)
 
-const currentList = computed(() => {
-  return activeHistoryTab.value === "saved"
-    ? savedPlans.value
-    : recentPlans.value
-})
-
 const totalPages = computed(() => {
-  return Math.ceil(currentList.value.length / pageSize)
+  return Math.ceil(savedPlans.value.length / pageSize)
 })
 const hovered = ref<number | null>(null)
-const selectionMode = ref(false)
-const selection = ref<SavedPlan[]>([])
 
 const paginatedPlans = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
-  return currentList.value.slice(start, end)
+  return savedPlans.value.slice(start, end)
 })
 
 const visiblePages = computed(() => {
@@ -123,7 +115,6 @@ async function submitPlan() {
   newPlan[2] = queryInput.value
   newPlan[3] = new Date().toISOString()
   
-  await idb.saveRecentPlan(newPlan)
   const id = await savePlanData(newPlan)
 
   setPlanData(newPlan[0], newPlan[1], newPlan[2], id)
@@ -149,9 +140,6 @@ async function loadPlans() {
     .slice()
     .sort((a, b) => new Date(a[3]).getTime() - new Date(b[3]).getTime())
     .reverse()
-
-  const recents = await idb.getRecentPlans()
-  recentPlans.value = recents
 }
 
 function loadPlan(plan?: Plan | Sample) {
@@ -173,10 +161,7 @@ function openOrSelectPlan(plan: Plan) {
 }
 
 function openPlan(plan: Plan & { id?: number }) {
-  let id: number | string | undefined = plan.id
-  if (id && activeHistoryTab.value === "recent") {
-    id = `r${id}`
-  }
+  const id = plan.id
   setPlanData(plan[0], plan[1], plan[2], id)
 }
 
@@ -198,18 +183,14 @@ function editPlan(plan: Plan) {
 }
 
 function plansFromSelection() {
-  return selection.value.length > 0 ? selection.value : currentList.value
+  return selection.value.length > 0 ? selection.value : savedPlans.value
 }
 
 function deletePlans() {
   if (confirm("Are you sure you want to delete plans?")) {
     const plans = plansFromSelection()
     plans.forEach(async (plan) => {
-      if (activeHistoryTab.value === "recent") {
-        await idb.deleteRecentPlan(plan)
-      } else {
-        await idb.deletePlan(plan)
-      }
+      await idb.deletePlan(plan)
     })
     loadPlans()
     selectionMode.value = false
@@ -220,42 +201,28 @@ function deletePlans() {
 }
 
 async function deletePlan(plan: Plan) {
-  if (activeHistoryTab.value === "recent") {
-    await idb.deleteRecentPlan(plan)
-  } else {
-    await idb.deletePlan(plan)
-  }
+  await idb.deletePlan(plan)
   loadPlans()
 }
 
 async function clearAllPlans() {
-  if (activeHistoryTab.value === "recent") {
-    if (confirm("Are you sure you want to delete ALL recent plans?")) {
-      await idb.clearRecentPlans()
-      loadPlans()
-      currentPage.value = 1
-      addMessage("All recent plans cleared")
-    }
-  } else {
-    if (
-      confirm(
-        "Are you sure you want to delete ALL saved plans? This cannot be undone.",
-      )
-    ) {
-      await idb.clearPlans()
-      loadPlans()
-      currentPage.value = 1
-      addMessage("All plans cleared")
-    }
+  if (
+    confirm(
+      "Are you sure you want to delete ALL saved plans? This cannot be undone.",
+    )
+  ) {
+    await idb.clearPlans()
+    loadPlans()
+    currentPage.value = 1
+    addMessage("All plans cleared")
   }
 }
 
 function compareSelectedPlans() {
   if (selection.value.length !== 2) return
-  const prefix = activeHistoryTab.value === "recent" ? "r" : "s"
   const id1 = selection.value[0].id
   const id2 = selection.value[1].id
-  currentPath.value = `/compare/${prefix}${id1}/${prefix}${id2}`
+  currentPath.value = `/compare/${id1}/${id2}`
 }
 
 function onDrop(files: File[] | null, input: Ref<string>) {
@@ -511,37 +478,15 @@ function addMessage(text: string) {
         <!-- Saved Plans History Section -->
         <div class="card mysql-history-card mt-5 mb-5">
           <div class="card-header d-flex align-items-center p-0">
-            <button
-              class="btn btn-link text-decoration-none rounded-0 py-3 px-4 fw-bold"
-              :class="
-                activeHistoryTab === 'saved'
-                  ? 'active-tab text-white'
-                  : 'text-white-50'
-              "
-              @click="activeHistoryTab = 'saved'"
-            >
+            <div class="py-3 px-4 fw-bold text-white">
               <FontAwesomeIcon :icon="faHistory" class="me-2" />Saved Plans
               <span class="badge bg-light text-dark ms-2">{{
                 savedPlans.length
               }}</span>
-            </button>
-            <button
-              class="btn btn-link text-decoration-none rounded-0 py-3 px-4 fw-bold"
-              :class="
-                activeHistoryTab === 'recent'
-                  ? 'active-tab text-white'
-                  : 'text-white-50'
-              "
-              @click="activeHistoryTab = 'recent'"
-            >
-              <FontAwesomeIcon :icon="faClock" class="me-2" />Recent
-              <span class="badge bg-light text-dark ms-2">{{
-                recentPlans.length
-              }}</span>
-            </button>
+            </div>
             <div class="ms-auto d-flex gap-2 me-3">
               <button
-                v-if="currentList.length > 0"
+                v-if="savedPlans.length > 0"
                 class="btn btn-sm btn-outline-light"
                 @click="selectionMode = !selectionMode"
               >
@@ -573,9 +518,9 @@ function addMessage(text: string) {
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export
               </button>
               <button
-                v-if="!selectionMode && currentList.length > 0"
+                v-if="!selectionMode && savedPlans.length > 0"
                 class="btn btn-sm btn-outline-light"
-                @click="exportPlans(currentList)"
+                @click="exportPlans(savedPlans)"
               >
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export All
               </button>
@@ -592,7 +537,7 @@ function addMessage(text: string) {
                 <FontAwesomeIcon :icon="faUpload" class="me-1" />Import
               </button>
               <button
-                v-if="currentList.length > 0 && !selectionMode"
+                v-if="savedPlans.length > 0 && !selectionMode"
                 class="btn btn-sm btn-outline-light"
                 @click="clearAllPlans"
               >
@@ -687,7 +632,7 @@ function addMessage(text: string) {
                   </div>
                 </a>
                 <div
-                  v-if="currentList.length === 0"
+                  v-if="savedPlans.length === 0"
                   class="text-center text-muted py-5"
                 >
                   <FontAwesomeIcon
@@ -696,10 +641,7 @@ function addMessage(text: string) {
                     size="2x"
                   ></FontAwesomeIcon>
                   <br />
-                  <span v-if="activeHistoryTab === 'saved'"
-                    >Drop your JSON file here</span
-                  >
-                  <span v-else>No recent plans found</span>
+                  <span>Drop your JSON file here</span>
                 </div>
                 <nav class="mt-3">
                   <ul

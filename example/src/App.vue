@@ -104,10 +104,6 @@ function resetPlan() {
 provide("resetPlan", resetPlan)
 
 async function fetchPlanByIdStr(idStr: string) {
-  if (idStr.startsWith("r")) {
-    const id = parseInt(idStr.substring(1), 10)
-    return await idb.getRecentPlan(id)
-  }
   const id = idStr.startsWith("s")
     ? parseInt(idStr.substring(1), 10)
     : parseInt(idStr, 10)
@@ -115,7 +111,7 @@ async function fetchPlanByIdStr(idStr: string) {
 }
 
 async function loadFromPath(path: string) {
-  const matches = path.match(/^\/plan\/([rs]?\d+)/)
+  const matches = path.match(/^\/plan\/(\d+)/)
   if (matches) {
     const idStr = matches[1]
     // Only fetch if data is not already there or mismatched
@@ -138,7 +134,7 @@ async function loadFromPath(path: string) {
     }
   }
 
-  const compareMatches = path.match(/^\/compare\/([rs]?\d+)\/([rs]?\d+)/)
+  const compareMatches = path.match(/^\/compare\/(\d+)\/(\d+)/)
   if (compareMatches) {
     const id1Str = compareMatches[1]
     const id2Str = compareMatches[2]
