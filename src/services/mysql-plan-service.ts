@@ -171,7 +171,7 @@ export class MysqlPlanService {
     node[NodeProp.RELATION_NAME] = data.table_name
     node[NodeProp.ALIAS] = data.table_name // Usually alias is same or hidden
     node[NodeProp.PLAN_ROWS] =
-      data.rows_examined_per_scan || data.rows_produced_per_join
+      data.rows_examined_per_scan || data.rows_produced_per_join || 0
 
     if (data.filtered) {
       node[NodeProp.FILTERED] = parseFloat(data.filtered)
@@ -238,7 +238,8 @@ export class MysqlPlanService {
       node[NodeProp.PLAN_ROWS] =
         data.rows_examined_per_scan ||
         data.rows_produced_per_join ||
-        data.estimated_rows
+        data.estimated_rows ||
+        0
     }
 
     if (data.actual_rows) {

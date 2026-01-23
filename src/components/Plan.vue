@@ -335,7 +335,7 @@ function onSelectedNode(v: number) {
   }
 }
 
-function lineGen(link: FlexHierarchyPointLink<object>) {
+function lineGen(link: FlexHierarchyPointLink<Node>) {
   const source = link.source
   const target = link.target
   const path = d3.path()

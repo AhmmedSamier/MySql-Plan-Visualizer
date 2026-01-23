@@ -73,6 +73,7 @@ export class Node {
     | string[]
     | undefined
     | [number, number]
+    | object
   constructor(type?: string) {
     if (!type) {
       return
