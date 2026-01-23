@@ -324,10 +324,14 @@ export class PlanService {
   public async fromSourceAsync(source: string): Promise<IPlanContent> {
     if (typeof Worker !== "undefined") {
       try {
-        return await new Promise(async (resolve, reject) => {
-          const { default: ParserWorker } = await import(
-            "@/workers/parser.worker?worker"
+        const module = await import("@/workers/parser.worker?worker")
+        const ParserWorker = module.default
+        if (!ParserWorker) {
+          throw new Error(
+            "Worker default export not found (likely in test environment)",
           )
+        }
+        return await new Promise((resolve, reject) => {
           const worker = new ParserWorker()
           worker.onmessage = (event) => {
             resolve(event.data)
