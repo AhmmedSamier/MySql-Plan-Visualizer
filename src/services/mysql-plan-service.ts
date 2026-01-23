@@ -2,6 +2,37 @@ import _ from "lodash"
 import { NodeProp } from "@/enums"
 import { Node } from "@/interfaces"
 
+interface MysqlTable {
+  access_type: string
+  table_name: string
+  rows_examined_per_scan?: number
+  rows_produced_per_join?: number
+  filtered?: string
+  cost_info?: {
+    eval_cost?: string
+    read_cost?: string
+  }
+  attached_condition?: string
+  used_columns?: string[]
+  possible_keys?: string[]
+  key?: string
+  key_length?: string
+  message?: string
+}
+
+interface MysqlQueryBlock {
+  select_id?: number
+  cost_info?: {
+    query_cost?: string
+  }
+  nested_loop?: MysqlQueryBlock[]
+  table?: MysqlTable
+  ordering_operation?: MysqlQueryBlock
+  grouping_operation?: MysqlQueryBlock
+  duplicates_removal?: MysqlQueryBlock
+  query_block?: MysqlQueryBlock
+}
+
 const ACCESS_TYPE_MAP: Record<string, string> = {
   ALL: "Full Table Scan",
   index: "Full Index Scan",
@@ -55,8 +86,7 @@ export class MysqlPlanService {
     return this.parseV2(data, flat)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private parseV1(data: any, flat: Node[]): Node {
+  private parseV1(data: MysqlQueryBlock, flat: Node[]): Node {
     let node: Node
 
     // Handle nested_loop (Join)
@@ -65,8 +95,7 @@ export class MysqlPlanService {
       // For visualization, we treat the first item as valid, and subsequent items join to it.
       // However, standard visualization expects a global root.
       // We recursively build a tree.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const children = data.nested_loop.map((child: any) => {
+      const children = data.nested_loop.map((child: MysqlQueryBlock) => {
         // Each child usually wraps a table or another construct
         if (child.table) return this.parseTable(child.table, flat)
         if (child.query_block) return this.parseV1(child.query_block, flat)
@@ -123,8 +152,7 @@ export class MysqlPlanService {
     return node
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private parseTable(data: any, flat: Node[]): Node {
+  private parseTable(data: MysqlTable, flat: Node[]): Node {
     const accessType = data.access_type || "Scan"
     const nodeType = ACCESS_TYPE_MAP[accessType] || accessType
     const node = new Node(nodeType)
