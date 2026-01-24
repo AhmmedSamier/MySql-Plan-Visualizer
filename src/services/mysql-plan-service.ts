@@ -2,6 +2,8 @@ import _ from "lodash"
 import { NodeProp } from "@/enums"
 import { Node } from "@/interfaces"
 
+export type UnknownPlan = Record<string, unknown>
+
 interface MysqlTable {
   access_type: string
   table_name: string
@@ -60,8 +62,7 @@ const V2_PROPERTIES_TO_COPY: string[] = [
 ]
 
 export class MysqlPlanService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public isMySQL(data: any): boolean {
+  public isMySQL(data: UnknownPlan): boolean {
     // MySQL V1 has query_block
     // MySQL V2 (explain_json_format_version=2) structure is flexible but usually tree-like
     return (
