@@ -112,7 +112,7 @@ export class PlanParser {
     // example: (8 rows)
     // Note: can be translated
     // example: (8 lignes)
-    source = source.replace(/^\(\d+\s+[a-z]*s?\)(\r?\n|$)/gm, "\n")
+    source = source.replace(/^\(\d+\s+[^)]+\)(\r?\n|$)/gm, "\n")
 
     return source
   }
