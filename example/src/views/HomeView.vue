@@ -114,7 +114,7 @@ async function submitPlan() {
   newPlan[1] = planInput.value
   newPlan[2] = queryInput.value
   newPlan[3] = new Date().toISOString()
-  
+
   const id = await savePlanData(newPlan)
 
   setPlanData(newPlan[0], newPlan[1], newPlan[2], id)

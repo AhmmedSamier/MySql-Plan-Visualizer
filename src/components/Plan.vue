@@ -173,9 +173,9 @@ async function parseAndShow() {
     onHashChange()
   })
   window.addEventListener("hashchange", onHashChange)
-  
+
   buildTree(store.plan)
-  
+
   nextTick(() => {
     initZoom()
     ready.value = true
