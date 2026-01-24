@@ -71,8 +71,6 @@ export interface MysqlPlanNode {
   query_spec?: any
   Plan?: any
 
-  // Allow index access for generic property copying
-  [key: string]: any
 }
 
 const ACCESS_TYPE_MAP: Record<string, string> = {
@@ -89,7 +87,7 @@ const ACCESS_TYPE_MAP: Record<string, string> = {
   index_subquery: "Index Subquery",
 }
 
-const V2_PROPERTIES_TO_COPY: string[] = [
+const V2_PROPERTIES_TO_COPY: (keyof MysqlPlanNode)[] = [
   "filtered",
   "cost_info",
   "attached_condition",
