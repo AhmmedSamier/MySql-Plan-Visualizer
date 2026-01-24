@@ -31,6 +31,17 @@ interface MysqlQueryBlock {
   grouping_operation?: MysqlQueryBlock
   duplicates_removal?: MysqlQueryBlock
   query_block?: MysqlQueryBlock
+  // V2 properties
+  inputs?: any[]
+  operation?: string
+  execution_plan?: any
+}
+
+interface MysqlPlan {
+  query_plan?: any
+  query_block?: MysqlQueryBlock
+  execution_plan?: any
+  [key: string]: any
 }
 
 const ACCESS_TYPE_MAP: Record<string, string> = {
@@ -73,14 +84,12 @@ export class MysqlPlanService {
     )
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public parseMySQL(data: any, flat: Node[]) {
+  public parseMySQL(data: MysqlPlan, flat: Node[]) {
     if (_.has(data, "query_plan")) {
       return this.parseV2(data.query_plan, flat)
     }
     if (_.has(data, "query_block")) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const queryBlock = (data as any).query_block
+      const queryBlock = data.query_block!
       if (
         _.has(queryBlock, "inputs") ||
         _.has(queryBlock, "operation") ||
@@ -91,8 +100,7 @@ export class MysqlPlanService {
       return this.parseV1(queryBlock, flat)
     }
     if (_.has(data, "execution_plan")) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return this.parseV2((data as any).execution_plan, flat)
+      return this.parseV2(data.execution_plan, flat)
     }
     // Fallback for V2 or other structures
     return this.parseV2(data, flat)
