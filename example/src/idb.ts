@@ -115,7 +115,7 @@ export default {
     })
   },
 
-  async importPlans(plans: Plan[]): Promise<number[]> {
+  async importPlans(plans: (Plan & { id?: number })[]): Promise<number[]> {
     const db = await this.getDb()
 
     return new Promise<number[]>((resolve, reject) => {
@@ -143,9 +143,7 @@ export default {
         const existingPlans = getAllReq.result as Plan[]
 
         for (const plan of plans) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const planAny = plan as any
-          if (planAny.id) delete planAny.id
+          if (plan.id) delete plan.id
 
           const isDuplicate = existingPlans.some((existing) => {
             return deepEqual(existing, plan)
