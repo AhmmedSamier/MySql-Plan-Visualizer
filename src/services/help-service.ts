@@ -240,18 +240,26 @@ export function smoothScroll({
   animateScroll()
 }
 
+const splitBalancedRegexCache = new Map<string, RegExp>()
+
 /*
  * Split a string, ensuring balanced parenthesis and balanced quotes.
  */
 export function splitBalanced(input: string, split: string) {
-  // Build the pattern from params with defaults:
-  const pattern = "([\\s\\S]*?)(e)?(?:(o)|(c)|(t)|(sp)|$)"
-    .replace("sp", split)
-    .replace("o", "[\\(\\{\\[]")
-    .replace("c", "[\\)\\}\\]]")
-    .replace("t", "['\"]")
-    .replace("e", "[\\\\]")
-  const r = new RegExp(pattern, "gi")
+  let r = splitBalancedRegexCache.get(split)
+  if (!r) {
+    // Build the pattern from params with defaults:
+    const pattern = "([\\s\\S]*?)(e)?(?:(o)|(c)|(t)|(sp)|$)"
+      .replace("sp", split)
+      .replace("o", "[\\(\\{\\[]")
+      .replace("c", "[\\)\\}\\]]")
+      .replace("t", "['\"]")
+      .replace("e", "[\\\\]")
+    r = new RegExp(pattern, "gi")
+    splitBalancedRegexCache.set(split, r)
+  }
+  r.lastIndex = 0
+
   const stack: string[] = []
   let buffer: string[] = []
   const results: string[] = []
