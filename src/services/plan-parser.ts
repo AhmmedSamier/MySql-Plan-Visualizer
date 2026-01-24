@@ -47,6 +47,75 @@ enum NodeMatch {
   NeverExecuted2,
 }
 
+const indentationRegex = /^\s*/
+const emptyLineRegex = /^s*$/
+const headerRegex = /^\\s*(QUERY|---|#).*$/
+
+const prefixPattern = "^(\\s*->\\s*|\\s*)"
+const partialPattern = "(Finalize|Simple|Partial)*"
+const typePattern = "(.*?)"
+// tslint:disable-next-line:max-line-length
+// MySQL cost: (cost=10.0 rows=5)
+// We make the second cost and width optional.
+// Modified to support integer costs and scientific notation in rows/costs
+const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
+const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
+const nonCapturingGroupOpen = "(?:"
+const nonCapturingGroupClose = ")"
+const openParenthesisPattern = "\\("
+const closeParenthesisPattern = "\\)"
+
+// MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
+const actualPattern =
+  "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
+const optionalGroup = "?"
+
+const triggerRegex = /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
+
+const workerRegex = new RegExp(
+  "^(\\s*)Worker\\s+(\\d+):\\s+" +
+    nonCapturingGroupOpen +
+    actualPattern +
+    nonCapturingGroupClose +
+    optionalGroup +
+    "(.*)" +
+    "\\s*$",
+)
+
+const extraRegex = /^(\s*)(\S.*\S)\s*$/
+
+const nodeRegex = new RegExp(
+  prefixPattern +
+    partialPattern +
+    "\\s*" +
+    typePattern +
+    "\\s*" +
+    nonCapturingGroupOpen +
+    // Option 1: Both Cost AND Actual
+    (nonCapturingGroupOpen +
+      estimationPattern +
+      "\\s+" +
+      openParenthesisPattern +
+      actualPattern +
+      closeParenthesisPattern +
+      nonCapturingGroupClose) +
+    "|" +
+    // Option 2: Only Cost
+    nonCapturingGroupOpen +
+    estimationPattern +
+    nonCapturingGroupClose +
+    "|" +
+    // Option 3: Only Actual
+    nonCapturingGroupOpen +
+    openParenthesisPattern +
+    actualPattern +
+    closeParenthesisPattern +
+    nonCapturingGroupClose +
+    nonCapturingGroupClose +
+    "\\s*$",
+  "m",
+)
+
 export class PlanParser {
   public parse(source: string): IPlanContent {
     source = this.cleanupSource(source)
@@ -246,81 +315,11 @@ export class PlanParser {
     // Array to keep reference to previous nodes with there depth
     const elementsAtDepth: ElementAtDepth[] = []
 
-    const indentationRegex = /^\s*/
-    const emptyLineRegex = /^s*$/
-    const headerRegex = /^\\s*(QUERY|---|#).*$/
-
-    const prefixPattern = "^(\\s*->\\s*|\\s*)"
-    const partialPattern = "(Finalize|Simple|Partial)*"
-    const typePattern = "(.*?)"
-    // tslint:disable-next-line:max-line-length
-    // MySQL cost: (cost=10.0 rows=5)
-    // We make the second cost and width optional.
-    // Modified to support integer costs and scientific notation in rows/costs
-    const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
-    const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
-    const nonCapturingGroupOpen = "(?:"
-    const nonCapturingGroupClose = ")"
-    const openParenthesisPattern = "\\("
-    const closeParenthesisPattern = "\\)"
-
-    // MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
-    const actualPattern =
-      "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
-    const optionalGroup = "?"
-
     // tslint:disable-next-line:max-line-length
     const subRegex =
       /^(\s*)((?:Sub|Init)Plan)\s*(?:\d+\s*)?\s*(?:\(returns.*\)\s*)?$/gm
 
     const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
-
-    const triggerRegex =
-      /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
-
-    const workerRegex = new RegExp(
-      "^(\\s*)Worker\\s+(\\d+):\\s+" +
-        nonCapturingGroupOpen +
-        actualPattern +
-        nonCapturingGroupClose +
-        optionalGroup +
-        "(.*)" +
-        "\\s*$",
-    )
-
-    const extraRegex = /^(\s*)(\S.*\S)\s*$/
-
-    const nodeRegex = new RegExp(
-      prefixPattern +
-        partialPattern +
-        "\\s*" +
-        typePattern +
-        "\\s*" +
-        nonCapturingGroupOpen +
-        // Option 1: Both Cost AND Actual
-        (nonCapturingGroupOpen +
-          estimationPattern +
-          "\\s+" +
-          openParenthesisPattern +
-          actualPattern +
-          closeParenthesisPattern +
-          nonCapturingGroupClose) +
-        "|" +
-        // Option 2: Only Cost
-        nonCapturingGroupOpen +
-        estimationPattern +
-        nonCapturingGroupClose +
-        "|" +
-        // Option 3: Only Actual
-        nonCapturingGroupOpen +
-        openParenthesisPattern +
-        actualPattern +
-        closeParenthesisPattern +
-        nonCapturingGroupClose +
-        nonCapturingGroupClose +
-        "\\s*$",
-      "m",
-    )
 
     _.each(lines, (line: string) => {
       // Remove any trailing "
