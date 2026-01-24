@@ -29,7 +29,6 @@ import PlanStats from "@/components/PlanStats.vue"
 import Stats from "@/components/Stats.vue"
 import AnimatedEdge from "@/components/AnimatedEdge.vue"
 import KeyboardShortcuts from "@/components/KeyboardShortcuts.vue"
-import { findNodeById } from "@/services/help-service"
 import { HighlightType, NodeProp, Orientation } from "@/enums"
 import { json_, mysql_ } from "@/filters"
 import { setDefaultProps } from "vue-tippy"
@@ -198,7 +197,7 @@ watch(selectedNodeId, onSelectedNode)
 function onSelectedNode(v: number) {
   window.location.hash = v ? "plan/node/" + v : ""
   if (store.plan && v) {
-    selectedNode.value = findNodeById(store.plan, v)
+    selectedNode.value = store.nodeById?.get(v)?.node
   }
 }
 
