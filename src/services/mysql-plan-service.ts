@@ -302,7 +302,7 @@ export class MysqlPlanService {
       inputs = [data.execution_plan]
     }
     if (inputs && Array.isArray(inputs)) {
-      node[NodeProp.PLANS] = inputs.map((child: MysqlPlanNode) =>
+      node[NodeProp.PLANS] = inputs.map((child) =>
         this.parseV2(child, flat),
       )
     }
