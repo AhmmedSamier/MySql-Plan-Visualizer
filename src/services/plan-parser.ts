@@ -176,14 +176,20 @@ export class PlanParser {
     // cases where input has been force-wrapped to some length.
     const out: string[] = []
     const lines = text.split(/\r?\n/)
-    const countChar = (str: string, ch: string) => {
-      let count = 0
-      let pos = str.indexOf(ch)
-      while (pos !== -1) {
-        count++
-        pos = str.indexOf(ch, pos + 1)
+    const getBalance = (str: string) => {
+      let balance = 0
+      let posOpen = str.indexOf("(")
+      let posClose = str.indexOf(")")
+      while (posOpen !== -1 || posClose !== -1) {
+        if (posOpen !== -1 && (posClose === -1 || posOpen < posClose)) {
+          balance++
+          posOpen = str.indexOf("(", posOpen + 1)
+        } else {
+          balance--
+          posClose = str.indexOf(")", posClose + 1)
+        }
       }
-      return count
+      return balance
     }
     const closingFirst = (str: string) => {
       const closingParIndex = str.indexOf(")")
@@ -195,21 +201,22 @@ export class PlanParser {
       return line1.search(/\S/) == line2.search(/\S/)
     }
 
+    let currentBalance = 0
     _.each(lines, (line: string) => {
+      const lineBalance = getBalance(line)
       const previousLine = out[out.length - 1]
-      if (
-        previousLine &&
-        countChar(previousLine, ")") != countChar(previousLine, "(")
-      ) {
+      if (previousLine && currentBalance !== 0) {
         // if number of opening/closing parenthesis doesn't match in the
         // previous line, this means the current line is the continuation of previous line
         out[out.length - 1] += line
+        currentBalance += lineBalance
       } else if (
         line.match(
           /^(?:Total\s+runtime|Planning(\s+time)?|Execution\s+time|Time|Filter|Output|JIT|Trigger|Settings)/i,
         )
       ) {
         out.push(line)
+        currentBalance = lineBalance
       } else if (
         line.match(/^\S/) || // doesn't start with a blank space (allowed only for the first node)
         line.match(/^\s*\(/) || // first non-blank character is an opening parenthesis
@@ -217,12 +224,14 @@ export class PlanParser {
       ) {
         if (0 < out.length) {
           out[out.length - 1] += line
+          currentBalance += lineBalance
         } else {
           out.push(line)
+          currentBalance = lineBalance
         }
       } else if (
         0 < out.length &&
-        previousLine.match(/^.*,\s*$/) &&
+        previousLine.trimEnd().endsWith(",") &&
         !sameIndent(previousLine, line) &&
         !line.match(/^\s*->/i)
       ) {
@@ -231,8 +240,10 @@ export class PlanParser {
         // and current line is not same indent
         // (which would mean a new information line)
         out[out.length - 1] += line
+        currentBalance += lineBalance
       } else {
         out.push(line)
+        currentBalance = lineBalance
       }
     })
     return out

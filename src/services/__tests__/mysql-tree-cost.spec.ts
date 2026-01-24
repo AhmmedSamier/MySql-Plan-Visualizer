@@ -10,7 +10,7 @@ describe("PlanService MySQL Tree Cost", () => {
 `
     const r = planService.fromSource(source) as IPlanContent
     expect(r.Plan).toBeDefined()
-    expect(r.Plan["Total Cost"]).toBe(10.00)
+    expect(r.Plan["Total Cost"]).toBe(10.0)
     // Should be undefined because single cost value implies Total Cost, and Startup Cost is unknown
     expect(r.Plan["Startup Cost"]).toBeUndefined()
   })
