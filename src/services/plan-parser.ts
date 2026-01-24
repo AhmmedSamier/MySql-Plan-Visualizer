@@ -356,12 +356,8 @@ export class PlanParser {
         const newNode: Node = new Node(nodeMatches[NodeMatch.Type])
 
         // Cost values from Branch 1 or Branch 2
-        // Note: For MySQL, EstimatedTotalCost1/2 might be undefined if we only matched start cost.
-        // We logic needs to handle that `cost=10` maps to TotalCost?
-        // In regex: (cost=10) -> group1=10, group2=undefined
-        // If we want `total cost` to be 10, we should put it there.
-        // Usually strict PG cost=0..10.
-        // If MySQL cost=10, we probably want that as Total Cost.
+        // Note: For MySQL, a single cost value (e.g. `cost=10`) is captured as EstimatedStartupCost.
+        // The logic below ensures that if only one cost is present, it is assigned to Total Cost.
 
         const startupCost1 = nodeMatches[NodeMatch.EstimatedStartupCost1]
         const totalCost1 = nodeMatches[NodeMatch.EstimatedTotalCost1]
