@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, useTemplateRef, type Ref } from "vue"
+import { ref, useTemplateRef, onMounted, type Ref } from "vue"
 import { useDropZone } from "@vueuse/core"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
@@ -54,6 +54,20 @@ function reset() {
   planA.value = null
   planB.value = null
 }
+
+onMounted(() => {
+  const storedA = sessionStorage.getItem("quick_compare_plan_a")
+  const storedB = sessionStorage.getItem("quick_compare_plan_b")
+
+  if (storedA && storedB) {
+    planAInput.value = storedA
+    planBInput.value = storedB
+    compare()
+    // Clear storage
+    sessionStorage.removeItem("quick_compare_plan_a")
+    sessionStorage.removeItem("quick_compare_plan_b")
+  }
+})
 </script>
 
 <template>
