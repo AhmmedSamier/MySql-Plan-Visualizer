@@ -47,6 +47,75 @@ enum NodeMatch {
   NeverExecuted2,
 }
 
+const indentationRegex = /^\s*/
+const emptyLineRegex = /^s*$/
+const headerRegex = /^\\s*(QUERY|---|#).*$/
+
+const prefixPattern = "^(\\s*->\\s*|\\s*)"
+const partialPattern = "(Finalize|Simple|Partial)*"
+const typePattern = "(.*?)"
+// tslint:disable-next-line:max-line-length
+// MySQL cost: (cost=10.0 rows=5)
+// We make the second cost and width optional.
+// Modified to support integer costs and scientific notation in rows/costs
+const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
+const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
+const nonCapturingGroupOpen = "(?:"
+const nonCapturingGroupClose = ")"
+const openParenthesisPattern = "\\("
+const closeParenthesisPattern = "\\)"
+
+// MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
+const actualPattern =
+  "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
+const optionalGroup = "?"
+
+const triggerRegex = /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
+
+const workerRegex = new RegExp(
+  "^(\\s*)Worker\\s+(\\d+):\\s+" +
+    nonCapturingGroupOpen +
+    actualPattern +
+    nonCapturingGroupClose +
+    optionalGroup +
+    "(.*)" +
+    "\\s*$",
+)
+
+const extraRegex = /^(\s*)(\S.*\S)\s*$/
+
+const nodeRegex = new RegExp(
+  prefixPattern +
+    partialPattern +
+    "\\s*" +
+    typePattern +
+    "\\s*" +
+    nonCapturingGroupOpen +
+    // Option 1: Both Cost AND Actual
+    (nonCapturingGroupOpen +
+      estimationPattern +
+      "\\s+" +
+      openParenthesisPattern +
+      actualPattern +
+      closeParenthesisPattern +
+      nonCapturingGroupClose) +
+    "|" +
+    // Option 2: Only Cost
+    nonCapturingGroupOpen +
+    estimationPattern +
+    nonCapturingGroupClose +
+    "|" +
+    // Option 3: Only Actual
+    nonCapturingGroupOpen +
+    openParenthesisPattern +
+    actualPattern +
+    closeParenthesisPattern +
+    nonCapturingGroupClose +
+    nonCapturingGroupClose +
+    "\\s*$",
+  "m",
+)
+
 export class PlanParser {
   public parse(source: string): IPlanContent {
     source = this.cleanupSource(source)
@@ -112,7 +181,7 @@ export class PlanParser {
     // example: (8 rows)
     // Note: can be translated
     // example: (8 lignes)
-    source = source.replace(/^\(\d+\s+[a-z]*s?\)(\r?\n|$)/gm, "\n")
+    source = source.replace(/^\(\d+\s+[^)]+\)(\r?\n|$)/gm, "\n")
 
     return source
   }
@@ -176,14 +245,20 @@ export class PlanParser {
     // cases where input has been force-wrapped to some length.
     const out: string[] = []
     const lines = text.split(/\r?\n/)
-    const countChar = (str: string, ch: string) => {
-      let count = 0
-      let pos = str.indexOf(ch)
-      while (pos !== -1) {
-        count++
-        pos = str.indexOf(ch, pos + 1)
+    const getBalance = (str: string) => {
+      let balance = 0
+      let posOpen = str.indexOf("(")
+      let posClose = str.indexOf(")")
+      while (posOpen !== -1 || posClose !== -1) {
+        if (posOpen !== -1 && (posClose === -1 || posOpen < posClose)) {
+          balance++
+          posOpen = str.indexOf("(", posOpen + 1)
+        } else {
+          balance--
+          posClose = str.indexOf(")", posClose + 1)
+        }
       }
-      return count
+      return balance
     }
     const closingFirst = (str: string) => {
       const closingParIndex = str.indexOf(")")
@@ -195,21 +270,22 @@ export class PlanParser {
       return line1.search(/\S/) == line2.search(/\S/)
     }
 
+    let currentBalance = 0
     _.each(lines, (line: string) => {
+      const lineBalance = getBalance(line)
       const previousLine = out[out.length - 1]
-      if (
-        previousLine &&
-        countChar(previousLine, ")") != countChar(previousLine, "(")
-      ) {
+      if (previousLine && currentBalance !== 0) {
         // if number of opening/closing parenthesis doesn't match in the
         // previous line, this means the current line is the continuation of previous line
         out[out.length - 1] += line
+        currentBalance += lineBalance
       } else if (
         line.match(
           /^(?:Total\s+runtime|Planning(\s+time)?|Execution\s+time|Time|Filter|Output|JIT|Trigger|Settings)/i,
         )
       ) {
         out.push(line)
+        currentBalance = lineBalance
       } else if (
         line.match(/^\S/) || // doesn't start with a blank space (allowed only for the first node)
         line.match(/^\s*\(/) || // first non-blank character is an opening parenthesis
@@ -217,12 +293,14 @@ export class PlanParser {
       ) {
         if (0 < out.length) {
           out[out.length - 1] += line
+          currentBalance += lineBalance
         } else {
           out.push(line)
+          currentBalance = lineBalance
         }
       } else if (
         0 < out.length &&
-        previousLine.match(/^.*,\s*$/) &&
+        previousLine.trimEnd().endsWith(",") &&
         !sameIndent(previousLine, line) &&
         !line.match(/^\s*->/i)
       ) {
@@ -231,8 +309,10 @@ export class PlanParser {
         // and current line is not same indent
         // (which would mean a new information line)
         out[out.length - 1] += line
+        currentBalance += lineBalance
       } else {
         out.push(line)
+        currentBalance = lineBalance
       }
     })
     return out
@@ -246,81 +326,11 @@ export class PlanParser {
     // Array to keep reference to previous nodes with there depth
     const elementsAtDepth: ElementAtDepth[] = []
 
-    const indentationRegex = /^\s*/
-    const emptyLineRegex = /^s*$/
-    const headerRegex = /^\\s*(QUERY|---|#).*$/
-
-    const prefixPattern = "^(\\s*->\\s*|\\s*)"
-    const partialPattern = "(Finalize|Simple|Partial)*"
-    const typePattern = "(.*?)"
-    // tslint:disable-next-line:max-line-length
-    // MySQL cost: (cost=10.0 rows=5)
-    // We make the second cost and width optional.
-    // Modified to support integer costs and scientific notation in rows/costs
-    const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
-    const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
-    const nonCapturingGroupOpen = "(?:"
-    const nonCapturingGroupClose = ")"
-    const openParenthesisPattern = "\\("
-    const closeParenthesisPattern = "\\)"
-
-    // MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
-    const actualPattern =
-      "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
-    const optionalGroup = "?"
-
     // tslint:disable-next-line:max-line-length
     const subRegex =
       /^(\s*)((?:Sub|Init)Plan)\s*(?:\d+\s*)?\s*(?:\(returns.*\)\s*)?$/gm
 
     const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
-
-    const triggerRegex =
-      /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
-
-    const workerRegex = new RegExp(
-      "^(\\s*)Worker\\s+(\\d+):\\s+" +
-        nonCapturingGroupOpen +
-        actualPattern +
-        nonCapturingGroupClose +
-        optionalGroup +
-        "(.*)" +
-        "\\s*$",
-    )
-
-    const extraRegex = /^(\s*)(\S.*\S)\s*$/
-
-    const nodeRegex = new RegExp(
-      prefixPattern +
-        partialPattern +
-        "\\s*" +
-        typePattern +
-        "\\s*" +
-        nonCapturingGroupOpen +
-        // Option 1: Both Cost AND Actual
-        (nonCapturingGroupOpen +
-          estimationPattern +
-          "\\s+" +
-          openParenthesisPattern +
-          actualPattern +
-          closeParenthesisPattern +
-          nonCapturingGroupClose) +
-        "|" +
-        // Option 2: Only Cost
-        nonCapturingGroupOpen +
-        estimationPattern +
-        nonCapturingGroupClose +
-        "|" +
-        // Option 3: Only Actual
-        nonCapturingGroupOpen +
-        openParenthesisPattern +
-        actualPattern +
-        closeParenthesisPattern +
-        nonCapturingGroupClose +
-        nonCapturingGroupClose +
-        "\\s*$",
-      "m",
-    )
 
     _.each(lines, (line: string) => {
       // Remove any trailing "
@@ -356,12 +366,8 @@ export class PlanParser {
         const newNode: Node = new Node(nodeMatches[NodeMatch.Type])
 
         // Cost values from Branch 1 or Branch 2
-        // Note: For MySQL, EstimatedTotalCost1/2 might be undefined if we only matched start cost.
-        // We logic needs to handle that `cost=10` maps to TotalCost?
-        // In regex: (cost=10) -> group1=10, group2=undefined
-        // If we want `total cost` to be 10, we should put it there.
-        // Usually strict PG cost=0..10.
-        // If MySQL cost=10, we probably want that as Total Cost.
+        // Note: For MySQL, a single cost value (e.g. `cost=10`) is captured as EstimatedStartupCost.
+        // The logic below ensures that if only one cost is present, it is assigned to Total Cost.
 
         const startupCost1 = nodeMatches[NodeMatch.EstimatedStartupCost1]
         const totalCost1 = nodeMatches[NodeMatch.EstimatedTotalCost1]

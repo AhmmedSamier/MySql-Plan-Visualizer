@@ -10,7 +10,8 @@ import { formatNodeProp } from "@/filters"
 import { directive as vTippy } from "vue-tippy"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
 
 interface Props {
   node: Node
@@ -18,6 +19,7 @@ interface Props {
 const props = defineProps<Props>()
 const node = reactive<Node>(props.node)
 const viewOptions = inject(ViewOptionsKey) as ViewOptions
+const store = inject(StoreKey) as Store
 
 const helpService = new HelpService()
 const getHelpMessage = helpService.getHelpMessage

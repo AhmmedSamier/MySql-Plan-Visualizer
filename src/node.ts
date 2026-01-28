@@ -5,9 +5,12 @@ import type { Node, Worker, ViewOptions } from "@/interfaces"
 import { NodeProp, EstimateDirection, HighlightType } from "@/enums"
 import { cost, duration, factor, formatNodeProp, rows } from "@/filters"
 import { numberToColorHsl } from "@/services/color-service"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
+import { inject } from "vue"
 
 export default function useNode(node: Node, viewOptions: ViewOptions) {
+  const store = inject(StoreKey) as Store
   const executionTimePercent = ref<number>(NaN)
   // UI flags
   // calculated properties
@@ -103,15 +106,17 @@ export default function useNode(node: Node, viewOptions: ViewOptions) {
   }
 
   type NodePropStrings = keyof typeof NodeProp
-  const nodeKey = Object.keys(node).find(
-    (key) =>
-      key === NodeProp.ROWS_REMOVED_BY_FILTER_REVISED ||
-      key === NodeProp.ROWS_REMOVED_BY_JOIN_FILTER_REVISED ||
-      key === NodeProp.ROWS_REMOVED_BY_INDEX_RECHECK_REVISED,
-  )
-  const rowsRemovedProp: NodePropStrings = Object.keys(NodeProp).find(
-    (prop) => NodeProp[prop as NodePropStrings] === nodeKey,
-  ) as NodePropStrings
+  let rowsRemovedPropVal: NodePropStrings | undefined
+  if (node[NodeProp.ROWS_REMOVED_BY_FILTER_REVISED] !== undefined) {
+    rowsRemovedPropVal = "ROWS_REMOVED_BY_FILTER_REVISED"
+  } else if (node[NodeProp.ROWS_REMOVED_BY_JOIN_FILTER_REVISED] !== undefined) {
+    rowsRemovedPropVal = "ROWS_REMOVED_BY_JOIN_FILTER_REVISED"
+  } else if (
+    node[NodeProp.ROWS_REMOVED_BY_INDEX_RECHECK_REVISED] !== undefined
+  ) {
+    rowsRemovedPropVal = "ROWS_REMOVED_BY_INDEX_RECHECK_REVISED"
+  }
+  const rowsRemovedProp = rowsRemovedPropVal as NodePropStrings
 
   function calculateRowsRemoved() {
     if (rowsRemovedProp) {

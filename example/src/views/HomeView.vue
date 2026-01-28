@@ -20,6 +20,7 @@ import {
   faCheckSquare,
   faTimes,
   faColumns,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons"
 import samples from "../samples.ts"
 
@@ -29,26 +30,33 @@ const setPlanData = inject("setPlanData") as (
   name: string,
   plan: string,
   query: string,
-  id?: number,
+  id?: number | string,
 ) => void
 const currentPath = inject("currentPath") as Ref<string>
+
+const mode = ref<"visualize" | "compare">("visualize")
 
 const planInput = ref<string>("")
 const queryInput = ref<string>("")
 const planName = ref<string>("")
 
+const comparePlanA = ref("")
+const comparePlanB = ref("")
+
 type SavedPlan = Plan & { id?: number }
 
 const savedPlans = ref<SavedPlan[]>([])
+const selectionMode = ref(false)
+const selection = ref<SavedPlan[]>([])
+
 const pageSize = 11
 const maxVisiblePages = 5
 const currentPage = ref<number>(1)
+
 const totalPages = computed(() => {
   return Math.ceil(savedPlans.value.length / pageSize)
 })
 const hovered = ref<number | null>(null)
-const selectionMode = ref(false)
-const selection = ref<SavedPlan[]>([])
 
 const paginatedPlans = computed(() => {
   const start = (currentPage.value - 1) * pageSize
@@ -99,6 +107,18 @@ const { isOverDropZone: isOverSavedPlansDropZone } = useDropZone(
   },
 )
 
+const dropZoneARef = useTemplateRef("dropZoneARef")
+const { isOverDropZone: isOverDropZoneA } = useDropZone(
+  dropZoneARef,
+  (files) => onDrop(files, comparePlanA),
+)
+
+const dropZoneBRef = useTemplateRef("dropZoneBRef")
+const { isOverDropZone: isOverDropZoneB } = useDropZone(
+  dropZoneBRef,
+  (files) => onDrop(files, comparePlanB),
+)
+
 async function submitPlan() {
   const newPlan: Plan = ["", "", "", ""]
   newPlan[0] =
@@ -111,6 +131,7 @@ async function submitPlan() {
   newPlan[1] = planInput.value
   newPlan[2] = queryInput.value
   newPlan[3] = new Date().toISOString()
+
   const id = await savePlanData(newPlan)
 
   setPlanData(newPlan[0], newPlan[1], newPlan[2], id)
@@ -118,6 +139,15 @@ async function submitPlan() {
 
 async function savePlanData(sample: Plan) {
   return await idb.savePlan(sample)
+}
+
+function comparePlans() {
+  if (!comparePlanA.value || !comparePlanB.value) return
+
+  sessionStorage.setItem("quick_compare_plan_a", comparePlanA.value)
+  sessionStorage.setItem("quick_compare_plan_b", comparePlanB.value)
+
+  currentPath.value = "/compare-quick"
 }
 
 onMounted(() => {
@@ -157,7 +187,8 @@ function openOrSelectPlan(plan: Plan) {
 }
 
 function openPlan(plan: Plan & { id?: number }) {
-  setPlanData(plan[0], plan[1], plan[2], plan.id)
+  const id = plan.id
+  setPlanData(plan[0], plan[1], plan[2], id)
 }
 
 function isSelected(id: string) {
@@ -355,6 +386,36 @@ function addMessage(text: string) {
           >
         </div>
 
+        <!-- Mode Toggles -->
+        <div class="d-flex justify-content-center mb-4">
+          <div class="btn-group shadow-sm rounded-pill overflow-hidden">
+            <button
+              class="btn px-4 py-2 fw-bold d-flex align-items-center"
+              :class="
+                mode === 'visualize'
+                  ? 'btn-primary'
+                  : 'btn-light text-secondary border-0'
+              "
+              @click="mode = 'visualize'"
+            >
+              <FontAwesomeIcon :icon="faMagic" class="me-2" />
+              Visualize
+            </button>
+            <button
+              class="btn px-4 py-2 fw-bold d-flex align-items-center"
+              :class="
+                mode === 'compare'
+                  ? 'btn-primary'
+                  : 'btn-light text-secondary border-0'
+              "
+              @click="mode = 'compare'"
+            >
+              <FontAwesomeIcon :icon="faColumns" class="me-2" />
+              Compare
+            </button>
+          </div>
+        </div>
+
         <!-- Input Form -->
         <div class="mysql-tip-card mb-3">
           <i class="fas fa-lightbulb text-warning me-2"></i>
@@ -365,7 +426,11 @@ function addMessage(text: string) {
           </span>
         </div>
 
-        <form v-on:submit.prevent="submitPlan" class="mysql-input-form">
+        <form
+          v-if="mode === 'visualize'"
+          v-on:submit.prevent="submitPlan"
+          class="mysql-input-form"
+        >
           <div class="card mysql-input-card mb-3">
             <div class="card-header d-flex align-items-center">
               <span class="fw-bold">
@@ -470,16 +535,79 @@ function addMessage(text: string) {
           </div>
         </form>
 
+        <div v-else class="mysql-input-form">
+          <div class="row g-4 mb-3">
+            <div class="col-md-6">
+              <div class="card mysql-input-card h-100">
+                <div class="card-header">
+                  <span class="badge bg-white text-primary me-2 rounded-circle"
+                    >A</span
+                  >
+                  Plan A
+                </div>
+                <div class="card-body">
+                  <textarea
+                    ref="dropZoneARef"
+                    :class="[
+                      'form-control',
+                      isOverDropZoneA ? 'dropzone-over' : '',
+                    ]"
+                    style="min-height: 300px"
+                    v-model="comparePlanA"
+                    placeholder="Paste Plan A (JSON or TREE)..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card mysql-input-card h-100">
+                <div class="card-header">
+                  <span class="badge bg-white text-info me-2 rounded-circle"
+                    >B</span
+                  >
+                  Plan B
+                </div>
+                <div class="card-body">
+                  <textarea
+                    ref="dropZoneBRef"
+                    :class="[
+                      'form-control',
+                      isOverDropZoneB ? 'dropzone-over' : '',
+                    ]"
+                    style="min-height: 300px"
+                    v-model="comparePlanB"
+                    placeholder="Paste Plan B (JSON or TREE)..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center mt-4">
+            <button
+              @click="comparePlans"
+              class="btn btn-lg mysql-submit-btn-premium px-5 py-3"
+              :disabled="!comparePlanA || !comparePlanB"
+            >
+              <FontAwesomeIcon :icon="faColumns" class="me-2" />
+              <span>Compare Plans</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Saved Plans History Section -->
-        <div class="card mysql-history-card mt-5 mb-5">
-          <div class="card-header d-flex align-items-center">
-            <h5 class="mb-0">
+        <div
+          v-if="mode === 'visualize'"
+          class="card mysql-history-card mt-5 mb-5"
+        >
+          <div class="card-header d-flex align-items-center p-0">
+            <div class="py-3 px-4 fw-bold text-white">
               <FontAwesomeIcon :icon="faHistory" class="me-2" />Saved Plans
               <span class="badge bg-light text-dark ms-2">{{
-                savedPlans?.length
+                savedPlans.length
               }}</span>
-            </h5>
-            <div class="ms-auto d-flex gap-2">
+            </div>
+            <div class="ms-auto d-flex gap-2 me-3">
               <button
                 v-if="savedPlans.length > 0"
                 class="btn btn-sm btn-outline-light"
@@ -518,6 +646,12 @@ function addMessage(text: string) {
                 @click="exportPlans(savedPlans)"
               >
                 <FontAwesomeIcon :icon="faDownload" class="me-1" />Export All
+              </button>
+              <button
+                class="btn btn-sm btn-outline-light"
+                @click="currentPath = '/compare-quick'"
+              >
+                <FontAwesomeIcon :icon="faColumns" class="me-1" />Quick Compare
               </button>
               <button
                 class="btn btn-sm btn-outline-light"
@@ -630,7 +764,7 @@ function addMessage(text: string) {
                     size="2x"
                   ></FontAwesomeIcon>
                   <br />
-                  Drop your JSON file here
+                  <span>Drop your JSON file here</span>
                 </div>
                 <nav class="mt-3">
                   <ul
@@ -710,6 +844,12 @@ function addMessage(text: string) {
 </template>
 
 <style scoped lang="scss">
+.active-tab {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border-bottom: 2px solid white !important;
+}
+
 .dropzone-over {
   box-shadow: 0 0 5px rgba(81, 203, 238, 1);
   background-color: rgba(81, 203, 238, 0.05);
@@ -976,6 +1116,16 @@ function addMessage(text: string) {
     background-color: rgba(63, 185, 80, 0.1);
     border-color: #238636;
     color: #3fb950;
+  }
+
+  .btn-group {
+    background-color: #21262d;
+
+    .btn-light {
+      background-color: #161b22 !important;
+      color: #b0b0b0 !important;
+      border-color: #161b22 !important;
+    }
   }
 }
 </style>

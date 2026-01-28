@@ -8,6 +8,7 @@ export default mergeConfig(
     test: {
       environment: "jsdom",
       root: fileURLToPath(new URL("./", import.meta.url)),
+      setupFiles: ["./vitest.setup.ts"],
     },
   }),
 )

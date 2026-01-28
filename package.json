@@ -36,7 +36,6 @@
     "build": "vue-tsc --noEmit && vite build",
     "build:app": "vite build",
     "build:lib": "vue-tsc --noEmit && LIB=true vite build",
-    "bun:build": "bun x vue-tsc --noEmit && bun x vite build",
     "preview": "vite preview --port 5050",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --cache --ignore-pattern .gitignore",
@@ -72,8 +71,10 @@
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.4.0",
     "@vue/tsconfig": "^0.7.0",
+    "ajv": "8",
     "eslint": "^9.21.0",
     "eslint-plugin-vue": "^9.32.0",
+    "fake-indexeddb": "^6.2.5",
     "husky": "^9.1.7",
     "jiti": "^2.4.2",
     "jsdom": "^26.0.0",
@@ -90,5 +91,8 @@
   "lint-staged": {
     "*.{vue,js,jsx,cjs,mjs,ts,tsx,cts,mts}": "eslint --cache --fix",
     "*.{js,css,md}": "prettier --write"
-  }
+  },
+  "trustedDependencies": [
+    "@parcel/watcher"
+  ]
 }

@@ -1,7 +1,7 @@
 import type { Plan } from "./types"
 
 const DB_NAME = "mpv"
-const DB_VERSION = 1
+const DB_VERSION = 2
 let DB: IDBDatabase | null = null
 
 function deepEqual<T>(a: T, b: T): boolean {
@@ -27,10 +27,12 @@ export default {
         resolve(DB)
       }
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         console.log("onupgradeneeded")
         const db = request.result
-        db.createObjectStore("plans", { autoIncrement: true, keyPath: "id" })
+        if (event.oldVersion < 1) {
+          db.createObjectStore("plans", { autoIncrement: true, keyPath: "id" })
+        }
       }
     })
   },
@@ -66,7 +68,10 @@ export default {
       store.openCursor().onsuccess = (e) => {
         const cursor = (e.target as IDBRequest).result
         if (cursor) {
-          plans.push(cursor.value)
+          const plan = cursor.value
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(plan as any).id = cursor.key
+          plans.push(plan)
           cursor.continue()
         }
       }
@@ -82,7 +87,12 @@ export default {
       const request = store.get(id)
 
       request.onsuccess = () => {
-        resolve(request.result)
+        const plan = request.result
+        if (plan) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(plan as any).id = id
+        }
+        resolve(plan)
       }
     })
   },
@@ -105,7 +115,7 @@ export default {
     })
   },
 
-  async importPlans(plans: Plan[]): Promise<number[]> {
+  async importPlans(plans: (Plan & { id?: number })[]): Promise<number[]> {
     const db = await this.getDb()
 
     return new Promise<number[]>((resolve, reject) => {
@@ -128,19 +138,12 @@ export default {
         return
       }
 
-      // We need to process sequentially or handle async inside loop
-      // But openCursor is async.
-      // Simpler approach: Load all existing plans and compare in memory
-      // This matches the previous logic more or less but cleaner.
-
       const getAllReq = store.getAll()
       getAllReq.onsuccess = () => {
         const existingPlans = getAllReq.result as Plan[]
 
         for (const plan of plans) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const planAny = plan as any
-          if (planAny.id) delete planAny.id
+          if (plan.id) delete plan.id
 
           const isDuplicate = existingPlans.some((existing) => {
             return deepEqual(existing, plan)

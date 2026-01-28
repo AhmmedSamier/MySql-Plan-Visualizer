@@ -7,8 +7,10 @@ import type { Node } from "@/interfaces"
 import { HighlightedNodeIdKey, SelectNodeKey } from "@/symbols"
 import DiagramRow from "@/components/DiagramRow.vue"
 import LevelDivider from "@/components/LevelDivider.vue"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
 
+const store = inject(StoreKey) as Store
 const container = ref(null) // The container element
 
 const selectNode = inject(SelectNodeKey)

@@ -2,11 +2,14 @@
 import { HelpService } from "@/services/help-service"
 import { duration } from "@/filters"
 import { directive as vTippy } from "vue-tippy"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
+import { inject } from "vue"
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons"
 
+const store = inject(StoreKey) as Store
 const helpService = new HelpService()
 const getHelpMessage = helpService.getHelpMessage
 

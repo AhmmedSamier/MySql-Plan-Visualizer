@@ -1,12 +1,15 @@
 <script lang="ts" setup>
 import _ from "lodash"
-import { computed } from "vue"
+import { computed, inject } from "vue"
 import type { Node, StatsTableItemType } from "@/interfaces"
 import { NodeProp, SortDirection } from "@/enums"
 import SortedTable from "@/components/SortedTable.vue"
 import SortLink from "@/components/SortLink.vue"
 import StatsTableItem from "@/components/StatsTableItem.vue"
-import { store } from "@/store"
+import { StoreKey } from "@/symbols"
+import type { Store } from "@/store"
+
+const store = inject(StoreKey) as Store
 
 const executionTime = computed(
   () =>
