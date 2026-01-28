@@ -1,4 +1,4 @@
-import _ from "lodash"
+import startCase from "lodash/startCase"
 import { MysqlPlanService } from "@/services/mysql-plan-service"
 import { NodeProp, WorkerProp } from "@/enums"
 import type { IPlanContent } from "@/interfaces"
@@ -194,23 +194,25 @@ export class PlanParser {
     // Now, find first line of explain, and cache it's prefix (some spaces ...)
     let prefix = ""
     let firstLineIndex = 0
-    _.each(sourceLines, (l: string, index: number) => {
+    for (let index = 0; index < sourceLines.length; index++) {
+      const l = sourceLines[index]
       const matches = /^(\s*)(\[|\{)\s*$/.exec(l)
       if (matches) {
         prefix = matches[1]
         firstLineIndex = index
-        return false
+        break
       }
-    })
+    }
     // now find last line
     let lastLineIndex = 0
-    _.each(sourceLines, (l: string, index: number) => {
+    for (let index = 0; index < sourceLines.length; index++) {
+      const l = sourceLines[index]
       const matches = new RegExp("^" + prefix + "(]|})s*$").exec(l)
       if (matches) {
         lastLineIndex = index
-        return false
+        break
       }
-    })
+    }
 
     const useSource: string = sourceLines
       .slice(firstLineIndex, lastLineIndex + 1)
@@ -271,7 +273,7 @@ export class PlanParser {
     }
 
     let currentBalance = 0
-    _.each(lines, (line: string) => {
+    lines.forEach((line: string) => {
       const lineBalance = getBalance(line)
       const previousLine = out[out.length - 1]
       if (previousLine && currentBalance !== 0) {
@@ -324,7 +326,7 @@ export class PlanParser {
     const root: IPlanContent = {} as IPlanContent
     type ElementAtDepth = [number, NodeElement]
     // Array to keep reference to previous nodes with there depth
-    const elementsAtDepth: ElementAtDepth[] = []
+    let elementsAtDepth: ElementAtDepth[] = []
 
     // tslint:disable-next-line:max-line-length
     const subRegex =
@@ -332,7 +334,7 @@ export class PlanParser {
 
     const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
 
-    _.each(lines, (line: string) => {
+    lines.forEach((line: string) => {
       // Remove any trailing "
       line = line.replace(/"\s*$/, "")
       // Remove any begining "
@@ -467,13 +469,11 @@ export class PlanParser {
         }
 
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => {
-          return e[0] >= depth
-        })
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
 
         // ! is for non-null assertion
         // Prevents the "Object is possibly 'undefined'" linting error
-        const previousElement = _.last(elementsAtDepth)?.[1] as NodeElement
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
 
         if (!previousElement) {
           return
@@ -496,8 +496,8 @@ export class PlanParser {
         //const prefix = subMatches[1]
         const type = subMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        const previousElement = _.last(elementsAtDepth)?.[1]
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
           subelementType: type.toLowerCase(),
@@ -508,8 +508,8 @@ export class PlanParser {
         //const prefix = cteMatches[1]
         const cteName = cteMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        const previousElement = _.last(elementsAtDepth)?.[1]
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
           subelementType: "initplan",
@@ -519,7 +519,7 @@ export class PlanParser {
       } else if (workerMatches) {
         //const prefix = workerMatches[1]
         const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
-        const previousElement = _.last(elementsAtDepth)?.[1] as NodeElement
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
         if (!previousElement) {
           return
         }
@@ -559,12 +559,12 @@ export class PlanParser {
           if (!info[1]) {
             return
           }
-          const property = _.startCase(info[0])
+          const property = startCase(info[0])
           worker[property] = info[1]
         }
       } else if (triggerMatches) {
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
         // Ignoring triggers as they are PG specific usually
       } else if (extraMatches) {
         //const prefix = extraMatches[1]
@@ -573,13 +573,13 @@ export class PlanParser {
         // Depth == 1 is a special case here. Global info (for example
         // execution|planning time) have a depth of 1 but shouldn't be removed
         // in case first node was at depth 0.
-        _.remove(elementsAtDepth, (e) => e[0] >= depth || depth == 1)
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth || depth == 1))
 
         let element
         if (elementsAtDepth.length === 0) {
           element = root
         } else {
-          element = _.last(elementsAtDepth)?.[1].node as Node
+          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1].node as Node
         }
 
         // if no node have been found yet and a 'Query Text' has been found
@@ -610,7 +610,7 @@ export class PlanParser {
           property.indexOf(" runtime") !== -1 ||
           property.indexOf(" time") !== -1
         ) {
-          property = _.startCase(property)
+          property = startCase(property)
         }
         element[property] = value
       }
@@ -622,7 +622,7 @@ export class PlanParser {
   }
 
   private getWorker(node: Node, workerNumber: number): Worker | undefined {
-    return _.find(node[NodeProp.WORKERS], (worker) => {
+    return node[NodeProp.WORKERS]?.find((worker) => {
       return worker[WorkerProp.WORKER_NUMBER] === workerNumber
     })
   }
