@@ -252,6 +252,9 @@ export class PlanService {
 
       // Find all nodes that are using data from this InitPlan
       // There should be the name of the sub plan somewhere in the extra info
+      const matchesRegex = new RegExp(
+        `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
+      )
       _.each(
         _.filter(
           this.flat,
@@ -264,9 +267,7 @@ export class PlanService {
             }
             // Value for node property should contain sub plan name (with a number
             // matching exactly)
-            const matches = new RegExp(
-              `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
-            ).exec(value)
+            const matches = matchesRegex.exec(value)
             if (matches) {
               node[NodeProp.EXCLUSIVE_DURATION] -=
                 subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
