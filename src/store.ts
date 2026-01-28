@@ -9,6 +9,7 @@ export interface Store {
   plan?: IPlan
   query?: string
   stats: IPlanStats
+  parsing: boolean
   parse(source: string, query: string): Promise<void>
   flat: FlattenedPlanNode[][]
   nodeById?: FlattenedNodeMap
@@ -87,7 +88,9 @@ export function createStore(): Store {
     flat: [],
     stats: initStats(),
     nodeById: new Map(),
+    parsing: false,
     async parse(source: string, query: string) {
+      store.parsing = true
       store.plan = undefined
       store.stats = initStats()
       store.flat = []
@@ -97,6 +100,7 @@ export function createStore(): Store {
         planJson = (await planService.fromSourceAsync(source)) as IPlanContent
       } catch {
         store.plan = undefined
+        store.parsing = false
         return
       }
       store.query = planJson["Query Text"] || query
@@ -128,6 +132,7 @@ export function createStore(): Store {
       store.flat = flatPlans
 
       store.nodeById = nodeById
+      store.parsing = false
     },
   })
   return store

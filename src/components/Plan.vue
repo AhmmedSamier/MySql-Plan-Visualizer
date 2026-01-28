@@ -147,11 +147,28 @@ const {
 // Vertical padding between 2 nodes in the tree layout
 const padding = 40
 
+const headerTabsSelector = ref<string | null>(null)
+const headerToolsSelector = ref<string | null>(null)
+
 onMounted(() => {
-  watch(() => [props.planSource, props.planQuery], parseAndShow, {
-    immediate: true,
-  })
+  if (document.getElementById("header-tabs")) {
+    headerTabsSelector.value = "#header-tabs"
+  }
+  if (document.getElementById("header-tools")) {
+    headerToolsSelector.value = "#header-tools"
+  }
+
+  watch(
+    () => [props.planSource, props.planQuery],
+    () => {
+      parseAndShow()
+    },
+    {
+      immediate: true,
+    },
+  )
   window.addEventListener("keydown", handleKeyDown)
+  window.addEventListener("hashchange", onHashChange)
 })
 
 let parseCounter = 0
@@ -166,12 +183,9 @@ async function parseAndShow() {
   if (savedOptions) {
     Object.assign(viewOptions, JSON.parse(savedOptions))
   }
-  setActiveTab("plan")
 
-  nextTick(() => {
-    onHashChange()
-  })
-  window.addEventListener("hashchange", onHashChange)
+  // Set initial tab from hash or default to plan
+  onHashChange()
 
   buildTree(store.plan)
 
@@ -202,21 +216,29 @@ function onSelectedNode(v: number) {
 }
 
 function onHashChange(): void {
-  const reg = /#([a-zA-Z]*)(\/node\/([0-9]*))*/
-  const matches = reg.exec(window.location.hash)
+  const hash = window.location.hash
+  if (!hash || hash === "#") {
+    setActiveTab("plan")
+    return
+  }
+
+  // Regex to match tab and optional node selection
+  // Format: #tab/node/id
+  const reg = /^#([a-zA-Z]*)(?:\/node\/([0-9]*))*/
+  const matches = reg.exec(hash)
   if (matches) {
     const tab = matches[1] || "plan"
     setActiveTab(tab)
-    const nodeId = parseInt(matches[3], 0)
-    if (
-      tab == "plan" &&
-      nodeId !== undefined &&
-      nodeId != selectedNodeId.value
-    ) {
-      // Delayed to make sure the tab has changed before recentering
-      setTimeout(() => {
-        selectNode(nodeId, true)
-      }, 1)
+
+    const nodeIdStr = matches[2]
+    if (tab === "plan" && nodeIdStr) {
+      const nodeId = parseInt(nodeIdStr, 10)
+      if (!isNaN(nodeId) && nodeId !== selectedNodeId.value) {
+        // Delayed to make sure the tab has changed before recentering
+        setTimeout(() => {
+          selectNode(nodeId, true)
+        }, 1)
+      }
     }
   }
 }
@@ -243,6 +265,18 @@ provide(ToggleDetailsKey, toggleDetails)
 
 const setActiveTab = (tab: string) => {
   activeTab.value = tab
+}
+
+const switchTab = (tab: string) => {
+  setActiveTab(tab)
+  const currentHash = window.location.hash
+  const targetHash =
+    tab === "plan" && selectedNodeId.value
+      ? `#plan/node/${selectedNodeId.value}`
+      : `#${tab}`
+  if (currentHash !== targetHash) {
+    window.location.hash = targetHash
+  }
 }
 
 function isNeverExecuted(node: Node): boolean {
@@ -520,15 +554,31 @@ function exportPng() {
 </script>
 
 <template>
-  <div v-if="!store.plan" class="flex-grow-1 d-flex justify-content-center">
-    <div class="card align-self-center border-danger w-50">
+  <div
+    v-if="store.parsing"
+    class="flex-grow-1 d-flex justify-content-center align-items-center"
+  >
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <h5 class="text-secondary">Parsing Execution Plan...</h5>
+    </div>
+  </div>
+  <div
+    v-else-if="!store.plan"
+    class="flex-grow-1 d-flex justify-content-center"
+  >
+    <div class="card align-self-center border-danger w-50 shadow-sm">
       <div class="card-body">
         <h5 class="card-title text-danger">Couldn't parse plan</h5>
         <h6 class="card-subtitle mb-2 text-body-secondary">
-          An error occured while parsing the plan
+          An error occurred while parsing the plan source.
         </h6>
-        <div class="overflow-hidden d-flex w-100 h-100 position-relative mb-3">
-          <div class="overflow-auto flex-grow-1">
+        <div
+          class="overflow-hidden d-flex w-100 h-100 position-relative mb-3 border rounded"
+        >
+          <div class="overflow-auto flex-grow-1 bg-light">
             <pre
               class="small p-2 mb-0"
               style="max-height: 200px"
@@ -537,19 +587,19 @@ function exportPng() {
           <Copy :content="planSource" />
         </div>
         <p class="card-text text-body-dark">
-          The plan you submited couldn't be parsed. This may be a bug. You can
-          help us fix it by opening a new issue.
+          The plan you submitted couldn't be correctly interpreted. This might
+          be due to an unsupported MySQL version or a specific configuration.
         </p>
-        <div class="d-flex align-items-center">
-          <span class="text-secondary">
+        <div class="d-flex align-items-center border-top pt-3">
+          <span class="text-secondary small">
             <LogoImage />
             MysqlPlanVisualizer <i>version {{ version }}</i>
           </span>
           <a
             href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer/issues/new?template=parsing_error.md&labels=parsing&title=Failed+to+parse+plan"
             target="_blank"
-            class="btn btn-primary ms-auto"
-            >Open an issue on Github</a
+            class="btn btn-sm btn-outline-primary ms-auto"
+            >Report Issue on GitHub</a
           >
         </div>
       </div>
@@ -560,13 +610,17 @@ function exportPng() {
     v-else
     ref="rootEl"
   >
-    <Teleport to="#header-tabs">
-      <ul class="nav nav-tabs mysql-tabs flex-nowrap border-0">
+    <Teleport to="#header-tabs" :disabled="!headerTabsSelector">
+      <ul
+        class="nav nav-tabs mysql-tabs flex-nowrap border-0"
+        :class="{ 'p-2 bg-dark': !headerTabsSelector }"
+      >
         <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'plan' }"
             href="#plan"
+            @click.prevent="switchTab('plan')"
             >Plan</a
           >
         </li>
@@ -575,14 +629,16 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'grid' }"
             href="#grid"
+            @click.prevent="switchTab('grid')"
             >Grid</a
           >
         </li>
-        <li class="nav-item p-1" v-if="store.plan?.content.Diagram">
+        <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'diagram' }"
             href="#diagram"
+            @click.prevent="switchTab('diagram')"
             >Diagram</a
           >
         </li>
@@ -591,6 +647,7 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'raw' }"
             href="#raw"
+            @click.prevent="switchTab('raw')"
             >Raw</a
           >
         </li>
@@ -599,6 +656,7 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'query' }"
             href="#query"
+            @click.prevent="switchTab('query')"
             >Query</a
           >
         </li>
@@ -607,33 +665,47 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'stats' }"
             href="#stats"
+            @click.prevent="switchTab('stats')"
             >Stats</a
           >
         </li>
       </ul>
     </Teleport>
-    <div id="header-tools" class="d-flex align-items-center me-2 gap-2">
-      <button
-        class="btn btn-sm"
-        :class="isShared ? 'btn-success' : 'btn-outline-primary'"
-        @click="sharePlan"
-        title="Copy permalink to clipboard"
-        style="white-space: nowrap"
+    <Teleport to="#header-tools" :disabled="!headerToolsSelector">
+      <div
+        class="d-flex align-items-center me-2 gap-2"
+        :class="{ 'p-2': !headerToolsSelector }"
       >
-        <FontAwesomeIcon :icon="isShared ? faCheck : faShareAlt" class="me-1" />
-        {{ isShared ? "Copied!" : "Share" }}
-      </button>
-      <button
-        class="btn btn-sm btn-outline-primary"
-        @click="exportPng"
-        :disabled="isExporting"
-        title="Export as PNG"
-        style="white-space: nowrap"
-      >
-        <FontAwesomeIcon :icon="faFileImage" class="me-1" :spin="isExporting" />
-        {{ isExporting ? "Exporting..." : "Export PNG" }}
-      </button>
-    </div>
+        <button
+          class="btn btn-sm"
+          :class="isShared ? 'btn-success' : 'btn-outline-primary'"
+          @click="sharePlan"
+          title="Copy permalink to clipboard"
+          style="white-space: nowrap"
+        >
+          <FontAwesomeIcon
+            :icon="isShared ? faCheck : faShareAlt"
+            class="me-1"
+          />
+          {{ isShared ? "Copied!" : "Share" }}
+        </button>
+        <button
+          class="btn btn-sm btn-outline-primary"
+          @click="exportPng"
+          :disabled="isExporting"
+          title="Export as PNG"
+          style="white-space: nowrap"
+        >
+          <FontAwesomeIcon
+            :icon="faFileImage"
+            class="me-1"
+            :spin="isExporting"
+          />
+          {{ isExporting ? "Exporting..." : "Export PNG" }}
+        </button>
+      </div>
+    </Teleport>
+    <PlanStats />
     <div class="tab-content flex-grow-1 d-flex overflow-hidden">
       <div
         class="tab-pane flex-grow-1 overflow-hidden"
@@ -641,7 +713,6 @@ function exportPng() {
       >
         <!-- Plan tab -->
         <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-          <PlanStats />
           <div class="flex-grow-1 d-flex overflow-hidden">
             <div class="flex-grow-1 overflow-hidden">
               <Splitpanes
@@ -1011,8 +1082,16 @@ function exportPng() {
         v-if="activeTab === 'grid'"
       >
         <div class="overflow-hidden d-flex w-100 h-100 flex-column">
-          <PlanStats />
           <Grid class="flex-grow-1 overflow-auto plan-grid" />
+        </div>
+      </div>
+      <div
+        class="tab-pane flex-grow-1 overflow-hidden position-relative"
+        :class="{ 'show active': activeTab === 'diagram' }"
+        v-if="activeTab === 'diagram'"
+      >
+        <div class="overflow-hidden d-flex w-100 h-100 flex-column">
+          <Diagram class="flex-grow-1 overflow-auto plan-diagram" />
         </div>
       </div>
       <div

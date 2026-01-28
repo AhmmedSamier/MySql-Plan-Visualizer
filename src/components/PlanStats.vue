@@ -4,7 +4,7 @@ import { duration } from "@/filters"
 import { directive as vTippy } from "vue-tippy"
 import { StoreKey } from "@/symbols"
 import type { Store } from "@/store"
-import { inject } from "vue"
+import { inject, onMounted, ref } from "vue"
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons"
@@ -12,6 +12,13 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons"
 const store = inject(StoreKey) as Store
 const helpService = new HelpService()
 const getHelpMessage = helpService.getHelpMessage
+
+const headerStatsSelector = ref<string | null>(null)
+onMounted(() => {
+  if (document.getElementById("header-stats")) {
+    headerStatsSelector.value = "#header-stats"
+  }
+})
 
 const planningTimeClass = (percent: number) => {
   let c = NaN
@@ -30,8 +37,14 @@ const planningTimeClass = (percent: number) => {
 </script>
 
 <template>
-  <Teleport to="#header-stats">
-    <div class="plan-stats d-flex align-items-center" v-if="store.stats">
+  <Teleport to="#header-stats" :disabled="!headerStatsSelector">
+    <div
+      class="plan-stats d-flex align-items-center"
+      :class="{
+        'p-2 bg-dark text-white border rounded m-2': !headerStatsSelector,
+      }"
+      v-if="store.stats"
+    >
       <div class="d-inline-block px-2 text-nowrap">
         Execution:
         <template v-if="!store.stats.executionTime">
