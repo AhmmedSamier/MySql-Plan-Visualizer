@@ -6,42 +6,42 @@ describe("MysqlPlanService.isMySQL", () => {
 
   test("returns true for MySQL V1 plan (query_block)", () => {
     const data = {
-      query_block: { select_id: 1 }
+      query_block: { select_id: 1 },
     }
     expect(service.isMySQL(data)).toBe(true)
   })
 
   test("returns true for MySQL V2 plan (query_plan)", () => {
     const data = {
-      query_plan: { execution_plan: {} }
+      query_plan: { execution_plan: {} },
     }
     expect(service.isMySQL(data)).toBe(true)
   })
 
   test("returns true for MySQL V2 plan (execution_plan)", () => {
     const data = {
-      execution_plan: {}
+      execution_plan: {},
     }
     expect(service.isMySQL(data)).toBe(true)
   })
 
   test("returns true for generic plan with inputs (potential MySQL)", () => {
     const data = {
-      inputs: []
+      inputs: [],
     }
     expect(service.isMySQL(data)).toBe(true)
   })
 
   test("returns true for generic plan with steps (potential MySQL)", () => {
     const data = {
-      steps: []
+      steps: [],
     }
     expect(service.isMySQL(data)).toBe(true)
   })
 
   test("returns false for Postgres plan (Plan property)", () => {
     const data = {
-      Plan: { "Node Type": "Seq Scan" }
+      Plan: { "Node Type": "Seq Scan" },
     }
     expect(service.isMySQL(data)).toBe(false)
   })

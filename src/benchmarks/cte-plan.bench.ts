@@ -1,15 +1,16 @@
 import { bench, describe } from "vitest"
-import { PlanService } from "@/services/plan-service"
-import { NodeProp } from "@/enums"
-import type { IPlanContent } from "@/interfaces"
+import { PlanService } from "../services/plan-service"
+import { NodeProp } from "../enums"
+import type { IPlanContent } from "../interfaces"
 import _ from "lodash"
 
 const planService = new PlanService()
 
-function generateLargePlan(
-  initPlanCount: number,
-  normalNodeCount: number,
+function generateLargeCtePlan(
+  cteCount: number,
+  cteScanCount: number,
 ): IPlanContent {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root: any = {
     [NodeProp.NODE_TYPE]: "Result",
     [NodeProp.PLANS]: [],
@@ -22,12 +23,13 @@ function generateLargePlan(
     [NodeProp.ACTUAL_LOOPS]: 1,
   }
 
-  // Create InitPlans
-  for (let i = 0; i < initPlanCount; i++) {
+  // Create CTEs
+  for (let i = 0; i < cteCount; i++) {
     root[NodeProp.PLANS].push({
-      [NodeProp.NODE_TYPE]: "Seq Scan",
+      [NodeProp.NODE_TYPE]: "CTE Scan",
       [NodeProp.PARENT_RELATIONSHIP]: "InitPlan",
-      [NodeProp.SUBPLAN_NAME]: `InitPlan ${i + 1} (returns $${i})`,
+      [NodeProp.SUBPLAN_NAME]: `CTE CTE ${i}`,
+      [NodeProp.CTE_NAME]: `CTE ${i}`,
       [NodeProp.ACTUAL_TOTAL_TIME]: 10,
       [NodeProp.ACTUAL_LOOPS]: 1,
       [NodeProp.TOTAL_COST]: 10,
@@ -39,15 +41,14 @@ function generateLargePlan(
     })
   }
 
-  // Create many normal nodes
-  // We add them as children of the root to keep it simple, but we don't nest them deeply
-  // to avoid huge recursion depth during setup/teardown if that matters.
-  // Flattening in PlanService handles this.
-  for (let i = 0; i < normalNodeCount; i++) {
+  // Create many CTE Scan nodes
+  for (let i = 0; i < cteScanCount; i++) {
+    const cteIndex = i % cteCount
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const node: any = {
-      [NodeProp.NODE_TYPE]: "Seq Scan",
+      [NodeProp.NODE_TYPE]: "CTE Scan",
       [NodeProp.PARENT_RELATIONSHIP]: "Outer",
-      [NodeProp.FILTER]: `(x = $${i % initPlanCount})`, // Reference an InitPlan
+      [NodeProp.CTE_NAME]: `CTE ${cteIndex}`,
       [NodeProp.ACTUAL_ROWS]: 1,
       [NodeProp.PLAN_ROWS]: 1,
       [NodeProp.TOTAL_COST]: 10,
@@ -56,11 +57,6 @@ function generateLargePlan(
       [NodeProp.ACTUAL_STARTUP_TIME]: 0,
       [NodeProp.ACTUAL_LOOPS]: 1,
       [NodeProp.PLANS]: [],
-    }
-    // Add some dummy string properties to increase iteration count per node
-    for (let j = 0; j < 10; j++) {
-      node[`dummy_prop_${j}`] =
-        `some random string value $${i % initPlanCount} extra text`
     }
 
     root[NodeProp.PLANS].push(node)
@@ -71,12 +67,11 @@ function generateLargePlan(
   }
 }
 
-// 50 InitPlans, 1000 nodes.
-// Total regex checks: 50 * 1050 * (props per node ~15) ~= 787,500 iterations.
-const largePlan = generateLargePlan(50, 1000)
+// 50 CTEs, 2000 CTE Scans.
+const largePlan = generateLargeCtePlan(50, 2000)
 
-describe("InitPlan Performance", () => {
-  bench("createPlan with many InitPlans", () => {
+describe("CTE Performance", () => {
+  bench("createPlan with many CTEs", () => {
     // Clone to avoid mutation side effects affecting subsequent runs
     const planCopy = _.cloneDeep(largePlan)
     planService.createPlan("benchmark", planCopy, "SELECT * FROM t")
