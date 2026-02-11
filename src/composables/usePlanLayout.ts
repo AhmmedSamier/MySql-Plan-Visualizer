@@ -38,7 +38,7 @@ export function usePlanLayout(
     ) => Math.pow(nodeA.path(nodeB).length, 1.5),
   })
 
-  const tree = ref(layout.hierarchy({}))
+  const tree = ref<FlexHierarchyPointNode<Node>>(layout.hierarchy({} as Node))
 
   const edgeWeight = computed(() => {
     return scaleLinear()
