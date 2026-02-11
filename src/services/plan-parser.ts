@@ -205,9 +205,10 @@ export class PlanParser {
     }
     // now find last line
     let lastLineIndex = 0
+    const closingRegex = new RegExp("^" + prefix + "(]|})s*$")
     for (let index = 0; index < sourceLines.length; index++) {
       const l = sourceLines[index]
-      const matches = new RegExp("^" + prefix + "(]|})s*$").exec(l)
+      const matches = closingRegex.exec(l)
       if (matches) {
         lastLineIndex = index
         break
@@ -473,7 +474,9 @@ export class PlanParser {
 
         // ! is for non-null assertion
         // Prevents the "Object is possibly 'undefined'" linting error
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
+        const previousElement = elementsAtDepth[
+          elementsAtDepth.length - 1
+        ]?.[1] as NodeElement
 
         if (!previousElement) {
           return
@@ -519,7 +522,9 @@ export class PlanParser {
       } else if (workerMatches) {
         //const prefix = workerMatches[1]
         const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
+        const previousElement = elementsAtDepth[
+          elementsAtDepth.length - 1
+        ]?.[1] as NodeElement
         if (!previousElement) {
           return
         }
@@ -573,13 +578,16 @@ export class PlanParser {
         // Depth == 1 is a special case here. Global info (for example
         // execution|planning time) have a depth of 1 but shouldn't be removed
         // in case first node was at depth 0.
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth || depth == 1))
+        elementsAtDepth = elementsAtDepth.filter(
+          (e) => !(e[0] >= depth || depth == 1),
+        )
 
         let element
         if (elementsAtDepth.length === 0) {
           element = root
         } else {
-          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1].node as Node
+          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
+            .node as Node
         }
 
         // if no node have been found yet and a 'Query Text' has been found
