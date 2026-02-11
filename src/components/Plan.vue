@@ -66,12 +66,9 @@ const isDark = useDark({
 watch(
   isDark,
   (val) => {
-    setDefaultProps({ theme: val ? "light" : "light" }) // Tooltip theme seems to be light always based on css import, but can be adjusted.
-    // However, the original code had setDefaultProps({ theme: "light" }) hardcoded.
-    // Let's make it reactive if we had a dark theme for tippy.
-    // Since only light.css is imported, we will keep it as is but reactive for future proofing or if other themes are added.
-    // For now, let's respect the plan to make it reactive.
-    setDefaultProps({ theme: val ? "light" : "light" })
+    // Switch tooltip theme based on dark mode.
+    // Empty string uses the default dark theme, "light" uses the imported light theme.
+    setDefaultProps({ theme: val ? "" : "light" })
   },
   { immediate: true },
 )
@@ -120,7 +117,6 @@ const viewOptions = reactive({
 
 const {
   transform,
-  scale,
   edgeWeight,
   layoutRootNode,
   ctes,
@@ -1012,7 +1008,7 @@ function exportPng() {
                       />
                       <foreignObject
                         v-for="(item, index) in rootDescendants"
-                        :key="`${store.plan?.id}_${index}`"
+                        :key="`${store.plan?.id}_${index}_${isDark}`"
                         :x="getNodeX(item)"
                         :y="getNodeY(item)"
                         :width="getNodeWidth(item)"
@@ -1057,7 +1053,7 @@ function exportPng() {
                         />
                         <foreignObject
                           v-for="(item, index) in cte.descendants()"
-                          :key="`${store.plan?.id}_${index}`"
+                          :key="`${store.plan?.id}_${index}_${isDark}`"
                           :x="getNodeX(item)"
                           :y="getNodeY(item)"
                           :width="getNodeWidth(item)"
