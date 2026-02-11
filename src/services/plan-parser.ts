@@ -206,9 +206,10 @@ export class PlanParser {
     }
     // now find last line
     let lastLineIndex = 0
+    const closingRegex = new RegExp("^" + prefix + "(]|})s*$")
     for (let index = 0; index < sourceLines.length; index++) {
       const l = sourceLines[index]
-      const matches = new RegExp("^" + prefix + "(]|})s*$").exec(l)
+      const matches = closingRegex.exec(l)
       if (matches) {
         lastLineIndex = index
         break
