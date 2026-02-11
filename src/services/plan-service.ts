@@ -346,10 +346,10 @@ export class PlanService {
         })
       } catch (e) {
         console.warn("Worker failed, falling back to synchronous parsing", e)
-        return this.fromSource(source)
+        return this.parser.parseAsync(source)
       }
     } else {
-      return Promise.resolve(this.fromSource(source))
+      return this.parser.parseAsync(source)
     }
   }
 

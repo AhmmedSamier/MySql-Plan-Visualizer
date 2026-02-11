@@ -10,6 +10,8 @@ interface NodeElement {
   name?: string
 }
 
+type ElementAtDepth = [number, NodeElement]
+
 enum WorkerMatch {
   Number = 2,
   ActualTimeFirst,
@@ -116,6 +118,12 @@ const nodeRegex = new RegExp(
   "m",
 )
 
+// tslint:disable-next-line:max-line-length
+const subRegex =
+  /^(\s*)((?:Sub|Init)Plan)\s*(?:\d+\s*)?\s*(?:\(returns.*\)\s*)?$/gm
+
+const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
+
 export class PlanParser {
   public parse(source: string): IPlanContent {
     source = this.cleanupSource(source)
@@ -144,6 +152,39 @@ export class PlanParser {
         return this.fromJson(source)
       }
       return this.fromText(source)
+    }
+  }
+
+  public async parseAsync(source: string): Promise<IPlanContent> {
+    source = this.cleanupSource(source)
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      const data = JSON.parse(source)
+      return this.getPlanContent(data)
+    } catch {
+      // try to parse wrapping quotes
+      const sourceTrimmed = source.trim()
+      if (
+        (sourceTrimmed.startsWith("'") && sourceTrimmed.endsWith("'")) ||
+        (sourceTrimmed.startsWith('"') && sourceTrimmed.endsWith('"'))
+      ) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 0))
+          const data = JSON.parse(
+            sourceTrimmed.substring(1, sourceTrimmed.length - 1),
+          )
+          return this.getPlanContent(data)
+        } catch {
+          // ignore
+        }
+      }
+
+      if (/^(\s*)(\[|\{)\s*\n.*?\1(\]|\})\s*/gms.exec(source)) {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        return this.fromJson(source)
+      }
+      return this.fromTextAsync(source)
     }
   }
 
@@ -324,301 +365,343 @@ export class PlanParser {
     const lines = this.splitIntoLines(text)
 
     const root: IPlanContent = {} as IPlanContent
-    type ElementAtDepth = [number, NodeElement]
-    // Array to keep reference to previous nodes with there depth
-    let elementsAtDepth: ElementAtDepth[] = []
-
-    // tslint:disable-next-line:max-line-length
-    const subRegex =
-      /^(\s*)((?:Sub|Init)Plan)\s*(?:\d+\s*)?\s*(?:\(returns.*\)\s*)?$/gm
-
-    const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
+    const context = {
+      elementsAtDepth: [] as ElementAtDepth[],
+      root,
+    }
 
     lines.forEach((line: string) => {
-      // Remove any trailing "
-      line = line.replace(/"\s*$/, "")
-      // Remove any begining "
-      line = line.replace(/^\s*"/, "")
-      // Replace tabs with 4 spaces
-      line = line.replace(/\t/gm, "    ")
+      this.processLine(line, context)
+    })
+    if (context.root == null || !context.root.Plan) {
+      throw new Error("Unable to parse plan")
+    }
+    return context.root
+  }
 
-      const match = line.match(indentationRegex)
-      const depth = match ? match[0].length : 0
-      // remove indentation
-      line = line.replace(indentationRegex, "")
+  public async fromTextAsync(text: string) {
+    const lines = this.splitIntoLines(text)
 
-      const emptyLineMatches = emptyLineRegex.exec(line)
-      const headerMatches = headerRegex.exec(line)
-      const nodeMatches = nodeRegex.exec(line)
-      const subMatches = subRegex.exec(line)
+    const root: IPlanContent = {} as IPlanContent
+    const context = {
+      elementsAtDepth: [] as ElementAtDepth[],
+      root,
+    }
 
-      const cteMatches = cteRegex.exec(line)
-      const triggerMatches = triggerRegex.exec(line)
-      const workerMatches = workerRegex.exec(line)
+    const CHUNK_SIZE = 1000
+    for (let i = 0; i < lines.length; i++) {
+      this.processLine(lines[i], context)
+      if (i % CHUNK_SIZE === 0 && i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      }
+    }
+    if (context.root == null || !context.root.Plan) {
+      throw new Error("Unable to parse plan")
+    }
+    return context.root
+  }
 
-      const extraMatches = extraRegex.exec(line)
+  private processLine(
+    line: string,
+    context: { elementsAtDepth: ElementAtDepth[]; root: IPlanContent },
+  ) {
+    // Remove any trailing "
+    line = line.replace(/"\s*$/, "")
+    // Remove any begining "
+    line = line.replace(/^\s*"/, "")
+    // Replace tabs with 4 spaces
+    line = line.replace(/\t/gm, "    ")
 
-      if (emptyLineMatches || headerMatches) {
-        return
-      } else if (nodeMatches && !cteMatches && !subMatches) {
-        //const prefix = nodeMatches[NodeMatch.Prefix]
-        const neverExecuted =
-          nodeMatches[NodeMatch.NeverExecuted1] ||
-          nodeMatches[NodeMatch.NeverExecuted2]
-        const newNode: Node = new Node(nodeMatches[NodeMatch.Type])
+    const match = line.match(indentationRegex)
+    const depth = match ? match[0].length : 0
+    // remove indentation
+    line = line.replace(indentationRegex, "")
 
-        // Cost values from Branch 1 or Branch 2
-        // Note: For MySQL, a single cost value (e.g. `cost=10`) is captured as EstimatedStartupCost.
-        // The logic below ensures that if only one cost is present, it is assigned to Total Cost.
+    const emptyLineMatches = emptyLineRegex.exec(line)
+    const headerMatches = headerRegex.exec(line)
+    const nodeMatches = nodeRegex.exec(line)
+    const subMatches = subRegex.exec(line)
 
-        const startupCost1 = nodeMatches[NodeMatch.EstimatedStartupCost1]
-        const totalCost1 = nodeMatches[NodeMatch.EstimatedTotalCost1]
-        const startupCost2 = nodeMatches[NodeMatch.EstimatedStartupCost2]
-        const totalCost2 = nodeMatches[NodeMatch.EstimatedTotalCost2]
+    const cteMatches = cteRegex.exec(line)
+    const triggerMatches = triggerRegex.exec(line)
+    const workerMatches = workerRegex.exec(line)
 
-        if (startupCost1) {
-          if (totalCost1) {
-            newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost1)
-            newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost1)
-          } else {
-            newNode[NodeProp.TOTAL_COST] = parseFloat(startupCost1)
-          }
-        } else if (startupCost2) {
-          if (totalCost2) {
-            newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost2)
-            newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost2)
-          } else {
-            newNode[NodeProp.TOTAL_COST] = parseFloat(startupCost2)
-          }
+    const extraMatches = extraRegex.exec(line)
+
+    if (emptyLineMatches || headerMatches) {
+      return
+    } else if (nodeMatches && !cteMatches && !subMatches) {
+      //const prefix = nodeMatches[NodeMatch.Prefix]
+      const neverExecuted =
+        nodeMatches[NodeMatch.NeverExecuted1] ||
+        nodeMatches[NodeMatch.NeverExecuted2]
+      const newNode: Node = new Node(nodeMatches[NodeMatch.Type])
+
+      // Cost values from Branch 1 or Branch 2
+      // Note: For MySQL, a single cost value (e.g. `cost=10`) is captured as EstimatedStartupCost.
+      // The logic below ensures that if only one cost is present, it is assigned to Total Cost.
+
+      const startupCost1 = nodeMatches[NodeMatch.EstimatedStartupCost1]
+      const totalCost1 = nodeMatches[NodeMatch.EstimatedTotalCost1]
+      const startupCost2 = nodeMatches[NodeMatch.EstimatedStartupCost2]
+      const totalCost2 = nodeMatches[NodeMatch.EstimatedTotalCost2]
+
+      if (startupCost1) {
+        if (totalCost1) {
+          newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost1)
+          newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost1)
+        } else {
+          newNode[NodeProp.TOTAL_COST] = parseFloat(startupCost1)
         }
+      } else if (startupCost2) {
+        if (totalCost2) {
+          newNode[NodeProp.STARTUP_COST] = parseFloat(startupCost2)
+          newNode[NodeProp.TOTAL_COST] = parseFloat(totalCost2)
+        } else {
+          newNode[NodeProp.TOTAL_COST] = parseFloat(startupCost2)
+        }
+      }
 
-        if (
+      if (
+        nodeMatches[NodeMatch.EstimatedRows1] ||
+        nodeMatches[NodeMatch.EstimatedRows2]
+      ) {
+        newNode[NodeProp.PLAN_ROWS] = parseInt(
           nodeMatches[NodeMatch.EstimatedRows1] ||
-          nodeMatches[NodeMatch.EstimatedRows2]
-        ) {
-          newNode[NodeProp.PLAN_ROWS] = parseInt(
-            nodeMatches[NodeMatch.EstimatedRows1] ||
-              nodeMatches[NodeMatch.EstimatedRows2],
-            0,
-          )
-        }
+            nodeMatches[NodeMatch.EstimatedRows2],
+          0,
+        )
+      }
 
-        if (
+      if (
+        nodeMatches[NodeMatch.EstimatedRowWidth1] ||
+        nodeMatches[NodeMatch.EstimatedRowWidth2]
+      ) {
+        newNode[NodeProp.PLAN_WIDTH] = parseInt(
           nodeMatches[NodeMatch.EstimatedRowWidth1] ||
-          nodeMatches[NodeMatch.EstimatedRowWidth2]
-        ) {
-          newNode[NodeProp.PLAN_WIDTH] = parseInt(
-            nodeMatches[NodeMatch.EstimatedRowWidth1] ||
-              nodeMatches[NodeMatch.EstimatedRowWidth2],
-            0,
-          )
-        }
+            nodeMatches[NodeMatch.EstimatedRowWidth2],
+          0,
+        )
+      }
 
-        if (
+      if (
+        nodeMatches[NodeMatch.ActualTimeFirst1] ||
+        nodeMatches[NodeMatch.ActualTimeFirst2]
+      ) {
+        newNode[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
           nodeMatches[NodeMatch.ActualTimeFirst1] ||
-          nodeMatches[NodeMatch.ActualTimeFirst2]
-        ) {
-          newNode[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
-            nodeMatches[NodeMatch.ActualTimeFirst1] ||
-              nodeMatches[NodeMatch.ActualTimeFirst2] ||
-              "0",
-          )
-          newNode[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
-            nodeMatches[NodeMatch.ActualTimeLast1] ||
-              nodeMatches[NodeMatch.ActualTimeLast2] ||
-              "0",
-          )
-        }
+            nodeMatches[NodeMatch.ActualTimeFirst2] ||
+            "0",
+        )
+        newNode[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
+          nodeMatches[NodeMatch.ActualTimeLast1] ||
+            nodeMatches[NodeMatch.ActualTimeLast2] ||
+            "0",
+        )
+      }
 
-        if (
+      if (
+        nodeMatches[NodeMatch.ActualRows1] ||
+        nodeMatches[NodeMatch.ActualRows2]
+      ) {
+        const actual_rows =
           nodeMatches[NodeMatch.ActualRows1] ||
           nodeMatches[NodeMatch.ActualRows2]
-        ) {
-          const actual_rows =
-            nodeMatches[NodeMatch.ActualRows1] ||
-            nodeMatches[NodeMatch.ActualRows2]
-          if (actual_rows.indexOf(".") != -1) {
-            newNode[NodeProp.ACTUAL_ROWS_FRACTIONAL] = true
-          }
-          newNode[NodeProp.ACTUAL_ROWS] = parseFloat(actual_rows)
-          newNode[NodeProp.ACTUAL_LOOPS] = parseInt(
-            nodeMatches[NodeMatch.ActualLoops1] ||
-              nodeMatches[NodeMatch.ActualLoops2],
-            0,
-          )
+        if (actual_rows.indexOf(".") != -1) {
+          newNode[NodeProp.ACTUAL_ROWS_FRACTIONAL] = true
         }
+        newNode[NodeProp.ACTUAL_ROWS] = parseFloat(actual_rows)
+        newNode[NodeProp.ACTUAL_LOOPS] = parseInt(
+          nodeMatches[NodeMatch.ActualLoops1] ||
+            nodeMatches[NodeMatch.ActualLoops2],
+          0,
+        )
+      }
 
-        if (nodeMatches[NodeMatch.PartialMode]) {
-          newNode[NodeProp.PARTIAL_MODE] = nodeMatches[NodeMatch.PartialMode]
-        }
+      if (nodeMatches[NodeMatch.PartialMode]) {
+        newNode[NodeProp.PARTIAL_MODE] = nodeMatches[NodeMatch.PartialMode]
+      }
 
-        if (neverExecuted) {
-          newNode[NodeProp.ACTUAL_LOOPS] = 0
-          newNode[NodeProp.ACTUAL_ROWS] = 0
-          newNode[NodeProp.ACTUAL_TOTAL_TIME] = undefined
-        }
-        const element = {
-          node: newNode,
-          subelementType: "subnode",
-        }
+      if (neverExecuted) {
+        newNode[NodeProp.ACTUAL_LOOPS] = 0
+        newNode[NodeProp.ACTUAL_ROWS] = 0
+        newNode[NodeProp.ACTUAL_TOTAL_TIME] = undefined
+      }
+      const element = {
+        node: newNode,
+        subelementType: "subnode",
+      }
 
-        if (0 === elementsAtDepth.length) {
-          elementsAtDepth.push([depth, element])
-          root.Plan = newNode
-          return
-        }
+      if (0 === context.elementsAtDepth.length) {
+        context.elementsAtDepth.push([depth, element])
+        context.root.Plan = newNode
+        return
+      }
 
-        // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+      // Remove elements from elementsAtDepth for deeper levels
+      context.elementsAtDepth = context.elementsAtDepth.filter(
+        (e) => !(e[0] >= depth),
+      )
 
-        // ! is for non-null assertion
-        // Prevents the "Object is possibly 'undefined'" linting error
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
+      // ! is for non-null assertion
+      // Prevents the "Object is possibly 'undefined'" linting error
+      const previousElement = context.elementsAtDepth[
+        context.elementsAtDepth.length - 1
+      ]?.[1] as NodeElement
 
-        if (!previousElement) {
-          return
-        }
+      if (!previousElement) {
+        return
+      }
 
-        elementsAtDepth.push([depth, element])
+      context.elementsAtDepth.push([depth, element])
 
-        if (!previousElement.node[NodeProp.PLANS]) {
-          previousElement.node[NodeProp.PLANS] = []
-        }
-        if (previousElement.subelementType === "initplan") {
-          newNode[NodeProp.PARENT_RELATIONSHIP] = "InitPlan"
-          newNode[NodeProp.SUBPLAN_NAME] = previousElement.name as string
-        } else if (previousElement.subelementType === "subplan") {
-          newNode[NodeProp.PARENT_RELATIONSHIP] = "SubPlan"
-          newNode[NodeProp.SUBPLAN_NAME] = previousElement.name as string
-        }
-        previousElement.node.Plans?.push(newNode)
-      } else if (subMatches) {
-        //const prefix = subMatches[1]
-        const type = subMatches[2]
-        // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
-        const element = {
-          node: previousElement?.node as Node,
-          subelementType: type.toLowerCase(),
-          name: subMatches[0],
-        }
-        elementsAtDepth.push([depth, element])
-      } else if (cteMatches) {
-        //const prefix = cteMatches[1]
-        const cteName = cteMatches[2]
-        // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
-        const element = {
-          node: previousElement?.node as Node,
-          subelementType: "initplan",
-          name: "CTE " + cteName,
-        }
-        elementsAtDepth.push([depth, element])
-      } else if (workerMatches) {
-        //const prefix = workerMatches[1]
-        const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
-        if (!previousElement) {
-          return
-        }
-        if (!previousElement.node[NodeProp.WORKERS]) {
-          previousElement.node[NodeProp.WORKERS] = [] as Worker[]
-        }
-        let worker = this.getWorker(previousElement.node, workerNumber)
-        if (!worker) {
-          worker = new Worker(workerNumber)
-          previousElement.node[NodeProp.WORKERS]?.push(worker)
-        }
-        if (
-          workerMatches[WorkerMatch.ActualTimeFirst] &&
-          workerMatches[WorkerMatch.ActualTimeLast]
-        ) {
-          worker[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
-            workerMatches[WorkerMatch.ActualTimeFirst],
-          )
-          worker[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
-            workerMatches[WorkerMatch.ActualTimeLast],
-          )
-          worker[NodeProp.ACTUAL_ROWS] = parseInt(
-            workerMatches[WorkerMatch.ActualRows],
-            0,
-          )
-          worker[NodeProp.ACTUAL_LOOPS] = parseInt(
-            workerMatches[WorkerMatch.ActualLoops],
-            0,
-          )
-        }
+      if (!previousElement.node[NodeProp.PLANS]) {
+        previousElement.node[NodeProp.PLANS] = []
+      }
+      if (previousElement.subelementType === "initplan") {
+        newNode[NodeProp.PARENT_RELATIONSHIP] = "InitPlan"
+        newNode[NodeProp.SUBPLAN_NAME] = previousElement.name as string
+      } else if (previousElement.subelementType === "subplan") {
+        newNode[NodeProp.PARENT_RELATIONSHIP] = "SubPlan"
+        newNode[NodeProp.SUBPLAN_NAME] = previousElement.name as string
+      }
+      previousElement.node.Plans?.push(newNode)
+    } else if (subMatches) {
+      //const prefix = subMatches[1]
+      const type = subMatches[2]
+      // Remove elements from elementsAtDepth for deeper levels
+      context.elementsAtDepth = context.elementsAtDepth.filter(
+        (e) => !(e[0] >= depth),
+      )
+      const previousElement =
+        context.elementsAtDepth[context.elementsAtDepth.length - 1]?.[1]
+      const element = {
+        node: previousElement?.node as Node,
+        subelementType: type.toLowerCase(),
+        name: subMatches[0],
+      }
+      context.elementsAtDepth.push([depth, element])
+    } else if (cteMatches) {
+      //const prefix = cteMatches[1]
+      const cteName = cteMatches[2]
+      // Remove elements from elementsAtDepth for deeper levels
+      context.elementsAtDepth = context.elementsAtDepth.filter(
+        (e) => !(e[0] >= depth),
+      )
+      const previousElement =
+        context.elementsAtDepth[context.elementsAtDepth.length - 1]?.[1]
+      const element = {
+        node: previousElement?.node as Node,
+        subelementType: "initplan",
+        name: "CTE " + cteName,
+      }
+      context.elementsAtDepth.push([depth, element])
+    } else if (workerMatches) {
+      //const prefix = workerMatches[1]
+      const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
+      const previousElement = context.elementsAtDepth[
+        context.elementsAtDepth.length - 1
+      ]?.[1] as NodeElement
+      if (!previousElement) {
+        return
+      }
+      if (!previousElement.node[NodeProp.WORKERS]) {
+        previousElement.node[NodeProp.WORKERS] = [] as Worker[]
+      }
+      let worker = this.getWorker(previousElement.node, workerNumber)
+      if (!worker) {
+        worker = new Worker(workerNumber)
+        previousElement.node[NodeProp.WORKERS]?.push(worker)
+      }
+      if (
+        workerMatches[WorkerMatch.ActualTimeFirst] &&
+        workerMatches[WorkerMatch.ActualTimeLast]
+      ) {
+        worker[NodeProp.ACTUAL_STARTUP_TIME] = parseFloat(
+          workerMatches[WorkerMatch.ActualTimeFirst],
+        )
+        worker[NodeProp.ACTUAL_TOTAL_TIME] = parseFloat(
+          workerMatches[WorkerMatch.ActualTimeLast],
+        )
+        worker[NodeProp.ACTUAL_ROWS] = parseInt(
+          workerMatches[WorkerMatch.ActualRows],
+          0,
+        )
+        worker[NodeProp.ACTUAL_LOOPS] = parseInt(
+          workerMatches[WorkerMatch.ActualLoops],
+          0,
+        )
+      }
 
-        // extra info
-        const info = workerMatches[WorkerMatch.Extra]
-          .split(/: (.+)/)
-          .filter((x) => x)
-        if (workerMatches[WorkerMatch.Extra]) {
-          if (!info[1]) {
-            return
-          }
-          const property = startCase(info[0])
-          worker[property] = info[1]
-        }
-      } else if (triggerMatches) {
-        // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
-        // Ignoring triggers as they are PG specific usually
-      } else if (extraMatches) {
-        //const prefix = extraMatches[1]
-
-        // Remove elements from elementsAtDepth for deeper levels
-        // Depth == 1 is a special case here. Global info (for example
-        // execution|planning time) have a depth of 1 but shouldn't be removed
-        // in case first node was at depth 0.
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth || depth == 1))
-
-        let element
-        if (elementsAtDepth.length === 0) {
-          element = root
-        } else {
-          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1].node as Node
-        }
-
-        // if no node have been found yet and a 'Query Text' has been found
-        // there the line is the part of the query
-        if (!element.Plan && element["Query Text"]) {
-          element["Query Text"] += "\n" + line
-          return
-        }
-
-        const info = extraMatches[2].split(/: (.+)/).filter((x) => x)
+      // extra info
+      const info = workerMatches[WorkerMatch.Extra].split(/: (.+)/).filter(
+        (x) => x,
+      )
+      if (workerMatches[WorkerMatch.Extra]) {
         if (!info[1]) {
           return
         }
-
-        if (!element) {
-          return
-        }
-
-        // remove the " ms" unit in case of time
-        let value: string | number = info[1].replace(/(\s*ms)$/, "")
-        // try to convert to number
-        if (parseFloat(value)) {
-          value = parseFloat(value)
-        }
-
-        let property = info[0]
-        if (
-          property.indexOf(" runtime") !== -1 ||
-          property.indexOf(" time") !== -1
-        ) {
-          property = startCase(property)
-        }
-        element[property] = value
+        const property = startCase(info[0])
+        worker[property] = info[1]
       }
-    })
-    if (root == null || !root.Plan) {
-      throw new Error("Unable to parse plan")
+    } else if (triggerMatches) {
+      // Remove elements from elementsAtDepth for deeper levels
+      context.elementsAtDepth = context.elementsAtDepth.filter(
+        (e) => !(e[0] >= depth),
+      )
+      // Ignoring triggers as they are PG specific usually
+    } else if (extraMatches) {
+      //const prefix = extraMatches[1]
+
+      // Remove elements from elementsAtDepth for deeper levels
+      // Depth == 1 is a special case here. Global info (for example
+      // execution|planning time) have a depth of 1 but shouldn't be removed
+      // in case first node was at depth 0.
+      context.elementsAtDepth = context.elementsAtDepth.filter(
+        (e) => !(e[0] >= depth || depth == 1),
+      )
+
+      let element
+      if (context.elementsAtDepth.length === 0) {
+        element = context.root
+      } else {
+        element =
+          context.elementsAtDepth[context.elementsAtDepth.length - 1]?.[1]
+            .node as Node
+      }
+
+      // if no node have been found yet and a 'Query Text' has been found
+      // there the line is the part of the query
+      if (!element.Plan && element["Query Text"]) {
+        element["Query Text"] += "\n" + line
+        return
+      }
+
+      const info = extraMatches[2].split(/: (.+)/).filter((x) => x)
+      if (!info[1]) {
+        return
+      }
+
+      if (!element) {
+        return
+      }
+
+      // remove the " ms" unit in case of time
+      let value: string | number = info[1].replace(/(\s*ms)$/, "")
+      // try to convert to number
+      if (parseFloat(value)) {
+        value = parseFloat(value)
+      }
+
+      let property = info[0]
+      if (
+        property.indexOf(" runtime") !== -1 ||
+        property.indexOf(" time") !== -1
+      ) {
+        property = startCase(property)
+      }
+      element[property] = value
     }
-    return root
   }
 
   private getWorker(node: Node, workerNumber: number): Worker | undefined {
