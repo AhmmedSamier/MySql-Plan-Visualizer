@@ -5,15 +5,19 @@ import { Node, Worker } from "@/interfaces"
 import { PlanParser } from "@/services/plan-parser"
 // Worker is imported dynamically in fromSourceAsync to avoid load-time issues in tests
 
-type recurseItemType = Array<[Node, recurseItemType]>
-
 export class PlanService {
   private nodeId = 0
   private flat: Node[] = []
   private parser = new PlanParser()
 
-  private recurse(nodes: Node[]): recurseItemType {
-    return _.map(nodes, (node) => [node, this.recurse(node[NodeProp.PLANS])])
+  private flattenNodes(nodes: Node[] | undefined) {
+    if (!nodes || nodes.length === 0) {
+      return
+    }
+    for (const node of nodes) {
+      this.flat.push(node)
+      this.flattenNodes(node[NodeProp.PLANS])
+    }
   }
 
   public createPlan(
@@ -44,11 +48,9 @@ export class PlanService {
     this.flat = []
     this.processNode(planContent.Plan, plan)
 
-    this.flat = this.flat.concat(
-      _.flattenDeep(this.recurse([plan.content.Plan as Node])),
-    )
+    this.flattenNodes([plan.content.Plan as Node])
     _.each(plan.ctes, (cte) => {
-      this.flat = this.flat.concat(_.flattenDeep(this.recurse([cte as Node])))
+      this.flattenNodes([cte as Node])
     })
 
     this.fixCteScansDuration(plan)
