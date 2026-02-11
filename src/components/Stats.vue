@@ -17,7 +17,15 @@ const executionTime = computed(
     (store.plan?.content.Plan?.[NodeProp.ACTUAL_TOTAL_TIME] as number),
 )
 
-const nodes = computed(() => _.flatten(store.flat).map((row) => row.node))
+const nodes = computed(() => {
+  const allNodes: Node[] = []
+  if (store.nodeById) {
+    for (const flattenedNode of store.nodeById.values()) {
+      allNodes.push(flattenedNode.node)
+    }
+  }
+  return allNodes
+})
 
 function durationPercent(nodes: Node[]) {
   return _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION) / executionTime.value
