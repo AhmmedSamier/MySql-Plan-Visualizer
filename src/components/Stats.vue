@@ -17,56 +17,51 @@ const executionTime = computed(
     (store.plan?.content.Plan?.[NodeProp.ACTUAL_TOTAL_TIME] as number),
 )
 
-const nodes = computed(() => {
-  const allNodes: Node[] = []
-  if (store.nodeById) {
-    for (const flattenedNode of store.nodeById.values()) {
-      allNodes.push(flattenedNode.node)
-    }
-  }
-  return allNodes
-})
-
 const stats = computed(() => {
   const tables: Record<string, { nodes: Node[]; time: number }> = {}
   const functions: Record<string, { nodes: Node[]; time: number }> = {}
   const nodeTypes: Record<string, { nodes: Node[]; time: number }> = {}
   const indexes: Record<string, { nodes: Node[]; time: number }> = {}
 
-  for (const node of nodes.value) {
-    const duration = (node[NodeProp.EXCLUSIVE_DURATION] as number) || 0
+  if (store.nodeById) {
+    for (const flattenedNode of store.nodeById.values()) {
+      const node = flattenedNode.node
+      const duration = (node[NodeProp.EXCLUSIVE_DURATION] as number) || 0
 
-    const tableName = node[NodeProp.RELATION_NAME] as string
-    if (tableName) {
-      if (!tables[tableName]) tables[tableName] = { nodes: [], time: 0 }
-      tables[tableName].nodes.push(node)
-      tables[tableName].time += duration
-    }
+      const tableName = node[NodeProp.RELATION_NAME] as string
+      if (tableName) {
+        if (!tables[tableName]) tables[tableName] = { nodes: [], time: 0 }
+        tables[tableName].nodes.push(node)
+        tables[tableName].time += duration
+      }
 
-    const functionName = node[NodeProp.FUNCTION_NAME] as string
-    if (functionName) {
-      if (!functions[functionName])
-        functions[functionName] = { nodes: [], time: 0 }
-      functions[functionName].nodes.push(node)
-      functions[functionName].time += duration
-    }
+      const functionName = node[NodeProp.FUNCTION_NAME] as string
+      if (functionName) {
+        if (!functions[functionName])
+          functions[functionName] = { nodes: [], time: 0 }
+        functions[functionName].nodes.push(node)
+        functions[functionName].time += duration
+      }
 
-    const nodeType = node[NodeProp.NODE_TYPE] as string
-    if (nodeType) {
-      if (!nodeTypes[nodeType]) nodeTypes[nodeType] = { nodes: [], time: 0 }
-      nodeTypes[nodeType].nodes.push(node)
-      nodeTypes[nodeType].time += duration
-    }
+      const nodeType = node[NodeProp.NODE_TYPE] as string
+      if (nodeType) {
+        if (!nodeTypes[nodeType]) nodeTypes[nodeType] = { nodes: [], time: 0 }
+        nodeTypes[nodeType].nodes.push(node)
+        nodeTypes[nodeType].time += duration
+      }
 
-    const indexName = node[NodeProp.INDEX_NAME] as string
-    if (indexName) {
-      if (!indexes[indexName]) indexes[indexName] = { nodes: [], time: 0 }
-      indexes[indexName].nodes.push(node)
-      indexes[indexName].time += duration
+      const indexName = node[NodeProp.INDEX_NAME] as string
+      if (indexName) {
+        if (!indexes[indexName]) indexes[indexName] = { nodes: [], time: 0 }
+        indexes[indexName].nodes.push(node)
+        indexes[indexName].time += duration
+      }
     }
   }
 
-  const formatValues = (group: Record<string, { nodes: Node[]; time: number }>) => {
+  const formatValues = (
+    group: Record<string, { nodes: Node[]; time: number }>,
+  ) => {
     const values: StatsTableItemType[] = []
     for (const name in group) {
       const { nodes, time } = group[name]
