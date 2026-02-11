@@ -24,6 +24,19 @@ export function usePlanLayout(
   const layoutRootNode = ref<null | FlexHierarchyPointNode<Node>>(null)
   const ctes = ref<FlexHierarchyPointNode<Node>[]>([])
   const toCteLinks = ref<FlexHierarchyPointLink<Node>[]>([])
+  const nodeMap = new Map<number, FlexHierarchyPointNode<Node>>()
+
+  function populateNodeMap() {
+    nodeMap.clear()
+    layoutRootNode.value?.each((node) => {
+      nodeMap.set(node.data.nodeId, node)
+    })
+    _.each(ctes.value, (tree) => {
+      tree.each((node) => {
+        nodeMap.set(node.data.nodeId, node)
+      })
+    })
+  }
 
   const layout = flextree({
     nodeSize: (node: FlexHierarchyPointNode<Node>) => {
@@ -209,6 +222,8 @@ export function usePlanLayout(
         }
       })
     })
+
+    populateNodeMap()
   }
 
   function fitToScreen() {
@@ -302,13 +317,7 @@ export function usePlanLayout(
   }
 
   function findTreeNode(nodeId: number) {
-    const trees = [layoutRootNode.value].concat(ctes.value)
-    let found: undefined | FlexHierarchyPointNode<Node> = undefined
-    _.each(trees, (tree) => {
-      found = _.find(tree?.descendants(), (o) => o.data.nodeId == nodeId)
-      return !found
-    })
-    return found
+    return nodeMap.get(nodeId)
   }
 
   function centerNode(nodeId: number): void {
