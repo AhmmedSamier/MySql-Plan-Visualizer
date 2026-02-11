@@ -110,6 +110,8 @@ export enum NodeProp {
   CTE_NAME = "CTE Name",
   FUNCTION_NAME = "Function Name",
 
+  SEARCH_STRING = "*Search String",
+
   ARRAY_INDEX_KEY = "arrayIndex",
 
   MPV_PLAN_TAG = "plan_",

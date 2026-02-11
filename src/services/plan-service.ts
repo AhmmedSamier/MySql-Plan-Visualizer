@@ -1,5 +1,5 @@
 import _ from "lodash"
-import { EstimateDirection, NodeProp, WorkerProp } from "@/enums"
+import { EstimateDirection, NodeProp } from "@/enums"
 import type { IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 import { Node, Worker } from "@/interfaces"
 import { PlanParser } from "@/services/plan-parser"
@@ -68,6 +68,7 @@ export class PlanService {
   public processNode(node: Node, plan: IPlan) {
     node.nodeId = this.nodeId++
     this.calculatePlannerEstimate(node)
+    this.calculateSearchString(node)
 
     _.each(node[NodeProp.PLANS], (child) => {
       // Disseminate workers planned info to parallel nodes (ie. Gather children)
@@ -316,6 +317,35 @@ export class PlanService {
           node[NodeProp.PLAN_ROWS] / node[NodeProp.ACTUAL_ROWS]
       }
     }
+  }
+
+  public calculateSearchString(node: Node) {
+    const fieldsToCheck = [
+      NodeProp.NODE_TYPE,
+      NodeProp.RELATION_NAME,
+      NodeProp.ALIAS,
+      NodeProp.INDEX_NAME,
+      NodeProp.CTE_NAME,
+      NodeProp.FUNCTION_NAME,
+      NodeProp.FILTER,
+      NodeProp.JOIN_TYPE,
+      NodeProp.HASH_CONDITION,
+      NodeProp.GROUP_KEY,
+      NodeProp.SORT_KEY,
+    ]
+
+    node[NodeProp.SEARCH_STRING] = fieldsToCheck
+      .map((field) => {
+        const val = node[field]
+        if (typeof val === "string") {
+          return val
+        } else if (Array.isArray(val)) {
+          return val.filter((v) => typeof v === "string").join(" ")
+        }
+        return ""
+      })
+      .join(" ")
+      .toLowerCase()
   }
 
   public fromSource(source: string) {
