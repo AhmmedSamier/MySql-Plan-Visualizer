@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import _ from "lodash"
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import type { Node, StatsTableItemType } from "@/interfaces"
 import { NodeProp } from "@/enums"
 import { duration, durationClass, percent } from "@/filters"
@@ -18,6 +18,12 @@ interface Props {
 const props = defineProps<Props>()
 
 const expanded = ref<boolean>(false)
+
+const sortedNodes = computed(() => {
+  return _.reverse(
+    _.sortBy(props.value.nodes, NodeProp.EXCLUSIVE_DURATION),
+  )
+})
 
 function durationPercent(node: Node) {
   return (
@@ -55,11 +61,9 @@ function durationPercent(node: Node) {
       <th class="text-end">{{ percent(props.value.timePercent) }}</th>
     </tr>
   </thead>
-  <tbody :class="expanded ? '' : 'd-none'">
+  <tbody v-if="expanded">
     <tr
-      v-for="node in _.reverse(
-        _.sortBy(props.value.nodes, NodeProp.EXCLUSIVE_DURATION),
-      )"
+      v-for="node in sortedNodes"
       :key="node.nodeId"
       style="font-size: smaller"
     >
