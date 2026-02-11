@@ -370,6 +370,10 @@ watch(searchInput, (val) => {
 })
 
 function nodeMatches(node: Node, term: string): boolean {
+  if (node[NodeProp.SEARCH_STRING]) {
+    return node[NodeProp.SEARCH_STRING].includes(term)
+  }
+
   const fieldsToCheck = [
     NodeProp.NODE_TYPE,
     NodeProp.RELATION_NAME,
