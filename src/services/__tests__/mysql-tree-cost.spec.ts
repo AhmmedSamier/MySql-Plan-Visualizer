@@ -35,7 +35,7 @@ describe("PlanService MySQL Tree Cost", () => {
     const planService = new PlanService()
     const source = `-> Limit: 5 row(s)  (cost=0.00..10.00 rows=5)`
     const r = planService.fromSource(source) as IPlanContent
-    expect(r.Plan["Total Cost"]).toBe(10.00)
-    expect(r.Plan["Startup Cost"]).toBe(0.00)
+    expect(r.Plan["Total Cost"]).toBe(10.0)
+    expect(r.Plan["Startup Cost"]).toBe(0.0)
   })
 })
