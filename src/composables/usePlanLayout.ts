@@ -64,6 +64,16 @@ export function usePlanLayout(
     return layoutRootNode.value?.links() || []
   })
 
+  const cteGraphs = computed(() => {
+    return ctes.value.map((cte) => ({
+      cte,
+      key: cte.data.nodeId,
+      links: cte.links(),
+      descendants: cte.descendants(),
+      extent: getLayoutExtent(cte),
+    }))
+  })
+
   function initZoom() {
     if (!planEl.value) {
       return
@@ -360,6 +370,7 @@ export function usePlanLayout(
     return item.xSize
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function buildTree(plan: any) {
     if (plan?.content?.Plan) {
       tree.value = layout.hierarchy(plan.content.Plan, (v: Node) => v.Plans)
@@ -382,6 +393,7 @@ export function usePlanLayout(
     tree,
     rootDescendants,
     rootLinks,
+    cteGraphs,
     doLayout,
     initZoom,
     fitToScreen,
