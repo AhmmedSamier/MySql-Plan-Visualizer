@@ -228,11 +228,16 @@ export class PlanService {
       return
     }
 
-    // Find all initPlans
-    const initPlans = _.filter(
-      this.flat,
-      (node) => node[NodeProp.PARENT_RELATIONSHIP] == "InitPlan",
-    )
+    const initPlans: Node[] = []
+    const otherNodes: Node[] = []
+
+    _.each(this.flat, (node) => {
+      if (node[NodeProp.PARENT_RELATIONSHIP] == "InitPlan") {
+        initPlans.push(node)
+      } else {
+        otherNodes.push(node)
+      }
+    })
 
     _.each(initPlans, (subPlan) => {
       // Get the sub plan name
@@ -252,31 +257,21 @@ export class PlanService {
 
       // Find all nodes that are using data from this InitPlan
       // There should be the name of the sub plan somewhere in the extra info
-      const matchesRegex = new RegExp(
-        `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
-      )
-      _.each(
-        _.filter(
-          this.flat,
-          (node) => node[NodeProp.PARENT_RELATIONSHIP] != "InitPlan",
-        ),
-        (node) => {
-          _.each(node, (value) => {
-            if (typeof value != "string") {
-              return
-            }
-            // Value for node property should contain sub plan name (with a number
-            // matching exactly)
-            const matches = matchesRegex.exec(value)
-            if (matches) {
-              node[NodeProp.EXCLUSIVE_DURATION] -=
-                subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
-              // Stop iterating for this node
-              return false
-            }
-          })
-        },
-      )
+      _.each(otherNodes, (node) => {
+        _.each(node, (value) => {
+          if (typeof value != "string") {
+            return
+          }
+          // Value for node property should contain sub plan name (with a number
+          // matching exactly)
+          if (value.indexOf(name) !== -1) {
+            node[NodeProp.EXCLUSIVE_DURATION] -=
+              subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
+            // Stop iterating for this node
+            return false
+          }
+        })
+      })
     })
   }
 
