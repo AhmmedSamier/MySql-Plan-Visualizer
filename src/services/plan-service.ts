@@ -193,17 +193,26 @@ export class PlanService {
       return
     }
 
+    const cteScanMap = new Map<string, Node[]>()
+    _.each(this.flat, (node) => {
+      const cteName = node[NodeProp.CTE_NAME]
+      if (cteName) {
+        const key = `CTE ${cteName}`
+        if (!cteScanMap.has(key)) {
+          cteScanMap.set(key, [])
+        }
+        cteScanMap.get(key)!.push(node)
+      }
+    })
+
     // Iterate over the CTEs
     _.each(plan.ctes, (cte) => {
       // Time spent in the CTE itself
       const cteDuration = cte[NodeProp.ACTUAL_TOTAL_TIME] || 0
 
       // Find all nodes that are "CTE Scan" for the given CTE
-      const cteScans = _.filter(
-        this.flat,
-        (node) =>
-          `CTE ${node[NodeProp.CTE_NAME]}` == cte[NodeProp.SUBPLAN_NAME],
-      )
+      const cteScans =
+        cteScanMap.get(cte[NodeProp.SUBPLAN_NAME] as string) || []
 
       // Sum of exclusive time for the CTE Scans
       const sumScansDuration = _.sumBy(
