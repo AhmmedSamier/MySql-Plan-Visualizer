@@ -79,17 +79,18 @@ export function usePlanLayout(
   function getLayoutExtent(
     layoutRootNode: FlexHierarchyPointNode<Node>,
   ): [number, number, number, number] {
+    const descendants = layoutRootNode.descendants()
     if (viewOptions.orientation === Orientation.LeftToRight) {
       const minX =
         _.min(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             return childNode.x
           }),
         ) || 0
 
       const maxX =
         _.max(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             // Width is ySize - padding
             return childNode.x + (childNode.ySize - padding)
           }),
@@ -97,7 +98,7 @@ export function usePlanLayout(
 
       const minY =
         _.min(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             // Height is xSize. centered at y.
             return childNode.y - childNode.xSize / 2
           }),
@@ -105,7 +106,7 @@ export function usePlanLayout(
 
       const maxY =
         _.max(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             return childNode.y + childNode.xSize / 2
           }),
         ) || 0
@@ -114,28 +115,28 @@ export function usePlanLayout(
 
     const minX =
       _.min(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.x - childNode.xSize / 2
         }),
       ) || 0
 
     const maxX =
       _.max(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.x + childNode.xSize / 2
         }),
       ) || 0
 
     const minY =
       _.min(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.y
         }),
       ) || 0
 
     const maxY =
       _.max(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.y + childNode.ySize
         }),
       ) || 0
