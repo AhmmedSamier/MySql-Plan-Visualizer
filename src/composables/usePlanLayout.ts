@@ -1,5 +1,5 @@
 import { ref, computed, nextTick, type Ref } from "vue"
-import * as d3 from "d3"
+import { scaleLinear, zoom, zoomIdentity, select, path } from "d3"
 import {
   flextree,
   type FlexHierarchyPointLink,
@@ -41,16 +41,14 @@ export function usePlanLayout(
   const tree = ref(layout.hierarchy({}))
 
   const edgeWeight = computed(() => {
-    return d3
-      .scaleLinear()
+    return scaleLinear()
       .domain([0, store.stats.maxRows])
       .range([1, padding / 1.5])
   })
 
   const minScale = 0.2
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const zoomListener: any = d3
-    .zoom()
+  const zoomListener: any = zoom()
     .scaleExtent([minScale, 3])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .on("zoom", function (e: any) {
@@ -70,7 +68,7 @@ export function usePlanLayout(
     if (!planEl.value) {
       return
     }
-    d3.select(planEl.value.$el).call(zoomListener)
+    select(planEl.value.$el).call(zoomListener)
     nextTick(() => {
       fitToScreen()
     })
@@ -250,35 +248,35 @@ export function usePlanLayout(
       py = y0
     }
 
-    d3.select(planEl.value.$el)
+    select(planEl.value.$el)
       .transition()
       .call(
         zoomListener.transform,
-        d3.zoomIdentity.translate(sx, sy).scale(s).translate(-px, -py),
+        zoomIdentity.translate(sx, sy).scale(s).translate(-px, -py),
       )
   }
 
   function zoomIn() {
     if (planEl.value) {
-      d3.select(planEl.value.$el).transition().call(zoomListener.scaleBy, 1.2)
+      select(planEl.value.$el).transition().call(zoomListener.scaleBy, 1.2)
     }
   }
 
   function zoomOut() {
     if (planEl.value) {
-      d3.select(planEl.value.$el).transition().call(zoomListener.scaleBy, 0.8)
+      select(planEl.value.$el).transition().call(zoomListener.scaleBy, 0.8)
     }
   }
 
   function lineGen(link: FlexHierarchyPointLink<Node>) {
     const source = link.source
     const target = link.target
-    const path = d3.path()
+    const p = path()
     if (viewOptions.orientation === Orientation.LeftToRight) {
       const k = Math.abs(target.x - (source.x + source.ySize) - padding)
-      path.moveTo(source.x, source.y)
-      path.lineTo(source.x + source.ySize - padding, source.y)
-      path.bezierCurveTo(
+      p.moveTo(source.x, source.y)
+      p.lineTo(source.x + source.ySize - padding, source.y)
+      p.bezierCurveTo(
         source.x + source.ySize - padding + k / 2,
         source.y,
         target.x - k / 2,
@@ -288,9 +286,9 @@ export function usePlanLayout(
       )
     } else {
       const k = Math.abs(target.y - (source.y + source.ySize) - padding)
-      path.moveTo(source.x, source.y)
-      path.lineTo(source.x, source.y + source.ySize - padding)
-      path.bezierCurveTo(
+      p.moveTo(source.x, source.y)
+      p.lineTo(source.x, source.y + source.ySize - padding)
+      p.bezierCurveTo(
         source.x,
         source.y + source.ySize - padding + k / 2,
         target.x,
@@ -299,7 +297,7 @@ export function usePlanLayout(
         target.y,
       )
     }
-    return path.toString()
+    return p.toString()
   }
 
   function findTreeNode(nodeId: number) {
@@ -323,10 +321,10 @@ export function usePlanLayout(
     const k = scale.value
     x = x * k + rect.width / 2
     y = y * k + rect.height / 2
-    d3.select(planEl.value.$el)
+    select(planEl.value.$el)
       .transition()
       .duration(500)
-      .call(zoomListener.transform, d3.zoomIdentity.translate(x, y).scale(k))
+      .call(zoomListener.transform, zoomIdentity.translate(x, y).scale(k))
   }
 
   function updateNodeSize(node: Node, size: [number, number]) {
