@@ -37,7 +37,7 @@ export class PlanService {
       planStats: {} as IPlanStats,
       ctes: [],
       isAnalyze: _.has(planContent.Plan, NodeProp.ACTUAL_ROWS),
-      isVerbose: this.findOutputProperty(planContent.Plan),
+      isVerbose: false,
     }
 
     this.nodeId = 1
@@ -67,6 +67,9 @@ export class PlanService {
   // recursively walk down the plan to compute various metrics
   public processNode(node: Node, plan: IPlan) {
     node.nodeId = this.nodeId++
+    if (!plan.isVerbose && _.has(node, NodeProp.OUTPUT)) {
+      plan.isVerbose = true
+    }
     this.calculatePlannerEstimate(node)
     this.calculateSearchString(node)
 
@@ -385,17 +388,6 @@ export class PlanService {
     } else {
       return Promise.resolve(this.fromSource(source))
     }
-  }
-
-  private findOutputProperty(node: Node): boolean {
-    // resursively look for an "Output" property
-    const children = node.Plans
-    if (!children) {
-      return false
-    }
-    return _.some(children, (child) => {
-      return _.has(child, NodeProp.OUTPUT) || this.findOutputProperty(child)
-    })
   }
 
   private convertNodeType(node: Node): void {
