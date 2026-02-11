@@ -48,6 +48,7 @@ import {
   faShareAlt,
   faFileImage,
   faCheck,
+  faSpinner,
 } from "@fortawesome/free-solid-svg-icons"
 import * as htmlToImage from "html-to-image"
 import { compressPlanToUrl, copyToClipboard } from "@/services/share-service"
@@ -511,20 +512,26 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 const isShared = ref(false)
-function sharePlan() {
+const isSharing = ref(false)
+async function sharePlan() {
+  if (isSharing.value) return
+  isSharing.value = true
   const plan: [string, string, string, string] = [
     store.plan?.name || "Shared Plan",
     props.planSource,
     props.planQuery,
     new Date().toISOString(),
   ]
-  const url = compressPlanToUrl(plan)
-  copyToClipboard(url).then((success) => {
+  try {
+    const url = await compressPlanToUrl(plan)
+    const success = await copyToClipboard(url)
     if (success) {
       isShared.value = true
       setTimeout(() => (isShared.value = false), 2000)
     }
-  })
+  } finally {
+    isSharing.value = false
+  }
 }
 
 const isExporting = ref(false)
@@ -684,12 +691,14 @@ function exportPng() {
           @click="sharePlan"
           title="Copy permalink to clipboard"
           style="white-space: nowrap"
+          :disabled="isSharing"
         >
           <FontAwesomeIcon
-            :icon="isShared ? faCheck : faShareAlt"
+            :icon="isShared ? faCheck : (isSharing ? faSpinner : faShareAlt)"
             class="me-1"
+            :spin="isSharing"
           />
-          {{ isShared ? "Copied!" : "Share" }}
+          {{ isShared ? "Copied!" : (isSharing ? "Sharing..." : "Share") }}
         </button>
         <button
           class="btn btn-sm btn-outline-primary"

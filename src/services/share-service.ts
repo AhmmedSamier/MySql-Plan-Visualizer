@@ -1,9 +1,43 @@
 import LZString from "lz-string"
 import type { Plan } from "@/../example/src/types"
 
-export function compressPlanToUrl(plan: Plan): string {
+export async function compressPlanToUrl(plan: Plan): Promise<string> {
   const data = JSON.stringify(plan)
-  const compressed = LZString.compressToEncodedURIComponent(data)
+  let compressed: string
+
+  if (typeof Worker !== "undefined") {
+    try {
+      const module = await import("@/workers/compression.worker?worker")
+      const CompressionWorker = module.default
+      if (!CompressionWorker) {
+        throw new Error(
+          "Worker default export not found (likely in test environment)",
+        )
+      }
+      compressed = await new Promise<string>((resolve, reject) => {
+        const worker = new CompressionWorker()
+        worker.onmessage = (event) => {
+          if (event.data.error) {
+            reject(new Error(event.data.error))
+          } else {
+            resolve(event.data.result)
+          }
+          worker.terminate()
+        }
+        worker.onerror = (error) => {
+          reject(error)
+          worker.terminate()
+        }
+        worker.postMessage(data)
+      })
+    } catch (e) {
+      console.warn("Worker compression failed, falling back to synchronous", e)
+      compressed = LZString.compressToEncodedURIComponent(data)
+    }
+  } else {
+    compressed = LZString.compressToEncodedURIComponent(data)
+  }
+
   const base = import.meta.env.BASE_URL || "/"
 
   if (base.endsWith(".html")) {
