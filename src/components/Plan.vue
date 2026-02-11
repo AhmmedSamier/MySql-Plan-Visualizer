@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import _ from "lodash"
 import {
   computed,
   reactive,
@@ -300,7 +299,7 @@ watch(
         .descendants()
         .map((item: FlexHierarchyPointNode<Node>) => item.data.size),
     )
-    _.each(ctes.value, (tree) => {
+    ctes.value.forEach((tree) => {
       data.push(
         ...tree
           .descendants()
