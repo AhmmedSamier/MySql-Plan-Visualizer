@@ -51,7 +51,7 @@ export function usePlanLayout(
     ) => (nodeA.parent === nodeB.parent ? 2.82842712475 : 8),
   })
 
-  const tree = ref(layout.hierarchy({}))
+  const tree = ref<FlexHierarchyPointNode<Node>>(layout.hierarchy({} as Node))
 
   const edgeWeight = computed(() => {
     return scaleLinear()
