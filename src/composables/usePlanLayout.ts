@@ -48,7 +48,7 @@ export function usePlanLayout(
     spacing: (
       nodeA: FlexHierarchyPointNode<Node>,
       nodeB: FlexHierarchyPointNode<Node>,
-    ) => Math.pow(nodeA.path(nodeB).length, 1.5),
+    ) => (nodeA.parent === nodeB.parent ? 2.82842712475 : 8),
   })
 
   const tree = ref(layout.hierarchy({}))
