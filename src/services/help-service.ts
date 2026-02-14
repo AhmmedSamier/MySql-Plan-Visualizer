@@ -351,7 +351,7 @@ export function findNodeBySubplanName(
 
 // Returns the list of properties that have already been displayed either in
 // the main panel or in other detailed tabs.
-const notMiscProperties: string[] = [
+const notMiscProperties = new Set<string>([
   NodeProp.NODE_TYPE,
   NodeProp.CTE_NAME,
   NodeProp.EXCLUSIVE_DURATION,
@@ -390,13 +390,13 @@ const notMiscProperties: string[] = [
   NodeProp.PARTIAL_MODE,
   NodeProp.SCAN_DIRECTION,
   NodeProp.ACTUAL_ROWS_FRACTIONAL,
-]
+])
 
 export function shouldShowProp(key: string, value: unknown): boolean {
   return (
     (!!value ||
       nodePropTypes[key] === PropType.increment ||
       key === NodeProp.ACTUAL_ROWS) &&
-    notMiscProperties.indexOf(key) === -1
+    !notMiscProperties.has(key)
   )
 }
