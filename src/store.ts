@@ -10,6 +10,7 @@ export interface Store {
   query?: string
   stats: IPlanStats
   parsing: boolean
+  error?: string
   parse(source: string, query: string): Promise<void>
   flat: FlattenedPlanNode[][]
   nodeById?: FlattenedNodeMap
@@ -89,6 +90,7 @@ export function createStore(): Store {
     stats: initStats(),
     nodeById: new Map(),
     parsing: false,
+    error: undefined,
     async parse(source: string, query: string) {
       store.parsing = true
       store.plan = undefined
@@ -98,11 +100,14 @@ export function createStore(): Store {
       let planJson: IPlanContent
       try {
         planJson = (await planService.fromSourceAsync(source)) as IPlanContent
-      } catch {
+      } catch (e) {
         store.plan = undefined
+        store.error =
+          e instanceof Error ? e.message : "Failed to parse execution plan"
         store.parsing = false
         return
       }
+      store.error = undefined
       store.query = planJson["Query Text"] || query
       store.plan = planService.createPlan("", planJson, store.query)
 

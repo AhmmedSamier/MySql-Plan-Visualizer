@@ -20,14 +20,15 @@ describe("IndexedDB Service", () => {
     const plans = await idb.getPlans()
     expect(plans.length).toBe(1)
     expect(plans[0][0]).toBe("Plan A")
-    // Check if ID is attached
-    expect((plans[0] as any).id).toBe(id)
+    const planWithId = plans[0] as Plan & { id: number }
+    expect(planWithId.id).toBe(id)
 
     // Retrieve single
     const fetched = await idb.getPlan(id)
     expect(fetched).toBeDefined()
     expect(fetched![0]).toBe("Plan A")
-    expect((fetched as any).id).toBe(id)
+    const fetchedWithId = fetched as Plan & { id: number }
+    expect(fetchedWithId.id).toBe(id)
   })
 
   it("should delete plans", async () => {

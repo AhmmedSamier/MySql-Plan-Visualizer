@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { compressPlanToUrl } from "../share-service"
-import type { IPlan, IPlanContent } from "@/interfaces"
 
 // Polyfill window for environments where it is not defined (e.g. bun test without jsdom)
 if (typeof window === "undefined") {

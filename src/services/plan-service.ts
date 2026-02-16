@@ -1,5 +1,5 @@
 import _ from "lodash"
-import { EstimateDirection, NodeProp, WorkerProp } from "@/enums"
+import { EstimateDirection, NodeProp } from "@/enums"
 import type { IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 import { Node, Worker } from "@/interfaces"
 import { PlanParser } from "@/services/plan-parser"

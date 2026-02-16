@@ -20,7 +20,6 @@ import {
   faCheckSquare,
   faTimes,
   faColumns,
-  faClock,
 } from "@fortawesome/free-solid-svg-icons"
 import samples from "../samples.ts"
 

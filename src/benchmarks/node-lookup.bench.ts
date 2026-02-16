@@ -22,6 +22,7 @@ describe("Node Lookup", () => {
   })
 
   bench("Map Lookup (Optimized)", () => {
-    store.nodeById!.get(targetId)?.node
+    const node = store.nodeById!.get(targetId)?.node
+    JSON.stringify(node)
   })
 })

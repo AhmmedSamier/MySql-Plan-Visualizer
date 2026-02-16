@@ -8,7 +8,7 @@ import {
 import _ from "lodash"
 import type { Store } from "@/store"
 import { NodeProp, Orientation } from "@/enums"
-import type { Node } from "@/interfaces"
+import type { Node, IPlan } from "@/interfaces"
 
 // Vertical padding between 2 nodes in the tree layout
 const padding = 40
@@ -361,7 +361,7 @@ export function usePlanLayout(
     return item.xSize
   }
 
-  function buildTree(plan: any) {
+  function buildTree(plan?: IPlan) {
     if (plan?.content?.Plan) {
       tree.value = layout.hierarchy(plan.content.Plan, (v: Node) => v.Plans)
     }

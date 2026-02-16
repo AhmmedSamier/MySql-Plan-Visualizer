@@ -1,13 +1,13 @@
 import { bench, describe } from "vitest"
 import { PlanService } from "@/services/plan-service"
 import { NodeProp } from "@/enums"
-import type { IPlanContent } from "@/interfaces"
+import type { IPlanContent, Node } from "@/interfaces"
 import _ from "lodash"
 
 const planService = new PlanService()
 
 function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPlanContent {
-  const root: any = {
+  const root = {
     [NodeProp.NODE_TYPE]: "Result",
     [NodeProp.PLANS]: [],
     [NodeProp.ACTUAL_ROWS]: 100,
@@ -17,14 +17,14 @@ function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPla
     [NodeProp.ACTUAL_TOTAL_TIME]: 100,
     [NodeProp.ACTUAL_STARTUP_TIME]: 0,
     [NodeProp.ACTUAL_LOOPS]: 1,
-  }
+  } as unknown as Node
 
   // Create InitPlans
   for (let i = 0; i < initPlanCount; i++) {
-    root[NodeProp.PLANS].push({
+    const initNode = {
       [NodeProp.NODE_TYPE]: "Seq Scan",
       [NodeProp.PARENT_RELATIONSHIP]: "InitPlan",
-      [NodeProp.SUBPLAN_NAME]: `InitPlan ${i+1} (returns $${i})`,
+      [NodeProp.SUBPLAN_NAME]: `InitPlan ${i + 1} (returns $${i})`,
       [NodeProp.ACTUAL_TOTAL_TIME]: 10,
       [NodeProp.ACTUAL_LOOPS]: 1,
       [NodeProp.TOTAL_COST]: 10,
@@ -32,8 +32,9 @@ function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPla
       [NodeProp.ACTUAL_STARTUP_TIME]: 0,
       [NodeProp.ACTUAL_ROWS]: 1,
       [NodeProp.PLAN_ROWS]: 1,
-      [NodeProp.PLANS]: []
-    })
+      [NodeProp.PLANS]: [],
+    } as unknown as Node
+    root[NodeProp.PLANS].push(initNode)
   }
 
   // Create many normal nodes
@@ -41,7 +42,7 @@ function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPla
   // to avoid huge recursion depth during setup/teardown if that matters.
   // Flattening in PlanService handles this.
   for (let i = 0; i < normalNodeCount; i++) {
-     const node: any = {
+     const node = {
         [NodeProp.NODE_TYPE]: "Seq Scan",
         [NodeProp.PARENT_RELATIONSHIP]: "Outer",
         [NodeProp.FILTER]: `(x = $${i % initPlanCount})`, // Reference an InitPlan
@@ -53,7 +54,7 @@ function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPla
         [NodeProp.ACTUAL_STARTUP_TIME]: 0,
         [NodeProp.ACTUAL_LOOPS]: 1,
         [NodeProp.PLANS]: []
-     }
+     } as unknown as Node
      // Add some dummy string properties to increase iteration count per node
      for(let j=0; j<10; j++) {
         node[`dummy_prop_${j}`] = `some random string value $${i % initPlanCount} extra text`

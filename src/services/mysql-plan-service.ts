@@ -68,8 +68,8 @@ export interface MysqlPlanNode {
   actual_first_row_ms?: number
 
   // Detection properties
-  query_spec?: any
-  Plan?: any
+  query_spec?: UnknownPlan
+  Plan?: UnknownPlan
 
 }
 

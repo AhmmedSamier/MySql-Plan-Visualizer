@@ -18,7 +18,8 @@ enum NodeProp {
 }
 
 // Create a mock node object with many keys to simulate real scenario
-const node: any = {}
+type BenchmarkNode = { [key: string]: number }
+const node: BenchmarkNode = {}
 // Add dummy keys
 for (let i = 0; i < 50; i++) {
   node[`prop_${i}`] = i
@@ -38,6 +39,9 @@ describe("Node Property Lookup", () => {
     const rowsRemovedProp: NodePropStrings = Object.keys(NodeProp).find(
       (prop) => NodeProp[prop as NodePropStrings] === nodeKey,
     ) as NodePropStrings
+    if (rowsRemovedProp) {
+      JSON.stringify(rowsRemovedProp)
+    }
   })
 
   bench("Optimized: Direct Access", () => {
@@ -52,6 +56,9 @@ describe("Node Property Lookup", () => {
       node[NodeProp.ROWS_REMOVED_BY_INDEX_RECHECK_REVISED] !== undefined
     ) {
       nodeKey = NodeProp.ROWS_REMOVED_BY_INDEX_RECHECK_REVISED
+    }
+    if (nodeKey) {
+      JSON.stringify(nodeKey)
     }
   })
 })
