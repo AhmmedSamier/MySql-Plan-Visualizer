@@ -4,21 +4,21 @@ This document contains instructions for AI agents operating in this codebase.
 
 ## 1. Build, Lint, and Test
 
-- **Runtime:** Node.js (npm) or Bun. `package.json` scripts use standard npm format.
-- **Install Dependencies:** `npm install`
-- **Run Dev Server:** `npm run dev` (Vite)
+- **Runtime:** Bun.
+- **Install Dependencies:** `bun install`
+- **Run Dev Server:** `bun run dev` (Vite)
 - **Build:**
-  - App: `npm run build:app` (Outputs to `dist-app/`)
-  - Lib: `npm run build:lib` (Outputs to `dist/`)
-  - Typecheck: `npm run typecheck` (`vue-tsc`)
+  - App: `bun run build:app` (Outputs to `dist-app/`)
+  - Lib: `bun run build:lib` (Outputs to `dist/`)
+  - Typecheck: `bun run typecheck` (`vue-tsc`)
 - **Linting & Formatting:**
-  - Lint: `npm run lint` (ESLint)
-  - Format: `npm run format` (Prettier)
-  - **Important:** Run `npm run lint` and `npm run typecheck` after changes.
+  - Lint: `bun run lint` (ESLint)
+  - Format: `bun run format` (Prettier)
+  - **Important:** Run `bun run lint` and `bun run typecheck` after changes.
 - **Testing (Vitest):**
-  - Run all tests: `npm test`
-  - Run single test file: `npx vitest run <path/to/test>` (e.g., `npx vitest run src/services/__tests__/plan-parser.spec.ts`)
-  - Run with coverage: `npx vitest run --coverage`
+  - Run all tests: `bun test`
+  - Run single test file: `bun test <path/to/test>` (e.g., `bun test src/services/__tests__/plan-parser.spec.ts`)
+  - Run with coverage: `bun run test --coverage`
 
 ## 2. Code Style & Guidelines
 
