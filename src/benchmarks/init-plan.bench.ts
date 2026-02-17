@@ -6,7 +6,10 @@ import _ from "lodash"
 
 const planService = new PlanService()
 
-function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPlanContent {
+function generateLargePlan(
+  initPlanCount: number,
+  normalNodeCount: number,
+): IPlanContent {
   const root = {
     [NodeProp.NODE_TYPE]: "Result",
     [NodeProp.PLANS]: [],
@@ -42,25 +45,26 @@ function generateLargePlan(initPlanCount: number, normalNodeCount: number): IPla
   // to avoid huge recursion depth during setup/teardown if that matters.
   // Flattening in PlanService handles this.
   for (let i = 0; i < normalNodeCount; i++) {
-     const node = {
-        [NodeProp.NODE_TYPE]: "Seq Scan",
-        [NodeProp.PARENT_RELATIONSHIP]: "Outer",
-        [NodeProp.FILTER]: `(x = $${i % initPlanCount})`, // Reference an InitPlan
-        [NodeProp.ACTUAL_ROWS]: 1,
-        [NodeProp.PLAN_ROWS]: 1,
-        [NodeProp.TOTAL_COST]: 10,
-        [NodeProp.STARTUP_COST]: 0,
-        [NodeProp.ACTUAL_TOTAL_TIME]: 1,
-        [NodeProp.ACTUAL_STARTUP_TIME]: 0,
-        [NodeProp.ACTUAL_LOOPS]: 1,
-        [NodeProp.PLANS]: []
-     } as unknown as Node
-     // Add some dummy string properties to increase iteration count per node
-     for(let j=0; j<10; j++) {
-        node[`dummy_prop_${j}`] = `some random string value $${i % initPlanCount} extra text`
-     }
+    const node = {
+      [NodeProp.NODE_TYPE]: "Seq Scan",
+      [NodeProp.PARENT_RELATIONSHIP]: "Outer",
+      [NodeProp.FILTER]: `(x = $${i % initPlanCount})`, // Reference an InitPlan
+      [NodeProp.ACTUAL_ROWS]: 1,
+      [NodeProp.PLAN_ROWS]: 1,
+      [NodeProp.TOTAL_COST]: 10,
+      [NodeProp.STARTUP_COST]: 0,
+      [NodeProp.ACTUAL_TOTAL_TIME]: 1,
+      [NodeProp.ACTUAL_STARTUP_TIME]: 0,
+      [NodeProp.ACTUAL_LOOPS]: 1,
+      [NodeProp.PLANS]: [],
+    } as unknown as Node
+    // Add some dummy string properties to increase iteration count per node
+    for (let j = 0; j < 10; j++) {
+      node[`dummy_prop_${j}`] =
+        `some random string value $${i % initPlanCount} extra text`
+    }
 
-     root[NodeProp.PLANS].push(node)
+    root[NodeProp.PLANS].push(node)
   }
 
   return {

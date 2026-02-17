@@ -54,6 +54,7 @@ export class Node {
   [NodeProp.PLANS]!: Node[];
   [NodeProp.PLAN_ROWS]!: number;
   [NodeProp.PLAN_ROWS_REVISED]?: number;
+  [NodeProp.SEARCH_STRING]?: string;
   [NodeProp.SUBPLAN_NAME]?: string;
   [NodeProp.TOTAL_COST]!: number;
   [NodeProp.WORKERS]?: Worker[];

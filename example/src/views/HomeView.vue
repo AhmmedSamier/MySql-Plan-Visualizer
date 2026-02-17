@@ -107,15 +107,13 @@ const { isOverDropZone: isOverSavedPlansDropZone } = useDropZone(
 )
 
 const dropZoneARef = useTemplateRef("dropZoneARef")
-const { isOverDropZone: isOverDropZoneA } = useDropZone(
-  dropZoneARef,
-  (files) => onDrop(files, comparePlanA),
+const { isOverDropZone: isOverDropZoneA } = useDropZone(dropZoneARef, (files) =>
+  onDrop(files, comparePlanA),
 )
 
 const dropZoneBRef = useTemplateRef("dropZoneBRef")
-const { isOverDropZone: isOverDropZoneB } = useDropZone(
-  dropZoneBRef,
-  (files) => onDrop(files, comparePlanB),
+const { isOverDropZone: isOverDropZoneB } = useDropZone(dropZoneBRef, (files) =>
+  onDrop(files, comparePlanB),
 )
 
 async function submitPlan() {

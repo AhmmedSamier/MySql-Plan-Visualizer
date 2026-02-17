@@ -8,6 +8,7 @@ interface NodeElement {
   node: Node
   subelementType?: string
   name?: string
+  workerMap?: Map<number, Worker>
 }
 
 enum WorkerMatch {
@@ -205,9 +206,10 @@ export class PlanParser {
     }
     // now find last line
     let lastLineIndex = 0
+    const closingRegex = new RegExp("^" + prefix + "(]|})s*$")
     for (let index = 0; index < sourceLines.length; index++) {
       const l = sourceLines[index]
-      const matches = new RegExp("^" + prefix + "(]|})s*$").exec(l)
+      const matches = closingRegex.exec(l)
       if (matches) {
         lastLineIndex = index
         break
@@ -473,7 +475,9 @@ export class PlanParser {
 
         // ! is for non-null assertion
         // Prevents the "Object is possibly 'undefined'" linting error
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
+        const previousElement = elementsAtDepth[
+          elementsAtDepth.length - 1
+        ]?.[1] as NodeElement
 
         if (!previousElement) {
           return
@@ -519,17 +523,31 @@ export class PlanParser {
       } else if (workerMatches) {
         //const prefix = workerMatches[1]
         const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
-        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1] as NodeElement
+        const previousElement = elementsAtDepth[
+          elementsAtDepth.length - 1
+        ]?.[1] as NodeElement
         if (!previousElement) {
           return
         }
         if (!previousElement.node[NodeProp.WORKERS]) {
           previousElement.node[NodeProp.WORKERS] = [] as Worker[]
         }
-        let worker = this.getWorker(previousElement.node, workerNumber)
+
+        // Initialize workerMap if needed for O(1) lookup
+        if (!previousElement.workerMap) {
+          previousElement.workerMap = new Map<number, Worker>()
+          // Populate map from existing workers array to ensure consistency
+          previousElement.node[NodeProp.WORKERS]?.forEach((w) => {
+            const num = w[WorkerProp.WORKER_NUMBER] as number
+            previousElement.workerMap!.set(num, w)
+          })
+        }
+
+        let worker = previousElement.workerMap.get(workerNumber)
         if (!worker) {
           worker = new Worker(workerNumber)
           previousElement.node[NodeProp.WORKERS]?.push(worker)
+          previousElement.workerMap.set(workerNumber, worker)
         }
         if (
           workerMatches[WorkerMatch.ActualTimeFirst] &&
@@ -573,13 +591,16 @@ export class PlanParser {
         // Depth == 1 is a special case here. Global info (for example
         // execution|planning time) have a depth of 1 but shouldn't be removed
         // in case first node was at depth 0.
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth || depth == 1))
+        elementsAtDepth = elementsAtDepth.filter(
+          (e) => !(e[0] >= depth || depth == 1),
+        )
 
         let element
         if (elementsAtDepth.length === 0) {
           element = root
         } else {
-          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1].node as Node
+          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
+            .node as Node
         }
 
         // if no node have been found yet and a 'Query Text' has been found
@@ -619,11 +640,5 @@ export class PlanParser {
       throw new Error("Unable to parse plan")
     }
     return root
-  }
-
-  private getWorker(node: Node, workerNumber: number): Worker | undefined {
-    return node[NodeProp.WORKERS]?.find((worker) => {
-      return worker[WorkerProp.WORKER_NUMBER] === workerNumber
-    })
   }
 }

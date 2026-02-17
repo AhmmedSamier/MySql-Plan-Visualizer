@@ -70,7 +70,6 @@ export interface MysqlPlanNode {
   // Detection properties
   query_spec?: UnknownPlan
   Plan?: UnknownPlan
-
 }
 
 const ACCESS_TYPE_MAP: Record<string, string> = {
@@ -302,9 +301,7 @@ export class MysqlPlanService {
       inputs = [data.execution_plan]
     }
     if (inputs && Array.isArray(inputs)) {
-      node[NodeProp.PLANS] = inputs.map((child) =>
-        this.parseV2(child, flat),
-      )
+      node[NodeProp.PLANS] = inputs.map((child) => this.parseV2(child, flat))
     }
 
     flat.push(node)

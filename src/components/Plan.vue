@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import _ from "lodash"
 import {
   computed,
   reactive,
@@ -49,6 +48,7 @@ import {
   faShareAlt,
   faFileImage,
   faCheck,
+  faSpinner,
 } from "@fortawesome/free-solid-svg-icons"
 import * as htmlToImage from "html-to-image"
 import { compressPlanToUrl, copyToClipboard } from "@/services/share-service"
@@ -119,6 +119,7 @@ const {
   edgeWeight,
   layoutRootNode,
   ctes,
+  cteGraphs,
   toCteLinks,
   tree,
   rootDescendants,
@@ -134,7 +135,6 @@ const {
   getNodeX,
   getNodeY,
   getNodeWidth,
-  getLayoutExtent,
   buildTree,
 } = usePlanLayout(planEl, viewOptions, store)
 
@@ -289,19 +289,19 @@ watch(
 watch(
   () => {
     const data: [number, number][] = []
-    data.push(
-      ...tree.value
+    const rootSizes = tree.value
+      .descendants()
+      .map((item: FlexHierarchyPointNode<Node>) => item.data.size)
+    // Avoid spread operator for large arrays
+    rootSizes.forEach((size) => data.push(size))
+
+    ctes.value.forEach((tree) => {
+      const cteSizes = tree
         .descendants()
-        .map((item: FlexHierarchyPointNode<Node>) => item.data.size),
-    )
-    _.each(ctes.value, (tree) => {
-      data.push(
-        ...tree
-          .descendants()
-          .map((item: FlexHierarchyPointNode<Node>) => item.data.size),
-      )
+        .map((item: FlexHierarchyPointNode<Node>) => item.data.size)
+      cteSizes.forEach((size) => data.push(size))
     })
-    return data
+    return JSON.stringify(data)
   },
   () => {
     doLayout()
@@ -364,6 +364,10 @@ watch(searchInput, (val) => {
 })
 
 function nodeMatches(node: Node, term: string): boolean {
+  if (node[NodeProp.SEARCH_STRING]) {
+    return node[NodeProp.SEARCH_STRING].includes(term)
+  }
+
   const fieldsToCheck = [
     NodeProp.NODE_TYPE,
     NodeProp.RELATION_NAME,
@@ -503,20 +507,26 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 const isShared = ref(false)
-function sharePlan() {
+const isSharing = ref(false)
+async function sharePlan() {
+  if (isSharing.value) return
+  isSharing.value = true
   const plan: [string, string, string, string] = [
     store.plan?.name || "Shared Plan",
     props.planSource,
     props.planQuery,
     new Date().toISOString(),
   ]
-  const url = compressPlanToUrl(plan)
-  copyToClipboard(url).then((success) => {
+  try {
+    const url = await compressPlanToUrl(plan)
+    const success = await copyToClipboard(url)
     if (success) {
       isShared.value = true
       setTimeout(() => (isShared.value = false), 2000)
     }
-  })
+  } finally {
+    isSharing.value = false
+  }
 }
 
 const isExporting = ref(false)
@@ -675,12 +685,14 @@ function exportPng() {
           @click="sharePlan"
           title="Copy permalink to clipboard"
           style="white-space: nowrap"
+          :disabled="isSharing"
         >
           <FontAwesomeIcon
-            :icon="isShared ? faCheck : faShareAlt"
+            :icon="isShared ? faCheck : (isSharing ? faSpinner : faShareAlt)"
             class="me-1"
+            :spin="isSharing"
           />
-          {{ isShared ? "Copied!" : "Share" }}
+          {{ isShared ? "Copied!" : (isSharing ? "Sharing..." : "Share") }}
         </button>
         <button
           class="btn btn-sm btn-outline-primary"
@@ -1014,18 +1026,16 @@ function exportPng() {
                           class="d-flex justify-content-center position-fixed"
                         />
                       </foreignObject>
-                      <g v-for="cte in ctes" :key="cte.data.nodeId">
+                      <g v-for="cteGraph in cteGraphs" :key="cteGraph.key">
                         <rect
-                          :x="getLayoutExtent(cte)[0] - padding / 4"
-                          :y="getLayoutExtent(cte)[2] - padding / 2"
+                          :x="cteGraph.extent[0] - padding / 4"
+                          :y="cteGraph.extent[2] - padding / 2"
                           :width="
-                            getLayoutExtent(cte)[1] -
-                            getLayoutExtent(cte)[0] +
+                            cteGraph.extent[1] -
+                            cteGraph.extent[0] +
                             padding / 2
                           "
-                          :height="
-                            getLayoutExtent(cte)[3] - getLayoutExtent(cte)[2]
-                          "
+                          :height="cteGraph.extent[3] - cteGraph.extent[2]"
                           stroke="#cfcfcf"
                           stroke-width="2"
                           fill="#cfcfcf"
@@ -1034,7 +1044,7 @@ function exportPng() {
                           ry="5"
                         ></rect>
                         <AnimatedEdge
-                          v-for="(link, index) in cte.links()"
+                          v-for="(link, index) in cteGraph.links"
                           :key="`${store.plan?.id}_link${index}`"
                           :d="lineGen(link)"
                           stroke-color="grey"
@@ -1046,7 +1056,7 @@ function exportPng() {
                           :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                         />
                         <foreignObject
-                          v-for="(item, index) in cte.descendants()"
+                          v-for="(item, index) in cteGraph.descendants"
                           :key="`${store.plan?.id}_${index}`"
                           :x="getNodeX(item)"
                           :y="getNodeY(item)"
