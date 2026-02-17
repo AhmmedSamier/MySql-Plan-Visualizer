@@ -26,7 +26,6 @@ export interface IPlanContent {
 
 export interface IPlanStats {
   executionTime?: number
-  planningTime?: number
   maxRows: number
   maxCost: number
   maxDuration: number

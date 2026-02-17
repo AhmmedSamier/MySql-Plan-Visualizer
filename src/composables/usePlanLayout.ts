@@ -237,17 +237,15 @@ export function usePlanLayout(
     let sx, sy, px, py
 
     if (viewOptions.orientation === Orientation.LeftToRight) {
-      // Center vertically, Align Left
       sx = 20
       sy = rect.height / 2
       px = x0
       py = (y0 + y1) / 2
     } else {
-      // Center horizontally, Align Top
       sx = rect.width / 2
-      sy = 20
+      sy = rect.height / 2
       px = (x0 + x1) / 2
-      py = y0
+      py = (y0 + y1) / 2
     }
 
     d3.select(planEl.value.$el)
@@ -313,16 +311,34 @@ export function usePlanLayout(
   }
 
   function centerNode(nodeId: number): void {
+    if (!planEl.value) {
+      return
+    }
     const rect = planEl.value.$el.getBoundingClientRect()
     const treeNode = findTreeNode(nodeId)
     if (!treeNode) {
       return
     }
-    let x = -treeNode["x"]
-    let y = -treeNode["y"]
+
+    const node = treeNode as FlexHierarchyPointNode<Node>
+
+    let cx
+    let cy
+
+    if (viewOptions.orientation === Orientation.LeftToRight) {
+      const width = node.ySize - padding
+      cx = node.x + width / 2
+      cy = node.y
+    } else {
+      const height = node.ySize
+      cx = node.x
+      cy = node.y + height / 2
+    }
+
     const k = scale.value
-    x = x * k + rect.width / 2
-    y = y * k + rect.height / 2
+    const x = -cx * k + rect.width / 2
+    const y = -cy * k + rect.height / 2
+
     d3.select(planEl.value.$el)
       .transition()
       .duration(500)

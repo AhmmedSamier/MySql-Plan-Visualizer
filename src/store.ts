@@ -2,6 +2,7 @@ import _ from "lodash"
 import { reactive } from "vue"
 import { PlanService } from "@/services/plan-service"
 import type { Node, IPlan, IPlanContent, IPlanStats } from "@/interfaces"
+import { NodeProp } from "@/enums"
 
 type FlattenedNodeMap = Map<number, FlattenedPlanNode>
 
@@ -76,7 +77,6 @@ function flattenPlan(
 function initStats(): IPlanStats {
   return {
     executionTime: NaN,
-    planningTime: NaN,
     maxRows: NaN,
     maxCost: NaN,
     maxDuration: NaN,
@@ -112,15 +112,16 @@ export function createStore(): Store {
       store.plan = planService.createPlan("", planJson, store.query)
 
       const content = store.plan.content
+      const rootNode = content.Plan as Node
+      const rootExecutionTime = rootNode
+        ? (rootNode[NodeProp.ACTUAL_TOTAL_TIME] as number | undefined)
+        : undefined
       store.stats = {
         executionTime:
           (content["Execution Time"] as number) ||
           (content["Total Runtime"] as number) ||
           (content["execution_time"] as number) ||
-          NaN,
-        planningTime:
-          (content["Planning Time"] as number) ||
-          (content["planning_time"] as number) ||
+          rootExecutionTime ||
           NaN,
         maxRows: content.maxRows || NaN,
         maxCost: content.maxCost || NaN,
