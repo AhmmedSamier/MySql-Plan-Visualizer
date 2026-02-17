@@ -8,10 +8,6 @@ const indexedDBFactory: IDBFactory | undefined =
   typeof window !== "undefined"
     ? window.indexedDB
     : (globalThis as { indexedDB?: IDBFactory }).indexedDB
-
-function deepEqual<T>(a: T, b: T): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
-}
 export default {
   async getDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
