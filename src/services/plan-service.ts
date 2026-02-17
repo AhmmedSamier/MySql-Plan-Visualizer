@@ -1,19 +1,23 @@
 import _ from "lodash"
-import { EstimateDirection, NodeProp, WorkerProp } from "@/enums"
+import { EstimateDirection, NodeProp } from "@/enums"
 import type { IPlan, IPlanContent, IPlanStats } from "@/interfaces"
 import { Node, Worker } from "@/interfaces"
 import { PlanParser } from "@/services/plan-parser"
 // Worker is imported dynamically in fromSourceAsync to avoid load-time issues in tests
-
-type recurseItemType = Array<[Node, recurseItemType]>
 
 export class PlanService {
   private nodeId = 0
   private flat: Node[] = []
   private parser = new PlanParser()
 
-  private recurse(nodes: Node[]): recurseItemType {
-    return _.map(nodes, (node) => [node, this.recurse(node[NodeProp.PLANS])])
+  private flattenNodes(nodes: Node[] | undefined) {
+    if (!nodes || nodes.length === 0) {
+      return
+    }
+    for (const node of nodes) {
+      this.flat.push(node)
+      this.flattenNodes(node[NodeProp.PLANS])
+    }
   }
 
   public createPlan(
@@ -37,18 +41,16 @@ export class PlanService {
       planStats: {} as IPlanStats,
       ctes: [],
       isAnalyze: _.has(planContent.Plan, NodeProp.ACTUAL_ROWS),
-      isVerbose: this.findOutputProperty(planContent.Plan),
+      isVerbose: false,
     }
 
     this.nodeId = 1
     this.flat = []
     this.processNode(planContent.Plan, plan)
 
-    this.flat = this.flat.concat(
-      _.flattenDeep(this.recurse([plan.content.Plan as Node])),
-    )
+    this.flattenNodes([plan.content.Plan as Node])
     _.each(plan.ctes, (cte) => {
-      this.flat = this.flat.concat(_.flattenDeep(this.recurse([cte as Node])))
+      this.flattenNodes([cte as Node])
     })
 
     this.fixCteScansDuration(plan)
@@ -67,7 +69,11 @@ export class PlanService {
   // recursively walk down the plan to compute various metrics
   public processNode(node: Node, plan: IPlan) {
     node.nodeId = this.nodeId++
+    if (!plan.isVerbose && _.has(node, NodeProp.OUTPUT)) {
+      plan.isVerbose = true
+    }
     this.calculatePlannerEstimate(node)
+    this.calculateSearchString(node)
 
     _.each(node[NodeProp.PLANS], (child) => {
       // Disseminate workers planned info to parallel nodes (ie. Gather children)
@@ -192,17 +198,26 @@ export class PlanService {
       return
     }
 
+    const cteScanMap = new Map<string, Node[]>()
+    _.each(this.flat, (node) => {
+      const cteName = node[NodeProp.CTE_NAME]
+      if (cteName) {
+        const key = `CTE ${cteName}`
+        if (!cteScanMap.has(key)) {
+          cteScanMap.set(key, [])
+        }
+        cteScanMap.get(key)!.push(node)
+      }
+    })
+
     // Iterate over the CTEs
     _.each(plan.ctes, (cte) => {
       // Time spent in the CTE itself
       const cteDuration = cte[NodeProp.ACTUAL_TOTAL_TIME] || 0
 
       // Find all nodes that are "CTE Scan" for the given CTE
-      const cteScans = _.filter(
-        this.flat,
-        (node) =>
-          `CTE ${node[NodeProp.CTE_NAME]}` == cte[NodeProp.SUBPLAN_NAME],
-      )
+      const cteScans =
+        cteScanMap.get(cte[NodeProp.SUBPLAN_NAME] as string) || []
 
       // Sum of exclusive time for the CTE Scans
       const sumScansDuration = _.sumBy(
@@ -228,11 +243,16 @@ export class PlanService {
       return
     }
 
-    // Find all initPlans
-    const initPlans = _.filter(
-      this.flat,
-      (node) => node[NodeProp.PARENT_RELATIONSHIP] == "InitPlan",
-    )
+    const initPlans: Node[] = []
+    const otherNodes: Node[] = []
+
+    _.each(this.flat, (node) => {
+      if (node[NodeProp.PARENT_RELATIONSHIP] == "InitPlan") {
+        initPlans.push(node)
+      } else {
+        otherNodes.push(node)
+      }
+    })
 
     _.each(initPlans, (subPlan) => {
       // Get the sub plan name
@@ -252,30 +272,21 @@ export class PlanService {
 
       // Find all nodes that are using data from this InitPlan
       // There should be the name of the sub plan somewhere in the extra info
-      _.each(
-        _.filter(
-          this.flat,
-          (node) => node[NodeProp.PARENT_RELATIONSHIP] != "InitPlan",
-        ),
-        (node) => {
-          _.each(node, (value) => {
-            if (typeof value != "string") {
-              return
-            }
-            // Value for node property should contain sub plan name (with a number
-            // matching exactly)
-            const matches = new RegExp(
-              `.*${name.replace(/[^a-zA-Z0-9]/g, "\\$&")}[0-9]?`,
-            ).exec(value)
-            if (matches) {
-              node[NodeProp.EXCLUSIVE_DURATION] -=
-                subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
-              // Stop iterating for this node
-              return false
-            }
-          })
-        },
-      )
+      _.each(otherNodes, (node) => {
+        _.each(node, (value) => {
+          if (typeof value != "string") {
+            return
+          }
+          // Value for node property should contain sub plan name (with a number
+          // matching exactly)
+          if (value.indexOf(name) !== -1) {
+            node[NodeProp.EXCLUSIVE_DURATION] -=
+              subPlan[NodeProp.ACTUAL_TOTAL_TIME] || 0
+            // Stop iterating for this node
+            return false
+          }
+        })
+      })
     })
   }
 
@@ -317,6 +328,35 @@ export class PlanService {
     }
   }
 
+  public calculateSearchString(node: Node) {
+    const fieldsToCheck = [
+      NodeProp.NODE_TYPE,
+      NodeProp.RELATION_NAME,
+      NodeProp.ALIAS,
+      NodeProp.INDEX_NAME,
+      NodeProp.CTE_NAME,
+      NodeProp.FUNCTION_NAME,
+      NodeProp.FILTER,
+      NodeProp.JOIN_TYPE,
+      NodeProp.HASH_CONDITION,
+      NodeProp.GROUP_KEY,
+      NodeProp.SORT_KEY,
+    ]
+
+    node[NodeProp.SEARCH_STRING] = fieldsToCheck
+      .map((field) => {
+        const val = node[field]
+        if (typeof val === "string") {
+          return val
+        } else if (Array.isArray(val)) {
+          return val.filter((v) => typeof v === "string").join(" ")
+        }
+        return ""
+      })
+      .join(" ")
+      .toLowerCase()
+  }
+
   public fromSource(source: string) {
     return this.parser.parse(source)
   }
@@ -350,17 +390,6 @@ export class PlanService {
     } else {
       return Promise.resolve(this.fromSource(source))
     }
-  }
-
-  private findOutputProperty(node: Node): boolean {
-    // resursively look for an "Output" property
-    const children = node.Plans
-    if (!children) {
-      return false
-    }
-    return _.some(children, (child) => {
-      return _.has(child, NodeProp.OUTPUT) || this.findOutputProperty(child)
-    })
   }
 
   private convertNodeType(node: Node): void {

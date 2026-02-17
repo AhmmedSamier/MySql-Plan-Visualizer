@@ -2,6 +2,7 @@ import _ from "lodash"
 import { reactive } from "vue"
 import { PlanService } from "@/services/plan-service"
 import type { Node, IPlan, IPlanContent, IPlanStats } from "@/interfaces"
+import { NodeProp } from "@/enums"
 
 type FlattenedNodeMap = Map<number, FlattenedPlanNode>
 
@@ -9,6 +10,8 @@ export interface Store {
   plan?: IPlan
   query?: string
   stats: IPlanStats
+  parsing: boolean
+  error?: string
   parse(source: string, query: string): Promise<void>
   flat: FlattenedPlanNode[][]
   nodeById?: FlattenedNodeMap
@@ -74,7 +77,6 @@ function flattenPlan(
 function initStats(): IPlanStats {
   return {
     executionTime: NaN,
-    planningTime: NaN,
     maxRows: NaN,
     maxCost: NaN,
     maxDuration: NaN,
@@ -87,7 +89,10 @@ export function createStore(): Store {
     flat: [],
     stats: initStats(),
     nodeById: new Map(),
+    parsing: false,
+    error: undefined,
     async parse(source: string, query: string) {
+      store.parsing = true
       store.plan = undefined
       store.stats = initStats()
       store.flat = []
@@ -95,23 +100,28 @@ export function createStore(): Store {
       let planJson: IPlanContent
       try {
         planJson = (await planService.fromSourceAsync(source)) as IPlanContent
-      } catch {
+      } catch (e) {
         store.plan = undefined
+        store.error =
+          e instanceof Error ? e.message : "Failed to parse execution plan"
+        store.parsing = false
         return
       }
+      store.error = undefined
       store.query = planJson["Query Text"] || query
       store.plan = planService.createPlan("", planJson, store.query)
 
       const content = store.plan.content
+      const rootNode = content.Plan as Node
+      const rootExecutionTime = rootNode
+        ? (rootNode[NodeProp.ACTUAL_TOTAL_TIME] as number | undefined)
+        : undefined
       store.stats = {
         executionTime:
           (content["Execution Time"] as number) ||
           (content["Total Runtime"] as number) ||
           (content["execution_time"] as number) ||
-          NaN,
-        planningTime:
-          (content["Planning Time"] as number) ||
-          (content["planning_time"] as number) ||
+          rootExecutionTime ||
           NaN,
         maxRows: content.maxRows || NaN,
         maxCost: content.maxCost || NaN,
@@ -128,6 +138,7 @@ export function createStore(): Store {
       store.flat = flatPlans
 
       store.nodeById = nodeById
+      store.parsing = false
     },
   })
   return store

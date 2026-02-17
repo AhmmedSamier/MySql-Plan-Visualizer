@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import _ from "lodash"
 import {
   computed,
   reactive,
@@ -29,7 +28,6 @@ import PlanStats from "@/components/PlanStats.vue"
 import Stats from "@/components/Stats.vue"
 import AnimatedEdge from "@/components/AnimatedEdge.vue"
 import KeyboardShortcuts from "@/components/KeyboardShortcuts.vue"
-import { findNodeById } from "@/services/help-service"
 import { HighlightType, NodeProp, Orientation } from "@/enums"
 import { json_, mysql_ } from "@/filters"
 import { setDefaultProps } from "vue-tippy"
@@ -50,33 +48,14 @@ import {
   faShareAlt,
   faFileImage,
   faCheck,
+  faSpinner,
 } from "@fortawesome/free-solid-svg-icons"
 import * as htmlToImage from "html-to-image"
 import { compressPlanToUrl, copyToClipboard } from "@/services/share-service"
 
 import { usePlanLayout } from "@/composables/usePlanLayout"
 
-import { useDark } from "@vueuse/core"
-
-const isDark = useDark({
-  selector: "html",
-  attribute: "data-theme",
-  valueDark: "dark",
-  valueLight: "light",
-})
-
-watch(
-  isDark,
-  (val) => {
-    setDefaultProps({ theme: val ? "light" : "light" }) // Tooltip theme seems to be light always based on css import, but can be adjusted.
-    // However, the original code had setDefaultProps({ theme: "light" }) hardcoded.
-    // Let's make it reactive if we had a dark theme for tippy.
-    // Since only light.css is imported, we will keep it as is but reactive for future proofing or if other themes are added.
-    // For now, let's respect the plan to make it reactive.
-    setDefaultProps({ theme: val ? "light" : "light" })
-  },
-  { immediate: true },
-)
+setDefaultProps({ theme: "light" })
 
 import "tippy.js/dist/tippy.css"
 import "tippy.js/themes/light.css"
@@ -122,10 +101,10 @@ const viewOptions = reactive({
 
 const {
   transform,
-  scale,
   edgeWeight,
   layoutRootNode,
   ctes,
+  cteGraphs,
   toCteLinks,
   tree,
   rootDescendants,
@@ -141,18 +120,34 @@ const {
   getNodeX,
   getNodeY,
   getNodeWidth,
-  getLayoutExtent,
   buildTree,
 } = usePlanLayout(planEl, viewOptions, store)
 
 // Vertical padding between 2 nodes in the tree layout
 const padding = 40
 
+const headerTabsSelector = ref<string | null>(null)
+const headerToolsSelector = ref<string | null>(null)
+
 onMounted(() => {
-  watch(() => [props.planSource, props.planQuery], parseAndShow, {
-    immediate: true,
-  })
+  if (document.getElementById("header-tabs")) {
+    headerTabsSelector.value = "#header-tabs"
+  }
+  if (document.getElementById("header-tools")) {
+    headerToolsSelector.value = "#header-tools"
+  }
+
+  watch(
+    () => [props.planSource, props.planQuery],
+    () => {
+      parseAndShow()
+    },
+    {
+      immediate: true,
+    },
+  )
   window.addEventListener("keydown", handleKeyDown)
+  window.addEventListener("hashchange", onHashChange)
 })
 
 let parseCounter = 0
@@ -167,15 +162,12 @@ async function parseAndShow() {
   if (savedOptions) {
     Object.assign(viewOptions, JSON.parse(savedOptions))
   }
-  setActiveTab("plan")
 
-  nextTick(() => {
-    onHashChange()
-  })
-  window.addEventListener("hashchange", onHashChange)
-  
+  // Set initial tab from hash or default to plan
+  onHashChange()
+
   buildTree(store.plan)
-  
+
   nextTick(() => {
     initZoom()
     ready.value = true
@@ -198,26 +190,34 @@ watch(selectedNodeId, onSelectedNode)
 function onSelectedNode(v: number) {
   window.location.hash = v ? "plan/node/" + v : ""
   if (store.plan && v) {
-    selectedNode.value = findNodeById(store.plan, v)
+    selectedNode.value = store.nodeById?.get(v)?.node
   }
 }
 
 function onHashChange(): void {
-  const reg = /#([a-zA-Z]*)(\/node\/([0-9]*))*/
-  const matches = reg.exec(window.location.hash)
+  const hash = window.location.hash
+  if (!hash || hash === "#") {
+    setActiveTab("plan")
+    return
+  }
+
+  // Regex to match tab and optional node selection
+  // Format: #tab/node/id
+  const reg = /^#([a-zA-Z]*)(?:\/node\/([0-9]*))*/
+  const matches = reg.exec(hash)
   if (matches) {
     const tab = matches[1] || "plan"
     setActiveTab(tab)
-    const nodeId = parseInt(matches[3], 0)
-    if (
-      tab == "plan" &&
-      nodeId !== undefined &&
-      nodeId != selectedNodeId.value
-    ) {
-      // Delayed to make sure the tab has changed before recentering
-      setTimeout(() => {
-        selectNode(nodeId, true)
-      }, 1)
+
+    const nodeIdStr = matches[2]
+    if (tab === "plan" && nodeIdStr) {
+      const nodeId = parseInt(nodeIdStr, 10)
+      if (!isNaN(nodeId) && nodeId !== selectedNodeId.value) {
+        // Delayed to make sure the tab has changed before recentering
+        setTimeout(() => {
+          selectNode(nodeId, true)
+        }, 1)
+      }
     }
   }
 }
@@ -246,6 +246,18 @@ const setActiveTab = (tab: string) => {
   activeTab.value = tab
 }
 
+const switchTab = (tab: string) => {
+  setActiveTab(tab)
+  const currentHash = window.location.hash
+  const targetHash =
+    tab === "plan" && selectedNodeId.value
+      ? `#plan/node/${selectedNodeId.value}`
+      : `#${tab}`
+  if (currentHash !== targetHash) {
+    window.location.hash = targetHash
+  }
+}
+
 function isNeverExecuted(node: Node): boolean {
   return !!store.stats.executionTime && !node[NodeProp.ACTUAL_LOOPS]
 }
@@ -262,19 +274,19 @@ watch(
 watch(
   () => {
     const data: [number, number][] = []
-    data.push(
-      ...tree.value
+    const rootSizes = tree.value
+      .descendants()
+      .map((item: FlexHierarchyPointNode<Node>) => item.data.size)
+    // Avoid spread operator for large arrays
+    rootSizes.forEach((size) => data.push(size))
+
+    ctes.value.forEach((tree) => {
+      const cteSizes = tree
         .descendants()
-        .map((item: FlexHierarchyPointNode<Node>) => item.data.size),
-    )
-    _.each(ctes.value, (tree) => {
-      data.push(
-        ...tree
-          .descendants()
-          .map((item: FlexHierarchyPointNode<Node>) => item.data.size),
-      )
+        .map((item: FlexHierarchyPointNode<Node>) => item.data.size)
+      cteSizes.forEach((size) => data.push(size))
     })
-    return data
+    return JSON.stringify(data)
   },
   () => {
     doLayout()
@@ -337,6 +349,10 @@ watch(searchInput, (val) => {
 })
 
 function nodeMatches(node: Node, term: string): boolean {
+  if (node[NodeProp.SEARCH_STRING]) {
+    return node[NodeProp.SEARCH_STRING].includes(term)
+  }
+
   const fieldsToCheck = [
     NodeProp.NODE_TYPE,
     NodeProp.RELATION_NAME,
@@ -476,20 +492,26 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 const isShared = ref(false)
-function sharePlan() {
+const isSharing = ref(false)
+async function sharePlan() {
+  if (isSharing.value) return
+  isSharing.value = true
   const plan: [string, string, string, string] = [
     store.plan?.name || "Shared Plan",
     props.planSource,
     props.planQuery,
     new Date().toISOString(),
   ]
-  const url = compressPlanToUrl(plan)
-  copyToClipboard(url).then((success) => {
+  try {
+    const url = await compressPlanToUrl(plan)
+    const success = await copyToClipboard(url)
     if (success) {
       isShared.value = true
       setTimeout(() => (isShared.value = false), 2000)
     }
-  })
+  } finally {
+    isSharing.value = false
+  }
 }
 
 const isExporting = ref(false)
@@ -521,15 +543,31 @@ function exportPng() {
 </script>
 
 <template>
-  <div v-if="!store.plan" class="flex-grow-1 d-flex justify-content-center">
-    <div class="card align-self-center border-danger w-50">
+  <div
+    v-if="store.parsing"
+    class="flex-grow-1 d-flex justify-content-center align-items-center"
+  >
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <h5 class="text-secondary">Parsing Execution Plan...</h5>
+    </div>
+  </div>
+  <div
+    v-else-if="!store.plan"
+    class="flex-grow-1 d-flex justify-content-center"
+  >
+    <div class="card align-self-center border-danger w-50 shadow-sm">
       <div class="card-body">
         <h5 class="card-title text-danger">Couldn't parse plan</h5>
         <h6 class="card-subtitle mb-2 text-body-secondary">
-          An error occured while parsing the plan
+          An error occurred while parsing the plan source.
         </h6>
-        <div class="overflow-hidden d-flex w-100 h-100 position-relative mb-3">
-          <div class="overflow-auto flex-grow-1">
+        <div
+          class="overflow-hidden d-flex w-100 h-100 position-relative mb-3 border rounded"
+        >
+          <div class="overflow-auto flex-grow-1 bg-light">
             <pre
               class="small p-2 mb-0"
               style="max-height: 200px"
@@ -538,19 +576,18 @@ function exportPng() {
           <Copy :content="planSource" />
         </div>
         <p class="card-text text-body-dark">
-          The plan you submited couldn't be parsed. This may be a bug. You can
-          help us fix it by opening a new issue.
+          {{ store.error || "The plan you submitted couldn't be correctly interpreted. This might be due to an unsupported MySQL version or a specific configuration." }}
         </p>
-        <div class="d-flex align-items-center">
-          <span class="text-secondary">
+        <div class="d-flex align-items-center border-top pt-3">
+          <span class="text-secondary small">
             <LogoImage />
             MysqlPlanVisualizer <i>version {{ version }}</i>
           </span>
           <a
             href="https://github.com/ahmmedsamier/MySql-Plan-Visualizer/issues/new?template=parsing_error.md&labels=parsing&title=Failed+to+parse+plan"
             target="_blank"
-            class="btn btn-primary ms-auto"
-            >Open an issue on Github</a
+            class="btn btn-sm btn-outline-primary ms-auto"
+            >Report Issue on GitHub</a
           >
         </div>
       </div>
@@ -561,13 +598,17 @@ function exportPng() {
     v-else
     ref="rootEl"
   >
-    <Teleport to="#header-tabs">
-      <ul class="nav nav-tabs mysql-tabs flex-nowrap border-0">
+    <Teleport to="#header-tabs" :disabled="!headerTabsSelector">
+      <ul
+        class="nav nav-tabs mysql-tabs flex-nowrap border-0"
+        :class="{ 'p-2 bg-dark': !headerTabsSelector }"
+      >
         <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'plan' }"
             href="#plan"
+            @click.prevent="switchTab('plan')"
             >Plan</a
           >
         </li>
@@ -576,14 +617,16 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'grid' }"
             href="#grid"
+            @click.prevent="switchTab('grid')"
             >Grid</a
           >
         </li>
-        <li class="nav-item p-1" v-if="store.plan?.content.Diagram">
+        <li class="nav-item p-1">
           <a
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'diagram' }"
             href="#diagram"
+            @click.prevent="switchTab('diagram')"
             >Diagram</a
           >
         </li>
@@ -592,6 +635,7 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'raw' }"
             href="#raw"
+            @click.prevent="switchTab('raw')"
             >Raw</a
           >
         </li>
@@ -600,6 +644,7 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'query' }"
             href="#query"
+            @click.prevent="switchTab('query')"
             >Query</a
           >
         </li>
@@ -608,33 +653,49 @@ function exportPng() {
             class="nav-link px-2 py-0"
             :class="{ active: activeTab === 'stats' }"
             href="#stats"
+            @click.prevent="switchTab('stats')"
             >Stats</a
           >
         </li>
       </ul>
     </Teleport>
-    <div id="header-tools" class="d-flex align-items-center me-2 gap-2">
-      <button
-        class="btn btn-sm"
-        :class="isShared ? 'btn-success' : 'btn-outline-primary'"
-        @click="sharePlan"
-        title="Copy permalink to clipboard"
-        style="white-space: nowrap"
+    <Teleport to="#header-tools" :disabled="!headerToolsSelector">
+      <div
+        class="d-flex align-items-center me-2 gap-2"
+        :class="{ 'p-2': !headerToolsSelector }"
       >
-        <FontAwesomeIcon :icon="isShared ? faCheck : faShareAlt" class="me-1" />
-        {{ isShared ? "Copied!" : "Share" }}
-      </button>
-      <button
-        class="btn btn-sm btn-outline-primary"
-        @click="exportPng"
-        :disabled="isExporting"
-        title="Export as PNG"
-        style="white-space: nowrap"
-      >
-        <FontAwesomeIcon :icon="faFileImage" class="me-1" :spin="isExporting" />
-        {{ isExporting ? "Exporting..." : "Export PNG" }}
-      </button>
-    </div>
+        <button
+          class="btn btn-sm"
+          :class="isShared ? 'btn-success' : 'btn-outline-primary'"
+          @click="sharePlan"
+          title="Copy permalink to clipboard"
+          style="white-space: nowrap"
+          :disabled="isSharing"
+        >
+          <FontAwesomeIcon
+            :icon="isShared ? faCheck : (isSharing ? faSpinner : faShareAlt)"
+            class="me-1"
+            :spin="isSharing"
+          />
+          {{ isShared ? "Copied!" : (isSharing ? "Sharing..." : "Share") }}
+        </button>
+        <button
+          class="btn btn-sm btn-outline-primary"
+          @click="exportPng"
+          :disabled="isExporting"
+          title="Export as PNG"
+          style="white-space: nowrap"
+        >
+          <FontAwesomeIcon
+            :icon="faFileImage"
+            class="me-1"
+            :spin="isExporting"
+          />
+          {{ isExporting ? "Exporting..." : "Export PNG" }}
+        </button>
+      </div>
+    </Teleport>
+    <PlanStats />
     <div class="tab-content flex-grow-1 d-flex overflow-hidden">
       <div
         class="tab-pane flex-grow-1 overflow-hidden"
@@ -642,7 +703,6 @@ function exportPng() {
       >
         <!-- Plan tab -->
         <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-          <PlanStats />
           <div class="flex-grow-1 d-flex overflow-hidden">
             <div class="flex-grow-1 overflow-hidden">
               <Splitpanes
@@ -951,18 +1011,16 @@ function exportPng() {
                           class="d-flex justify-content-center position-fixed"
                         />
                       </foreignObject>
-                      <g v-for="cte in ctes" :key="cte.data.nodeId">
+                      <g v-for="cteGraph in cteGraphs" :key="cteGraph.key">
                         <rect
-                          :x="getLayoutExtent(cte)[0] - padding / 4"
-                          :y="getLayoutExtent(cte)[2] - padding / 2"
+                          :x="cteGraph.extent[0] - padding / 4"
+                          :y="cteGraph.extent[2] - padding / 2"
                           :width="
-                            getLayoutExtent(cte)[1] -
-                            getLayoutExtent(cte)[0] +
+                            cteGraph.extent[1] -
+                            cteGraph.extent[0] +
                             padding / 2
                           "
-                          :height="
-                            getLayoutExtent(cte)[3] - getLayoutExtent(cte)[2]
-                          "
+                          :height="cteGraph.extent[3] - cteGraph.extent[2]"
                           stroke="#cfcfcf"
                           stroke-width="2"
                           fill="#cfcfcf"
@@ -971,7 +1029,7 @@ function exportPng() {
                           ry="5"
                         ></rect>
                         <AnimatedEdge
-                          v-for="(link, index) in cte.links()"
+                          v-for="(link, index) in cteGraph.links"
                           :key="`${store.plan?.id}_link${index}`"
                           :d="lineGen(link)"
                           stroke-color="grey"
@@ -983,7 +1041,7 @@ function exportPng() {
                           :rows="link.target.data[NodeProp.ACTUAL_ROWS_REVISED]"
                         />
                         <foreignObject
-                          v-for="(item, index) in cte.descendants()"
+                          v-for="(item, index) in cteGraph.descendants"
                           :key="`${store.plan?.id}_${index}`"
                           :x="getNodeX(item)"
                           :y="getNodeY(item)"
@@ -1012,8 +1070,16 @@ function exportPng() {
         v-if="activeTab === 'grid'"
       >
         <div class="overflow-hidden d-flex w-100 h-100 flex-column">
-          <PlanStats />
           <Grid class="flex-grow-1 overflow-auto plan-grid" />
+        </div>
+      </div>
+      <div
+        class="tab-pane flex-grow-1 overflow-hidden position-relative"
+        :class="{ 'show active': activeTab === 'diagram' }"
+        v-if="activeTab === 'diagram'"
+      >
+        <div class="overflow-hidden d-flex w-100 h-100 flex-column">
+          <Diagram class="flex-grow-1 overflow-auto plan-diagram" />
         </div>
       </div>
       <div

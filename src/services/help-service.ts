@@ -67,34 +67,42 @@ export const NODE_DESCRIPTIONS: INodeDescription = {
   GATHER: `reads the results of the parallel workers, in an undefined order.`,
   "GATHER MERGE": `reads the results of the parallel workers, preserving any ordering.`,
   // MySQL specific
-  "TABLE SCAN": "MySQL reads all rows from the table.",
-  "FULL TABLE SCAN": "MySQL reads all rows from the table.",
-  "FULL INDEX SCAN": "MySQL reads all entries in the index.",
-  "INDEX LOOKUP": "MySQL uses an index to find specific rows.",
+  "TABLE SCAN":
+    "MySQL reads every row in the table, usually because no useful index can be used or a full scan is cheaper than using an index.",
+  "FULL TABLE SCAN":
+    "Same as Table Scan: the optimizer reads the whole table, which is often expensive for large tables.",
+  "FULL INDEX SCAN":
+    "MySQL reads the entire index. Often used to avoid an extra sort when the index order matches ORDER BY, or when the index is covering.",
+  "INDEX LOOKUP":
+    "MySQL looks up rows through an index for specific key values, fetching matching table rows as needed.",
   "INDEX RANGE SCAN":
-    "MySQL retrieves rows within a specific range of values using an index.",
+    "MySQL reads only the part of an index that matches a range condition (for example BETWEEN, >, <, IN), then fetches matching rows from the table.",
   "UNIQUE KEY LOOKUP":
-    "MySQL uses a unique index or primary key to find exactly one row.",
+    "MySQL uses a unique index or PRIMARY KEY to find at most one row for each lookup value. This is one of the most efficient access types.",
   "CONSTANT LOOKUP":
-    "The table has at most one matching row, which is read at the start of the query.",
-  SYSTEM: "The table has only one row.",
-  "FULL TEXT SCAN": "MySQL performs a full-text search using a FULLTEXT index.",
+    "The table has at most one matching row, which is read once at the beginning of the query and treated as a constant.",
+  SYSTEM:
+    "A special case of Constant Lookup where the table contains a single row. Access cost is effectively negligible.",
+  "FULL TEXT SCAN":
+    "MySQL evaluates a MATCH ... AGAINST condition using a FULLTEXT index instead of scanning all rows.",
   "INDEX MERGE":
-    "MySQL uses multiple indexes to find rows and then merges the results.",
+    "MySQL uses several indexes on the same table and merges the index results (UNION or INTERSECT) to determine the final row set.",
   "UNIQUE SUBQUERY":
-    "Used for IN subqueries that return only one row from a unique index.",
+    "Optimization for IN subqueries that can use a unique index, turning the subquery into efficient single-row index lookups.",
   "INDEX SUBQUERY":
-    "Similar to unique_subquery, but it works for non-unique indexes.",
-  DISTINCT: "Removes duplicate rows from the result set.",
+    "Similar to Unique Subquery, but uses a non-unique index, potentially returning multiple rows per lookup.",
+  DISTINCT:
+    "Removes duplicate rows from the result set. In MySQL JSON plans this usually corresponds to a duplicates_removal or DISTINCT step.",
   FILTER:
-    "Evaluates a condition for each row and only keeps those that satisfy it.",
+    "Applies a condition to each row and discards rows that do not satisfy it. Often corresponds to WHERE, ON, or HAVING predicates.",
   MATERIALIZE:
-    "Stores the results of a subquery or temporary table in memory for faster access.",
+    "Stores the output of a subquery or derived table in an internal temporary structure so it can be scanned multiple times efficiently.",
   FILESORT:
-    "MySQL performs a sort operation that cannot be done using an index.",
+    "MySQL sorts rows using its filesort algorithm when ORDER BY cannot be satisfied by an index. Large sorts may spill to disk.",
   "TEMPORARY TABLE":
-    "MySQL creates an internal temporary table to store intermediate results.",
-  RESULT: "The result of the query or a subquery.",
+    "MySQL creates an internal temporary table (in memory or on disk) to hold intermediate results for operations such as GROUP BY, DISTINCT, or complex ORDER BY.",
+  RESULT:
+    "Represents the final result set of the query or subquery that is returned to the client or consumed by an outer query.",
 }
 
 interface IHelpMessage {
@@ -104,7 +112,6 @@ interface IHelpMessage {
 export const HELP_MESSAGES: IHelpMessage = {
   "MISSING EXECUTION TIME": `Execution time (or Total runtime) not available for this plan. Make sure you
     use EXPLAIN ANALYZE.`,
-  "MISSING PLANNING TIME": "Planning time not available for this plan.",
   "WORKERS PLANNED NOT LAUNCHED": `Less workers than planned were launched.
 Consider modifying max_parallel_workers or max_parallel_workers_per_gather.`,
   "WORKERS DETAILED INFO MISSING": `Consider using EXPLAIN (ANALYZE, VERBOSE)`,
@@ -240,18 +247,26 @@ export function smoothScroll({
   animateScroll()
 }
 
+const splitBalancedRegexCache = new Map<string, RegExp>()
+
 /*
  * Split a string, ensuring balanced parenthesis and balanced quotes.
  */
 export function splitBalanced(input: string, split: string) {
-  // Build the pattern from params with defaults:
-  const pattern = "([\\s\\S]*?)(e)?(?:(o)|(c)|(t)|(sp)|$)"
-    .replace("sp", split)
-    .replace("o", "[\\(\\{\\[]")
-    .replace("c", "[\\)\\}\\]]")
-    .replace("t", "['\"]")
-    .replace("e", "[\\\\]")
-  const r = new RegExp(pattern, "gi")
+  let r = splitBalancedRegexCache.get(split)
+  if (!r) {
+    // Build the pattern from params with defaults:
+    const pattern = "([\\s\\S]*?)(e)?(?:(o)|(c)|(t)|(sp)|$)"
+      .replace("sp", split)
+      .replace("o", "[\\(\\{\\[]")
+      .replace("c", "[\\)\\}\\]]")
+      .replace("t", "['\"]")
+      .replace("e", "[\\\\]")
+    r = new RegExp(pattern, "gi")
+    splitBalancedRegexCache.set(split, r)
+  }
+  r.lastIndex = 0
+
   const stack: string[] = []
   let buffer: string[] = []
   const results: string[] = []

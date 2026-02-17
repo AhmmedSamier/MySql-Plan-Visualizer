@@ -4,14 +4,25 @@ const DB_NAME = "mpv"
 const DB_VERSION = 2
 let DB: IDBDatabase | null = null
 
+const indexedDBFactory: IDBFactory | undefined =
+  typeof window !== "undefined"
+    ? window.indexedDB
+    : (globalThis as { indexedDB?: IDBFactory }).indexedDB
+
+function deepEqual<T>(a: T, b: T): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
 export default {
   async getDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       if (DB) {
         return resolve(DB)
       }
+      if (!indexedDBFactory) {
+        return reject("IndexedDB not available in this environment")
+      }
       console.log("OPENING DB", DB)
-      const request = window.indexedDB.open(DB_NAME, DB_VERSION)
+      const request = indexedDBFactory.open(DB_NAME, DB_VERSION)
 
       request.onerror = (e) => {
         console.log("Error opening db", e)
@@ -111,7 +122,7 @@ export default {
     })
   },
 
-  async importPlans(plans: Plan[]): Promise<number[]> {
+  async importPlans(plans: (Plan & { id?: number })[]): Promise<number[]> {
     const db = await this.getDb()
 
     return new Promise<number[]>((resolve, reject) => {

@@ -1,4 +1,4 @@
-import _ from "lodash"
+import startCase from "lodash/startCase"
 import { MysqlPlanService } from "@/services/mysql-plan-service"
 import { NodeProp, WorkerProp } from "@/enums"
 import type { IPlanContent } from "@/interfaces"
@@ -8,6 +8,7 @@ interface NodeElement {
   node: Node
   subelementType?: string
   name?: string
+  workerMap?: Map<number, Worker>
 }
 
 enum WorkerMatch {
@@ -46,6 +47,75 @@ enum NodeMatch {
   ActualLoops2,
   NeverExecuted2,
 }
+
+const indentationRegex = /^\s*/
+const emptyLineRegex = /^s*$/
+const headerRegex = /^\\s*(QUERY|---|#).*$/
+
+const prefixPattern = "^(\\s*->\\s*|\\s*)"
+const partialPattern = "(Finalize|Simple|Partial)*"
+const typePattern = "(.*?)"
+// tslint:disable-next-line:max-line-length
+// MySQL cost: (cost=10.0 rows=5)
+// We make the second cost and width optional.
+// Modified to support integer costs and scientific notation in rows/costs
+const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
+const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
+const nonCapturingGroupOpen = "(?:"
+const nonCapturingGroupClose = ")"
+const openParenthesisPattern = "\\("
+const closeParenthesisPattern = "\\)"
+
+// MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
+const actualPattern =
+  "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
+const optionalGroup = "?"
+
+const triggerRegex = /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
+
+const workerRegex = new RegExp(
+  "^(\\s*)Worker\\s+(\\d+):\\s+" +
+    nonCapturingGroupOpen +
+    actualPattern +
+    nonCapturingGroupClose +
+    optionalGroup +
+    "(.*)" +
+    "\\s*$",
+)
+
+const extraRegex = /^(\s*)(\S.*\S)\s*$/
+
+const nodeRegex = new RegExp(
+  prefixPattern +
+    partialPattern +
+    "\\s*" +
+    typePattern +
+    "\\s*" +
+    nonCapturingGroupOpen +
+    // Option 1: Both Cost AND Actual
+    (nonCapturingGroupOpen +
+      estimationPattern +
+      "\\s+" +
+      openParenthesisPattern +
+      actualPattern +
+      closeParenthesisPattern +
+      nonCapturingGroupClose) +
+    "|" +
+    // Option 2: Only Cost
+    nonCapturingGroupOpen +
+    estimationPattern +
+    nonCapturingGroupClose +
+    "|" +
+    // Option 3: Only Actual
+    nonCapturingGroupOpen +
+    openParenthesisPattern +
+    actualPattern +
+    closeParenthesisPattern +
+    nonCapturingGroupClose +
+    nonCapturingGroupClose +
+    "\\s*$",
+  "m",
+)
 
 export class PlanParser {
   public parse(source: string): IPlanContent {
@@ -112,7 +182,7 @@ export class PlanParser {
     // example: (8 rows)
     // Note: can be translated
     // example: (8 lignes)
-    source = source.replace(/^\(\d+\s+[a-z]*s?\)(\r?\n|$)/gm, "\n")
+    source = source.replace(/^\(\d+\s+[^)]+\)(\r?\n|$)/gm, "\n")
 
     return source
   }
@@ -125,23 +195,26 @@ export class PlanParser {
     // Now, find first line of explain, and cache it's prefix (some spaces ...)
     let prefix = ""
     let firstLineIndex = 0
-    _.each(sourceLines, (l: string, index: number) => {
+    for (let index = 0; index < sourceLines.length; index++) {
+      const l = sourceLines[index]
       const matches = /^(\s*)(\[|\{)\s*$/.exec(l)
       if (matches) {
         prefix = matches[1]
         firstLineIndex = index
-        return false
+        break
       }
-    })
+    }
     // now find last line
     let lastLineIndex = 0
-    _.each(sourceLines, (l: string, index: number) => {
-      const matches = new RegExp("^" + prefix + "(]|})s*$").exec(l)
+    const closingRegex = new RegExp("^" + prefix + "(]|})s*$")
+    for (let index = 0; index < sourceLines.length; index++) {
+      const l = sourceLines[index]
+      const matches = closingRegex.exec(l)
       if (matches) {
         lastLineIndex = index
-        return false
+        break
       }
-    })
+    }
 
     const useSource: string = sourceLines
       .slice(firstLineIndex, lastLineIndex + 1)
@@ -176,14 +249,20 @@ export class PlanParser {
     // cases where input has been force-wrapped to some length.
     const out: string[] = []
     const lines = text.split(/\r?\n/)
-    const countChar = (str: string, ch: string) => {
-      let count = 0
-      let pos = str.indexOf(ch)
-      while (pos !== -1) {
-        count++
-        pos = str.indexOf(ch, pos + 1)
+    const getBalance = (str: string) => {
+      let balance = 0
+      let posOpen = str.indexOf("(")
+      let posClose = str.indexOf(")")
+      while (posOpen !== -1 || posClose !== -1) {
+        if (posOpen !== -1 && (posClose === -1 || posOpen < posClose)) {
+          balance++
+          posOpen = str.indexOf("(", posOpen + 1)
+        } else {
+          balance--
+          posClose = str.indexOf(")", posClose + 1)
+        }
       }
-      return count
+      return balance
     }
     const closingFirst = (str: string) => {
       const closingParIndex = str.indexOf(")")
@@ -195,21 +274,22 @@ export class PlanParser {
       return line1.search(/\S/) == line2.search(/\S/)
     }
 
-    _.each(lines, (line: string) => {
+    let currentBalance = 0
+    lines.forEach((line: string) => {
+      const lineBalance = getBalance(line)
       const previousLine = out[out.length - 1]
-      if (
-        previousLine &&
-        countChar(previousLine, ")") != countChar(previousLine, "(")
-      ) {
+      if (previousLine && currentBalance !== 0) {
         // if number of opening/closing parenthesis doesn't match in the
         // previous line, this means the current line is the continuation of previous line
         out[out.length - 1] += line
+        currentBalance += lineBalance
       } else if (
         line.match(
           /^(?:Total\s+runtime|Planning(\s+time)?|Execution\s+time|Time|Filter|Output|JIT|Trigger|Settings)/i,
         )
       ) {
         out.push(line)
+        currentBalance = lineBalance
       } else if (
         line.match(/^\S/) || // doesn't start with a blank space (allowed only for the first node)
         line.match(/^\s*\(/) || // first non-blank character is an opening parenthesis
@@ -217,12 +297,14 @@ export class PlanParser {
       ) {
         if (0 < out.length) {
           out[out.length - 1] += line
+          currentBalance += lineBalance
         } else {
           out.push(line)
+          currentBalance = lineBalance
         }
       } else if (
         0 < out.length &&
-        previousLine.match(/^.*,\s*$/) &&
+        previousLine.trimEnd().endsWith(",") &&
         !sameIndent(previousLine, line) &&
         !line.match(/^\s*->/i)
       ) {
@@ -231,8 +313,10 @@ export class PlanParser {
         // and current line is not same indent
         // (which would mean a new information line)
         out[out.length - 1] += line
+        currentBalance += lineBalance
       } else {
         out.push(line)
+        currentBalance = lineBalance
       }
     })
     return out
@@ -244,30 +328,7 @@ export class PlanParser {
     const root: IPlanContent = {} as IPlanContent
     type ElementAtDepth = [number, NodeElement]
     // Array to keep reference to previous nodes with there depth
-    const elementsAtDepth: ElementAtDepth[] = []
-
-    const indentationRegex = /^\s*/
-    const emptyLineRegex = /^s*$/
-    const headerRegex = /^\\s*(QUERY|---|#).*$/
-
-    const prefixPattern = "^(\\s*->\\s*|\\s*)"
-    const partialPattern = "(Finalize|Simple|Partial)*"
-    const typePattern = "(.*?)"
-    // tslint:disable-next-line:max-line-length
-    // MySQL cost: (cost=10.0 rows=5)
-    // We make the second cost and width optional.
-    // Modified to support integer costs and scientific notation in rows/costs
-    const numberPattern = "\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
-    const estimationPattern = `\\(cost=(${numberPattern})(?:\\.\\.(${numberPattern}))?\\s+rows=(${numberPattern})(?:\\s+width=(\\d+))?\\)`
-    const nonCapturingGroupOpen = "(?:"
-    const nonCapturingGroupClose = ")"
-    const openParenthesisPattern = "\\("
-    const closeParenthesisPattern = "\\)"
-
-    // MySQL actual: (actual time=0.123..4.567 rows=100 loops=1)
-    const actualPattern =
-      "(?:actual(?:\\stime=(\\d+(?:\\.\\d+)?)\\.\\.(\\d+(?:\\.\\d+)?))?\\srows=(\\d+(?:\\.\\d+)?)\\sloops=(\\d+)|(never\\s+executed))"
-    const optionalGroup = "?"
+    let elementsAtDepth: ElementAtDepth[] = []
 
     // tslint:disable-next-line:max-line-length
     const subRegex =
@@ -275,54 +336,7 @@ export class PlanParser {
 
     const cteRegex = /^(\s*)CTE\s+(\S+)\s*$/g
 
-    const triggerRegex =
-      /^(\s*)Trigger\s+(.*):\s+time=(\d+\.\d+)\s+calls=(\d+)\s*$/
-
-    const workerRegex = new RegExp(
-      "^(\\s*)Worker\\s+(\\d+):\\s+" +
-        nonCapturingGroupOpen +
-        actualPattern +
-        nonCapturingGroupClose +
-        optionalGroup +
-        "(.*)" +
-        "\\s*$",
-    )
-
-    const extraRegex = /^(\s*)(\S.*\S)\s*$/
-
-    const nodeRegex = new RegExp(
-      prefixPattern +
-        partialPattern +
-        "\\s*" +
-        typePattern +
-        "\\s*" +
-        nonCapturingGroupOpen +
-        // Option 1: Both Cost AND Actual
-        (nonCapturingGroupOpen +
-          estimationPattern +
-          "\\s+" +
-          openParenthesisPattern +
-          actualPattern +
-          closeParenthesisPattern +
-          nonCapturingGroupClose) +
-        "|" +
-        // Option 2: Only Cost
-        nonCapturingGroupOpen +
-        estimationPattern +
-        nonCapturingGroupClose +
-        "|" +
-        // Option 3: Only Actual
-        nonCapturingGroupOpen +
-        openParenthesisPattern +
-        actualPattern +
-        closeParenthesisPattern +
-        nonCapturingGroupClose +
-        nonCapturingGroupClose +
-        "\\s*$",
-      "m",
-    )
-
-    _.each(lines, (line: string) => {
+    lines.forEach((line: string) => {
       // Remove any trailing "
       line = line.replace(/"\s*$/, "")
       // Remove any begining "
@@ -356,12 +370,8 @@ export class PlanParser {
         const newNode: Node = new Node(nodeMatches[NodeMatch.Type])
 
         // Cost values from Branch 1 or Branch 2
-        // Note: For MySQL, EstimatedTotalCost1/2 might be undefined if we only matched start cost.
-        // We logic needs to handle that `cost=10` maps to TotalCost?
-        // In regex: (cost=10) -> group1=10, group2=undefined
-        // If we want `total cost` to be 10, we should put it there.
-        // Usually strict PG cost=0..10.
-        // If MySQL cost=10, we probably want that as Total Cost.
+        // Note: For MySQL, a single cost value (e.g. `cost=10`) is captured as EstimatedStartupCost.
+        // The logic below ensures that if only one cost is present, it is assigned to Total Cost.
 
         const startupCost1 = nodeMatches[NodeMatch.EstimatedStartupCost1]
         const totalCost1 = nodeMatches[NodeMatch.EstimatedTotalCost1]
@@ -461,13 +471,13 @@ export class PlanParser {
         }
 
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => {
-          return e[0] >= depth
-        })
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
 
         // ! is for non-null assertion
         // Prevents the "Object is possibly 'undefined'" linting error
-        const previousElement = _.last(elementsAtDepth)?.[1] as NodeElement
+        const previousElement = elementsAtDepth[
+          elementsAtDepth.length - 1
+        ]?.[1] as NodeElement
 
         if (!previousElement) {
           return
@@ -490,8 +500,8 @@ export class PlanParser {
         //const prefix = subMatches[1]
         const type = subMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        const previousElement = _.last(elementsAtDepth)?.[1]
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
           subelementType: type.toLowerCase(),
@@ -502,8 +512,8 @@ export class PlanParser {
         //const prefix = cteMatches[1]
         const cteName = cteMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
-        const previousElement = _.last(elementsAtDepth)?.[1]
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
           subelementType: "initplan",
@@ -513,17 +523,31 @@ export class PlanParser {
       } else if (workerMatches) {
         //const prefix = workerMatches[1]
         const workerNumber = parseInt(workerMatches[WorkerMatch.Number], 0)
-        const previousElement = _.last(elementsAtDepth)?.[1] as NodeElement
+        const previousElement = elementsAtDepth[
+          elementsAtDepth.length - 1
+        ]?.[1] as NodeElement
         if (!previousElement) {
           return
         }
         if (!previousElement.node[NodeProp.WORKERS]) {
           previousElement.node[NodeProp.WORKERS] = [] as Worker[]
         }
-        let worker = this.getWorker(previousElement.node, workerNumber)
+
+        // Initialize workerMap if needed for O(1) lookup
+        if (!previousElement.workerMap) {
+          previousElement.workerMap = new Map<number, Worker>()
+          // Populate map from existing workers array to ensure consistency
+          previousElement.node[NodeProp.WORKERS]?.forEach((w) => {
+            const num = w[WorkerProp.WORKER_NUMBER] as number
+            previousElement.workerMap!.set(num, w)
+          })
+        }
+
+        let worker = previousElement.workerMap.get(workerNumber)
         if (!worker) {
           worker = new Worker(workerNumber)
           previousElement.node[NodeProp.WORKERS]?.push(worker)
+          previousElement.workerMap.set(workerNumber, worker)
         }
         if (
           workerMatches[WorkerMatch.ActualTimeFirst] &&
@@ -553,12 +577,12 @@ export class PlanParser {
           if (!info[1]) {
             return
           }
-          const property = _.startCase(info[0])
+          const property = startCase(info[0])
           worker[property] = info[1]
         }
       } else if (triggerMatches) {
         // Remove elements from elementsAtDepth for deeper levels
-        _.remove(elementsAtDepth, (e) => e[0] >= depth)
+        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
         // Ignoring triggers as they are PG specific usually
       } else if (extraMatches) {
         //const prefix = extraMatches[1]
@@ -567,13 +591,16 @@ export class PlanParser {
         // Depth == 1 is a special case here. Global info (for example
         // execution|planning time) have a depth of 1 but shouldn't be removed
         // in case first node was at depth 0.
-        _.remove(elementsAtDepth, (e) => e[0] >= depth || depth == 1)
+        elementsAtDepth = elementsAtDepth.filter(
+          (e) => !(e[0] >= depth || depth == 1),
+        )
 
         let element
         if (elementsAtDepth.length === 0) {
           element = root
         } else {
-          element = _.last(elementsAtDepth)?.[1].node as Node
+          element = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
+            .node as Node
         }
 
         // if no node have been found yet and a 'Query Text' has been found
@@ -604,7 +631,7 @@ export class PlanParser {
           property.indexOf(" runtime") !== -1 ||
           property.indexOf(" time") !== -1
         ) {
-          property = _.startCase(property)
+          property = startCase(property)
         }
         element[property] = value
       }
@@ -613,11 +640,5 @@ export class PlanParser {
       throw new Error("Unable to parse plan")
     }
     return root
-  }
-
-  private getWorker(node: Node, workerNumber: number): Worker | undefined {
-    return _.find(node[NodeProp.WORKERS], (worker) => {
-      return worker[WorkerProp.WORKER_NUMBER] === workerNumber
-    })
   }
 }

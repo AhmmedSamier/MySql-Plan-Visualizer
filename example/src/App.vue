@@ -29,6 +29,18 @@ const routes: Record<string, Component> = {
 const base = import.meta.env.BASE_URL || "/"
 
 function getNormalizedPath(pathname: string): string {
+  // Check for path in query string (preferred for GH Pages refresh support)
+  const params = new URLSearchParams(window.location.search)
+  const p = params.get("p")
+  if (p) {
+    return p.startsWith("/") ? p : "/" + p
+  }
+
+  // Fallback for file protocol
+  if (window.location.protocol === "file:") {
+    return "/"
+  }
+
   const base = import.meta.env.BASE_URL || "/"
   const baseNoTrailing = base.replace(/\/$/, "")
 
@@ -151,7 +163,12 @@ let handlePopState: () => void
 
 onMounted(async () => {
   handlePopState = () => {
-    currentPath.value = getNormalizedPath(window.location.pathname)
+    // Only update path if we are NOT on file protocol.
+    // On file protocol, pathname is the absolute file path which doesn't change
+    // and would break our logical routing (e.g. /plan)
+    if (window.location.protocol !== "file:") {
+      currentPath.value = getNormalizedPath(window.location.pathname)
+    }
   }
   window.addEventListener("popstate", handlePopState)
 
@@ -161,19 +178,36 @@ onMounted(async () => {
 watch(
   () => currentPath.value,
   async (newPath) => {
-    const base = import.meta.env.BASE_URL || "/"
-    const baseNoTrailing = base.replace(/\/$/, "")
     const normalizedIdPath = newPath.startsWith("/") ? newPath : "/" + newPath
+    const isFile = window.location.protocol === "file:"
+    const effectiveBase = isFile ? window.location.pathname : base
+    const effectiveBaseNoTrailing = effectiveBase.replace(/\/$/, "")
 
-    let targetPath = ""
-    if (normalizedIdPath === "/") {
-      targetPath = base
-    } else {
-      targetPath = baseNoTrailing + normalizedIdPath
+    let targetUrl = effectiveBase
+    if (normalizedIdPath !== "/") {
+      // Use query parameter to preserve routing on refresh
+      const separator = effectiveBase.includes("?") ? "&" : "?"
+      targetUrl =
+        effectiveBaseNoTrailing +
+        (isFile ? "" : "/") +
+        separator +
+        "p=" +
+        encodeURIComponent(normalizedIdPath)
     }
 
-    if (window.location.pathname !== targetPath) {
-      window.history.pushState({}, "", targetPath)
+    // Update URL if it changed
+    const currentFullUrl = window.location.pathname + window.location.search
+    if (currentFullUrl !== targetUrl) {
+      try {
+        window.history.pushState({}, "", targetUrl)
+      } catch (e) {
+        console.warn(
+          "Failed to push state (likely browser security restriction):",
+          e,
+        )
+        // Fallback for file:// if pushState fails: use hash if path is needed?
+        // But let's at least try the query update first.
+      }
     }
 
     // If path changed externally (e.g. popstate), load the data

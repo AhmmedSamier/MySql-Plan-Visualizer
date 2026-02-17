@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
+import { describe, it, expect, afterEach } from "vitest"
 import { compressPlanToUrl } from "../share-service"
-import type { IPlan, IPlanContent } from "@/interfaces"
 
 // Polyfill window for environments where it is not defined (e.g. bun test without jsdom)
 if (typeof window === "undefined") {
-  global.window = {
+  const globalWithWindow = globalThis as typeof globalThis & {
+    window?: Window & typeof globalThis
+  }
+  globalWithWindow.window = {
     location: {
       origin: "http://localhost",
       pathname: "/",
@@ -12,11 +14,23 @@ if (typeof window === "undefined") {
   } as Window & typeof globalThis
 }
 
+const env = import.meta as unknown as {
+  env?: {
+    BASE_URL?: string
+    [key: string]: string | undefined
+  }
+}
+
+const originalBaseUrl = env.env?.BASE_URL
+
 describe("share-service", () => {
   const originalLocation = window.location
 
   afterEach(() => {
-    vi.unstubAllEnvs()
+    if (!env.env) {
+      env.env = {}
+    }
+    env.env.BASE_URL = originalBaseUrl
     Object.defineProperty(window, "location", {
       configurable: true,
       enumerable: true,
@@ -25,7 +39,10 @@ describe("share-service", () => {
   })
 
   const setupBase = (base: string) => {
-    vi.stubEnv("BASE_URL", base)
+    if (!env.env) {
+      env.env = {}
+    }
+    env.env.BASE_URL = base
   }
 
   const setupLocation = (pathname: string) => {
@@ -46,73 +63,73 @@ describe("share-service", () => {
     new Date().toISOString(),
   ]
 
-  it("handles root path", () => {
+  it("handles root path", async () => {
     setupBase("/")
     setupLocation("/")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/plan#plan=")
   })
 
-  it("handles subdirectory path", () => {
+  it("handles subdirectory path", async () => {
     setupBase("/subdir/")
     setupLocation("/subdir/")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
-  it("handles subdirectory path without trailing slash", () => {
+  it("handles subdirectory path without trailing slash", async () => {
     setupBase("/subdir")
     setupLocation("/subdir")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
-  it("handles index.html path", () => {
+  it("handles index.html path", async () => {
     setupBase("/dist/index.html")
     setupLocation("/dist/index.html")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/dist/index.html#plan=")
   })
 
-  it("strips path from root", () => {
+  it("strips path from root", async () => {
     setupBase("/")
     setupLocation("/plan/123")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/plan#plan=")
   })
 
-  it("strips path from subdirectory", () => {
+  it("strips path from subdirectory", async () => {
     setupBase("/subdir/")
     setupLocation("/subdir/plan/123")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
-  it("strips /compare route", () => {
+  it("strips /compare route", async () => {
     setupBase("/subdir/")
     setupLocation("/subdir/compare/1/2")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
-  it("strips /about route", () => {
+  it("strips /about route", async () => {
     setupBase("/subdir/")
     setupLocation("/subdir/about")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/subdir/plan#plan=")
   })
 
-  it("does NOT strip partial matches like /planning", () => {
+  it("does NOT strip partial matches like /planning", async () => {
     setupBase("/planning/")
     setupLocation("/planning")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/planning/plan#plan=")
   })
 
-  it("does NOT strip partial matches in subdirectory like /subdir/planning", () => {
+  it("does NOT strip partial matches in subdirectory like /subdir/planning", async () => {
     setupBase("/subdir/planning/")
     setupLocation("/subdir/planning")
-    const url = compressPlanToUrl(plan)
+    const url = await compressPlanToUrl(plan)
     expect(url).toContain("http://test.com/subdir/planning/plan#plan=")
   })
 })

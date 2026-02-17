@@ -1,5 +1,5 @@
 import { ref, computed, nextTick, type Ref } from "vue"
-import * as d3 from "d3"
+import { scaleLinear, zoom, zoomIdentity, select, path } from "d3"
 import {
   flextree,
   type FlexHierarchyPointLink,
@@ -8,7 +8,7 @@ import {
 import _ from "lodash"
 import type { Store } from "@/store"
 import { NodeProp, Orientation } from "@/enums"
-import type { Node } from "@/interfaces"
+import type { Node, IPlan } from "@/interfaces"
 
 // Vertical padding between 2 nodes in the tree layout
 const padding = 40
@@ -24,6 +24,19 @@ export function usePlanLayout(
   const layoutRootNode = ref<null | FlexHierarchyPointNode<Node>>(null)
   const ctes = ref<FlexHierarchyPointNode<Node>[]>([])
   const toCteLinks = ref<FlexHierarchyPointLink<Node>[]>([])
+  const nodeMap = new Map<number, FlexHierarchyPointNode<Node>>()
+
+  function populateNodeMap() {
+    nodeMap.clear()
+    layoutRootNode.value?.each((node) => {
+      nodeMap.set(node.data.nodeId, node)
+    })
+    _.each(ctes.value, (tree) => {
+      tree.each((node) => {
+        nodeMap.set(node.data.nodeId, node)
+      })
+    })
+  }
 
   const layout = flextree({
     nodeSize: (node: FlexHierarchyPointNode<Node>) => {
@@ -35,22 +48,20 @@ export function usePlanLayout(
     spacing: (
       nodeA: FlexHierarchyPointNode<Node>,
       nodeB: FlexHierarchyPointNode<Node>,
-    ) => Math.pow(nodeA.path(nodeB).length, 1.5),
+    ) => (nodeA.parent === nodeB.parent ? 2.82842712475 : 8),
   })
 
-  const tree = ref(layout.hierarchy({}))
+  const tree = ref<FlexHierarchyPointNode<Node>>(layout.hierarchy({} as Node))
 
   const edgeWeight = computed(() => {
-    return d3
-      .scaleLinear()
+    return scaleLinear()
       .domain([0, store.stats.maxRows])
       .range([1, padding / 1.5])
   })
 
   const minScale = 0.2
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const zoomListener: any = d3
-    .zoom()
+  const zoomListener: any = zoom()
     .scaleExtent([minScale, 3])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .on("zoom", function (e: any) {
@@ -66,11 +77,21 @@ export function usePlanLayout(
     return layoutRootNode.value?.links() || []
   })
 
+  const cteGraphs = computed(() => {
+    return ctes.value.map((cte) => ({
+      cte,
+      key: cte.data.nodeId,
+      links: cte.links(),
+      descendants: cte.descendants(),
+      extent: getLayoutExtent(cte),
+    }))
+  })
+
   function initZoom() {
     if (!planEl.value) {
       return
     }
-    d3.select(planEl.value.$el).call(zoomListener)
+    select(planEl.value.$el).call(zoomListener)
     nextTick(() => {
       fitToScreen()
     })
@@ -79,17 +100,18 @@ export function usePlanLayout(
   function getLayoutExtent(
     layoutRootNode: FlexHierarchyPointNode<Node>,
   ): [number, number, number, number] {
+    const descendants = layoutRootNode.descendants()
     if (viewOptions.orientation === Orientation.LeftToRight) {
       const minX =
         _.min(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             return childNode.x
           }),
         ) || 0
 
       const maxX =
         _.max(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             // Width is ySize - padding
             return childNode.x + (childNode.ySize - padding)
           }),
@@ -97,7 +119,7 @@ export function usePlanLayout(
 
       const minY =
         _.min(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             // Height is xSize. centered at y.
             return childNode.y - childNode.xSize / 2
           }),
@@ -105,7 +127,7 @@ export function usePlanLayout(
 
       const maxY =
         _.max(
-          _.map(layoutRootNode.descendants(), (childNode) => {
+          _.map(descendants, (childNode) => {
             return childNode.y + childNode.xSize / 2
           }),
         ) || 0
@@ -114,28 +136,28 @@ export function usePlanLayout(
 
     const minX =
       _.min(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.x - childNode.xSize / 2
         }),
       ) || 0
 
     const maxX =
       _.max(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.x + childNode.xSize / 2
         }),
       ) || 0
 
     const minY =
       _.min(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.y
         }),
       ) || 0
 
     const maxY =
       _.max(
-        _.map(layoutRootNode.descendants(), (childNode) => {
+        _.map(descendants, (childNode) => {
           return childNode.y + childNode.ySize
         }),
       ) || 0
@@ -210,6 +232,8 @@ export function usePlanLayout(
         }
       })
     })
+
+    populateNodeMap()
   }
 
   function fitToScreen() {
@@ -237,48 +261,46 @@ export function usePlanLayout(
     let sx, sy, px, py
 
     if (viewOptions.orientation === Orientation.LeftToRight) {
-      // Center vertically, Align Left
       sx = 20
       sy = rect.height / 2
       px = x0
       py = (y0 + y1) / 2
     } else {
-      // Center horizontally, Align Top
       sx = rect.width / 2
-      sy = 20
+      sy = rect.height / 2
       px = (x0 + x1) / 2
-      py = y0
+      py = (y0 + y1) / 2
     }
 
-    d3.select(planEl.value.$el)
+    select(planEl.value.$el)
       .transition()
       .call(
         zoomListener.transform,
-        d3.zoomIdentity.translate(sx, sy).scale(s).translate(-px, -py),
+        zoomIdentity.translate(sx, sy).scale(s).translate(-px, -py),
       )
   }
 
   function zoomIn() {
     if (planEl.value) {
-      d3.select(planEl.value.$el).transition().call(zoomListener.scaleBy, 1.2)
+      select(planEl.value.$el).transition().call(zoomListener.scaleBy, 1.2)
     }
   }
 
   function zoomOut() {
     if (planEl.value) {
-      d3.select(planEl.value.$el).transition().call(zoomListener.scaleBy, 0.8)
+      select(planEl.value.$el).transition().call(zoomListener.scaleBy, 0.8)
     }
   }
 
   function lineGen(link: FlexHierarchyPointLink<Node>) {
     const source = link.source
     const target = link.target
-    const path = d3.path()
+    const p = path()
     if (viewOptions.orientation === Orientation.LeftToRight) {
       const k = Math.abs(target.x - (source.x + source.ySize) - padding)
-      path.moveTo(source.x, source.y)
-      path.lineTo(source.x + source.ySize - padding, source.y)
-      path.bezierCurveTo(
+      p.moveTo(source.x, source.y)
+      p.lineTo(source.x + source.ySize - padding, source.y)
+      p.bezierCurveTo(
         source.x + source.ySize - padding + k / 2,
         source.y,
         target.x - k / 2,
@@ -288,9 +310,9 @@ export function usePlanLayout(
       )
     } else {
       const k = Math.abs(target.y - (source.y + source.ySize) - padding)
-      path.moveTo(source.x, source.y)
-      path.lineTo(source.x, source.y + source.ySize - padding)
-      path.bezierCurveTo(
+      p.moveTo(source.x, source.y)
+      p.lineTo(source.x, source.y + source.ySize - padding)
+      p.bezierCurveTo(
         source.x,
         source.y + source.ySize - padding + k / 2,
         target.x,
@@ -299,34 +321,49 @@ export function usePlanLayout(
         target.y,
       )
     }
-    return path.toString()
+    return p.toString()
   }
 
   function findTreeNode(nodeId: number) {
-    const trees = [layoutRootNode.value].concat(ctes.value)
-    let found: undefined | FlexHierarchyPointNode<Node> = undefined
-    _.each(trees, (tree) => {
-      found = _.find(tree?.descendants(), (o) => o.data.nodeId == nodeId)
-      return !found
-    })
-    return found
+    return nodeMap.get(nodeId)
   }
 
   function centerNode(nodeId: number): void {
+    if (!planEl.value) {
+      return
+    }
     const rect = planEl.value.$el.getBoundingClientRect()
     const treeNode = findTreeNode(nodeId)
     if (!treeNode) {
       return
     }
-    let x = -treeNode["x"]
-    let y = -treeNode["y"]
+
+    const node = treeNode as FlexHierarchyPointNode<Node>
+
+    let cx
+    let cy
+
+    if (viewOptions.orientation === Orientation.LeftToRight) {
+      const width = node.ySize - padding
+      cx = node.x + width / 2
+      cy = node.y
+    } else {
+      const height = node.ySize
+      cx = node.x
+      cy = node.y + height / 2
+    }
+
     const k = scale.value
-    x = x * k + rect.width / 2
-    y = y * k + rect.height / 2
-    d3.select(planEl.value.$el)
+    const x = rect.width / 2
+    const y = rect.height / 2
+
+    select(planEl.value.$el)
       .transition()
       .duration(500)
-      .call(zoomListener.transform, d3.zoomIdentity.translate(x, y).scale(k))
+      .call(
+        zoomListener.transform,
+        zoomIdentity.translate(x, y).scale(k).translate(-cx, -cy),
+      )
   }
 
   function updateNodeSize(node: Node, size: [number, number]) {
@@ -361,7 +398,7 @@ export function usePlanLayout(
     return item.xSize
   }
 
-  function buildTree(plan: any) {
+  function buildTree(plan?: IPlan) {
     if (plan?.content?.Plan) {
       tree.value = layout.hierarchy(plan.content.Plan, (v: Node) => v.Plans)
     }
@@ -383,6 +420,7 @@ export function usePlanLayout(
     tree,
     rootDescendants,
     rootLinks,
+    cteGraphs,
     doLayout,
     initZoom,
     fitToScreen,

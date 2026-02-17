@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, useTemplateRef, type Ref } from "vue"
+import { ref, useTemplateRef, onMounted, type Ref } from "vue"
 import { useDropZone } from "@vueuse/core"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
@@ -17,15 +17,13 @@ const planA = ref<PlanType | null>(null)
 const planB = ref<PlanType | null>(null)
 
 const dropZoneARef = useTemplateRef("dropZoneARef")
-const { isOverDropZone: isOverDropZoneA } = useDropZone(
-  dropZoneARef,
-  (files) => onDrop(files, planAInput),
+const { isOverDropZone: isOverDropZoneA } = useDropZone(dropZoneARef, (files) =>
+  onDrop(files, planAInput),
 )
 
 const dropZoneBRef = useTemplateRef("dropZoneBRef")
-const { isOverDropZone: isOverDropZoneB } = useDropZone(
-  dropZoneBRef,
-  (files) => onDrop(files, planBInput),
+const { isOverDropZone: isOverDropZoneB } = useDropZone(dropZoneBRef, (files) =>
+  onDrop(files, planBInput),
 )
 
 function onDrop(files: File[] | null, input: Ref<string>) {
@@ -56,6 +54,20 @@ function reset() {
   planA.value = null
   planB.value = null
 }
+
+onMounted(() => {
+  const storedA = sessionStorage.getItem("quick_compare_plan_a")
+  const storedB = sessionStorage.getItem("quick_compare_plan_b")
+
+  if (storedA && storedB) {
+    planAInput.value = storedA
+    planBInput.value = storedB
+    compare()
+    // Clear storage
+    sessionStorage.removeItem("quick_compare_plan_a")
+    sessionStorage.removeItem("quick_compare_plan_b")
+  }
+})
 </script>
 
 <template>
@@ -84,8 +96,11 @@ function reset() {
             <div class="card-body p-0">
               <textarea
                 ref="dropZoneARef"
-                :class="['form-control border-0 h-100 p-3', isOverDropZoneA ? 'bg-light-primary' : '']"
-                style="resize: none; min-height: 400px; box-shadow: none;"
+                :class="[
+                  'form-control border-0 h-100 p-3',
+                  isOverDropZoneA ? 'bg-light-primary' : '',
+                ]"
+                style="resize: none; min-height: 400px; box-shadow: none"
                 v-model="planAInput"
                 placeholder="Paste Plan A (JSON/TREE)..."
               ></textarea>
@@ -103,8 +118,11 @@ function reset() {
             <div class="card-body p-0">
               <textarea
                 ref="dropZoneBRef"
-                :class="['form-control border-0 h-100 p-3', isOverDropZoneB ? 'bg-light-primary' : '']"
-                style="resize: none; min-height: 400px; box-shadow: none;"
+                :class="[
+                  'form-control border-0 h-100 p-3',
+                  isOverDropZoneB ? 'bg-light-primary' : '',
+                ]"
+                style="resize: none; min-height: 400px; box-shadow: none"
                 v-model="planBInput"
                 placeholder="Paste Plan B (JSON/TREE)..."
               ></textarea>
