@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
+import { describe, it, expect, afterEach } from "vitest"
 import { compressPlanToUrl } from "../share-service"
 
 // Polyfill window for environments where it is not defined (e.g. bun test without jsdom)
 if (typeof window === "undefined") {
-  global.window = {
+  ;(globalThis as any).window = {
     location: {
       origin: "http://localhost",
       pathname: "/",
@@ -11,11 +11,23 @@ if (typeof window === "undefined") {
   } as Window & typeof globalThis
 }
 
+const env = import.meta as unknown as {
+  env?: {
+    BASE_URL?: string
+    [key: string]: string | undefined
+  }
+}
+
+const originalBaseUrl = env.env?.BASE_URL
+
 describe("share-service", () => {
   const originalLocation = window.location
 
   afterEach(() => {
-    vi.unstubAllEnvs()
+    if (!env.env) {
+      env.env = {}
+    }
+    env.env.BASE_URL = originalBaseUrl
     Object.defineProperty(window, "location", {
       configurable: true,
       enumerable: true,
@@ -24,7 +36,10 @@ describe("share-service", () => {
   })
 
   const setupBase = (base: string) => {
-    vi.stubEnv("BASE_URL", base)
+    if (!env.env) {
+      env.env = {}
+    }
+    env.env.BASE_URL = base
   }
 
   const setupLocation = (pathname: string) => {
