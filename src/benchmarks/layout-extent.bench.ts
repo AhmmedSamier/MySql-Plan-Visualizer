@@ -44,10 +44,10 @@ function createTree(count: number) {
   }
 
   // Build a tree
-  let currentLayer = [root]
+  let currentLayer: any[] = [root]
   let created = 1
   while (created < count) {
-    const nextLayer = []
+    const nextLayer: any[] = []
     for (const node of currentLayer) {
       // Add 2 children
       for (let i = 0; i < 2; i++) {

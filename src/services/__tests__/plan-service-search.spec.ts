@@ -6,7 +6,7 @@ import type { IPlanContent } from "@/interfaces"
 describe("PlanService Search Optimization", () => {
   test("calculates SEARCH_STRING during plan creation", () => {
     const planService = new PlanService()
-    const planContent: IPlanContent = {
+    const planContent = {
       Plan: {
         [NodeProp.NODE_TYPE]: "Index Scan",
         [NodeProp.RELATION_NAME]: "users",
@@ -18,7 +18,7 @@ describe("PlanService Search Optimization", () => {
         [NodeProp.TOTAL_COST]: 100,
         [NodeProp.PLANS]: [],
       },
-    }
+    } as unknown as IPlanContent
 
     const plan = planService.createPlan("test plan", planContent, "SELECT * FROM users")
     const node = plan.content.Plan
@@ -35,7 +35,7 @@ describe("PlanService Search Optimization", () => {
 
   test("calculates SEARCH_STRING correctly for CTEs", () => {
       const planService = new PlanService()
-      const planContent: IPlanContent = {
+      const planContent = {
         Plan: {
           [NodeProp.NODE_TYPE]: "Result",
           [NodeProp.TOTAL_COST]: 100,
@@ -51,7 +51,7 @@ describe("PlanService Search Optimization", () => {
               }
           ],
         },
-      }
+      } as unknown as IPlanContent
 
       const plan = planService.createPlan("cte plan", planContent, "WITH my_cte AS ... SELECT * FROM my_cte")
       // CTEs are extracted to plan.ctes
