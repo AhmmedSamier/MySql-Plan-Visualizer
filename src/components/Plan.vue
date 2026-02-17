@@ -55,22 +55,7 @@ import { compressPlanToUrl, copyToClipboard } from "@/services/share-service"
 
 import { usePlanLayout } from "@/composables/usePlanLayout"
 
-import { useDark } from "@vueuse/core"
-
-const isDark = useDark({
-  selector: "html",
-  attribute: "data-theme",
-  valueDark: "dark",
-  valueLight: "light",
-})
-
-watch(
-  isDark,
-  () => {
-    setDefaultProps({ theme: "light" })
-  },
-  { immediate: true },
-)
+setDefaultProps({ theme: "light" })
 
 import "tippy.js/dist/tippy.css"
 import "tippy.js/themes/light.css"
