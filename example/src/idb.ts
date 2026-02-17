@@ -7,7 +7,7 @@ let DB: IDBDatabase | null = null
 const indexedDBFactory: IDBFactory | undefined =
   typeof window !== "undefined"
     ? window.indexedDB
-    : (globalThis as any).indexedDB
+    : (globalThis as { indexedDB?: IDBFactory }).indexedDB
 
 function deepEqual<T>(a: T, b: T): boolean {
   return JSON.stringify(a) === JSON.stringify(b)

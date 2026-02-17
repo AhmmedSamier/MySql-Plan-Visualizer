@@ -4,7 +4,6 @@ import _ from "lodash"
 // Mock Node interface
 interface Node {
   nodeId: number
-  [key: string]: any
 }
 
 // Mock FlexHierarchyPointNode interface

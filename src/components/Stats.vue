@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import _ from "lodash"
 import { computed, inject } from "vue"
 import type { Node, StatsTableItemType } from "@/interfaces"
 import { NodeProp, SortDirection } from "@/enums"

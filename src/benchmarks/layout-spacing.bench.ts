@@ -3,13 +3,14 @@ import { usePlanLayout } from "@/composables/usePlanLayout"
 import { Orientation } from "@/enums"
 import { ref } from "vue"
 import type { IPlan } from "@/interfaces"
+import type { Store } from "@/store"
 
 // Mock store
-const store: any = {
+const store = {
   stats: {
     maxRows: 1000,
   },
-}
+} as unknown as Store
 
 // Mock viewOptions
 const viewOptions = {
@@ -18,27 +19,44 @@ const viewOptions = {
 
 // Mock planEl
 const planEl = ref({
-    $el: {
-        getBoundingClientRect: () => ({ width: 1000, height: 1000 })
-    }
+  $el: {
+    getBoundingClientRect: () => ({ width: 1000, height: 1000 }),
+  },
 })
 
 // Instantiate composable
 const { buildTree } = usePlanLayout(planEl, viewOptions, store)
 
+interface MockNode {
+  NodeType: string
+  "Node Type": string
+  "Actual Rows": number
+  "Actual Total Time": number
+  size: [number, number]
+  nodeId: number
+  Plans: MockNode[]
+}
+
+interface MockPlan {
+  content: {
+    Plan: MockNode
+  }
+  ctes: MockNode[]
+}
+
 // Mock Plan structure
-function createPlan(depth: number, breadth: number) {
+function createPlan(depth: number, breadth: number): MockPlan {
   let idCounter = 0
 
-  function createNode(currentDepth: number): any {
-    const node: any = {
+  function createNode(currentDepth: number): MockNode {
+    const node: MockNode = {
       NodeType: "Mock Node",
       "Node Type": "Mock Node",
       "Actual Rows": 1,
       "Actual Total Time": 1,
       size: [100, 50],
       nodeId: idCounter++,
-      Plans: []
+      Plans: [],
     }
 
     if (currentDepth < depth) {
@@ -49,12 +67,13 @@ function createPlan(depth: number, breadth: number) {
     return node
   }
 
-  return {
+  const plan: MockPlan = {
     content: {
-      Plan: createNode(0)
+      Plan: createNode(0),
     },
-    ctes: []
+    ctes: [],
   }
+  return plan
 }
 
 const mediumPlan = createPlan(5, 4) // 4^5 nodes approx 1024 + ...

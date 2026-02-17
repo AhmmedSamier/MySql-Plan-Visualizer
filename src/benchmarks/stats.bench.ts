@@ -21,70 +21,86 @@ const createMockNodes = (count: number) => {
 const nodes = createMockNodes(10000)
 const executionTime = 1000
 
+interface StatsGroupItem {
+  name: string
+  count: number
+  time: number
+  nodes: Node[]
+  timePercent: number
+}
+
 describe("Stats Calculation", () => {
   bench("Original Implementation", () => {
-    const perTable = (() => {
+    ;(() => {
       const tables: { [key: string]: Node[] } = _.groupBy(
         _.filter(nodes, (n) => n[NodeProp.RELATION_NAME] !== undefined),
         NodeProp.RELATION_NAME,
       )
-      const values: any[] = []
+      const values: StatsGroupItem[] = []
       _.each(tables, (nodes, tableName) => {
+        const time = _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION)
         values.push({
           name: tableName,
           count: nodes.length,
-          time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+          time,
+          timePercent: time / executionTime,
           nodes,
         })
       })
       return values
     })()
 
-    const perFunction = (() => {
+    ;(() => {
       const functions: { [key: string]: Node[] } = _.groupBy(
         _.filter(nodes, (n) => n[NodeProp.FUNCTION_NAME] !== undefined),
         NodeProp.FUNCTION_NAME,
       )
-      const values: any[] = []
+      const values: StatsGroupItem[] = []
       _.each(functions, (nodes, functionName) => {
+        const time = _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION)
         values.push({
           name: functionName,
           count: nodes.length,
-          time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+          time,
+          timePercent: time / executionTime,
           nodes,
         })
       })
       return values
     })()
 
-    const perNodeType = (() => {
+    ;(() => {
       const nodeTypes: { [key: string]: Node[] } = _.groupBy(
         nodes,
         NodeProp.NODE_TYPE,
       )
-      const values: any[] = []
+      const values: StatsGroupItem[] = []
       _.each(nodeTypes, (nodes, nodeType) => {
+        const time = _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION)
         values.push({
           name: nodeType,
           count: nodes.length,
-          time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+          time,
+          timePercent: time / executionTime,
           nodes,
         })
       })
       return values
     })()
 
-    const perIndex = (() => {
+    ;(() => {
       const indexes: { [key: string]: Node[] } = _.groupBy(
         _.filter(nodes, (n) => n[NodeProp.INDEX_NAME] !== undefined),
         NodeProp.INDEX_NAME,
       )
-      const values: any[] = []
+      const values: StatsGroupItem[] = []
       _.each(indexes, (nodes, indexName) => {
+        const time = _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION)
         values.push({
           name: indexName,
           count: nodes.length,
-          time: _.sumBy(nodes, NodeProp.EXCLUSIVE_DURATION),
+          time,
+          timePercent: time / executionTime,
           nodes,
         })
       })

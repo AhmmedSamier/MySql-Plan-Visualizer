@@ -3,7 +3,10 @@ import { compressPlanToUrl } from "../share-service"
 
 // Polyfill window for environments where it is not defined (e.g. bun test without jsdom)
 if (typeof window === "undefined") {
-  ;(globalThis as any).window = {
+  const globalWithWindow = globalThis as typeof globalThis & {
+    window?: Window & typeof globalThis
+  }
+  globalWithWindow.window = {
     location: {
       origin: "http://localhost",
       pathname: "/",
