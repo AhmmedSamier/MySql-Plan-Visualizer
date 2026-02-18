@@ -471,7 +471,12 @@ export class PlanParser {
         }
 
         // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        while (
+          elementsAtDepth.length > 0 &&
+          elementsAtDepth[elementsAtDepth.length - 1][0] >= depth
+        ) {
+          elementsAtDepth.pop()
+        }
 
         // ! is for non-null assertion
         // Prevents the "Object is possibly 'undefined'" linting error
@@ -500,7 +505,12 @@ export class PlanParser {
         //const prefix = subMatches[1]
         const type = subMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        while (
+          elementsAtDepth.length > 0 &&
+          elementsAtDepth[elementsAtDepth.length - 1][0] >= depth
+        ) {
+          elementsAtDepth.pop()
+        }
         const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
@@ -512,7 +522,12 @@ export class PlanParser {
         //const prefix = cteMatches[1]
         const cteName = cteMatches[2]
         // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        while (
+          elementsAtDepth.length > 0 &&
+          elementsAtDepth[elementsAtDepth.length - 1][0] >= depth
+        ) {
+          elementsAtDepth.pop()
+        }
         const previousElement = elementsAtDepth[elementsAtDepth.length - 1]?.[1]
         const element = {
           node: previousElement?.node as Node,
@@ -582,7 +597,12 @@ export class PlanParser {
         }
       } else if (triggerMatches) {
         // Remove elements from elementsAtDepth for deeper levels
-        elementsAtDepth = elementsAtDepth.filter((e) => !(e[0] >= depth))
+        while (
+          elementsAtDepth.length > 0 &&
+          elementsAtDepth[elementsAtDepth.length - 1][0] >= depth
+        ) {
+          elementsAtDepth.pop()
+        }
         // Ignoring triggers as they are PG specific usually
       } else if (extraMatches) {
         //const prefix = extraMatches[1]
@@ -591,9 +611,16 @@ export class PlanParser {
         // Depth == 1 is a special case here. Global info (for example
         // execution|planning time) have a depth of 1 but shouldn't be removed
         // in case first node was at depth 0.
-        elementsAtDepth = elementsAtDepth.filter(
-          (e) => !(e[0] >= depth || depth == 1),
-        )
+        if (depth === 1) {
+          elementsAtDepth = []
+        } else {
+          while (
+            elementsAtDepth.length > 0 &&
+            elementsAtDepth[elementsAtDepth.length - 1][0] >= depth
+          ) {
+            elementsAtDepth.pop()
+          }
+        }
 
         let element
         if (elementsAtDepth.length === 0) {
