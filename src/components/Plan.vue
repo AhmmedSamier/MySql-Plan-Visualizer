@@ -274,17 +274,14 @@ watch(
 watch(
   () => {
     const data: [number, number][] = []
-    const rootSizes = tree.value
-      .descendants()
-      .map((item: FlexHierarchyPointNode<Node>) => item.data.size)
-    // Avoid spread operator for large arrays
-    rootSizes.forEach((size) => data.push(size))
+    tree.value.descendants().forEach((item: FlexHierarchyPointNode<Node>) => {
+      data.push(item.data.size)
+    })
 
     ctes.value.forEach((tree) => {
-      const cteSizes = tree
-        .descendants()
-        .map((item: FlexHierarchyPointNode<Node>) => item.data.size)
-      cteSizes.forEach((size) => data.push(size))
+      tree.descendants().forEach((item: FlexHierarchyPointNode<Node>) => {
+        data.push(item.data.size)
+      })
     })
     return JSON.stringify(data)
   },
