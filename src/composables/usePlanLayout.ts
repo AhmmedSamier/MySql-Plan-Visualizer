@@ -194,16 +194,21 @@ export function usePlanLayout(
       _.each(ctes.value, (tree) => tree.each(swap))
     }
 
+    // optimized map for CTE lookup
+    const cteMap = new Map<string, FlexHierarchyPointNode<Node>>()
+    _.each(ctes.value, (cte) => {
+      const subplanName = cte.data[NodeProp.SUBPLAN_NAME]
+      if (subplanName && !cteMap.has(subplanName)) {
+        cteMap.set(subplanName, cte)
+      }
+    })
+
     // compute links from node to CTE
     toCteLinks.value = []
     _.each(layoutRootNode.value?.descendants(), (source) => {
       if (_.has(source.data, NodeProp.CTE_NAME)) {
-        const cte = _.find(ctes.value, (cteNode) => {
-          return (
-            cteNode.data[NodeProp.SUBPLAN_NAME] ==
-            "CTE " + source.data[NodeProp.CTE_NAME]
-          )
-        })
+        const cteName = "CTE " + source.data[NodeProp.CTE_NAME]
+        const cte = cteMap.get(cteName)
         if (cte) {
           toCteLinks.value.push({
             source: source,
@@ -217,12 +222,8 @@ export function usePlanLayout(
     _.each(ctes.value, (cte) => {
       _.each(cte.descendants(), (sourceCte) => {
         if (_.has(sourceCte.data, NodeProp.CTE_NAME)) {
-          const targetCte = _.find(ctes.value, (cteNode) => {
-            return (
-              cteNode.data[NodeProp.SUBPLAN_NAME] ==
-              "CTE " + sourceCte.data[NodeProp.CTE_NAME]
-            )
-          })
+          const cteName = "CTE " + sourceCte.data[NodeProp.CTE_NAME]
+          const targetCte = cteMap.get(cteName)
           if (targetCte) {
             toCteLinks.value.push({
               source: sourceCte,
