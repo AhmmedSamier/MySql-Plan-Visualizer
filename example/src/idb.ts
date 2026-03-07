@@ -8,11 +8,6 @@ const indexedDBFactory: IDBFactory | undefined =
   typeof window !== "undefined"
     ? window.indexedDB
     : (globalThis as { indexedDB?: IDBFactory }).indexedDB
-
-function deepEqual<T>(a: T, b: T): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
-}
-
 export default {
   async getDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
@@ -146,22 +141,50 @@ export default {
         return
       }
 
-      const getAllReq = store.getAll()
-      getAllReq.onsuccess = () => {
-        const existingPlans = getAllReq.result as Plan[]
+      // Pre-process input plans to create a map of stringified plans
+      const planMap = new Map<string, number[]>()
+      const plansData = plans.map((plan, index) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const planAny = plan as any
+        if (planAny.id) delete planAny.id
 
-        for (const plan of plans) {
-          if (plan.id) delete plan.id
+        const str = JSON.stringify(plan)
 
-          const isDuplicate = existingPlans.some((existing) => {
-            return deepEqual(existing, plan)
-          })
+        if (!planMap.has(str)) {
+          planMap.set(str, [])
+        }
+        planMap.get(str)!.push(index)
 
-          if (!isDuplicate) {
-            store.add(plan)
-            count++
-          } else {
-            duplicates++
+        return { plan, str, isDuplicate: false }
+      })
+
+      const cursorReq = store.openCursor()
+      cursorReq.onsuccess = (e) => {
+        const cursor = (e.target as IDBRequest).result
+        if (cursor) {
+          const existingPlan = cursor.value
+          const existingStr = JSON.stringify(existingPlan)
+
+          if (planMap.has(existingStr)) {
+            const indices = planMap.get(existingStr)!
+            for (const index of indices) {
+              if (!plansData[index].isDuplicate) {
+                plansData[index].isDuplicate = true
+                duplicates++
+              }
+            }
+            // Mark as found to avoid checking again
+            planMap.delete(existingStr)
+          }
+
+          cursor.continue()
+        } else {
+          // Cursor finished. Insert non-duplicates.
+          for (const item of plansData) {
+            if (!item.isDuplicate) {
+              store.add(item.plan)
+              count++
+            }
           }
         }
       }
