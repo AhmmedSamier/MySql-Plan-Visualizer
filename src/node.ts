@@ -1,13 +1,30 @@
 // Composable for PlanNode and PlanNodeDetail components
 import _ from "lodash"
 import { computed, onBeforeMount, ref, watch } from "vue"
-import type { Node, Worker, ViewOptions } from "@/interfaces"
+import type { Node, ViewOptions } from "@/interfaces"
 import { NodeProp, EstimateDirection, HighlightType } from "@/enums"
 import { cost, duration, factor, formatNodeProp, rows } from "@/filters"
 import { numberToColorHsl } from "@/services/color-service"
 import { StoreKey } from "@/symbols"
 import type { Store } from "@/store"
 import { inject } from "vue"
+
+export function getWorkersLaunchedCount(node: Node): number {
+  if (node[NodeProp.WORKERS_LAUNCHED]) {
+    return node[NodeProp.WORKERS_LAUNCHED] as number
+  }
+  if (node[NodeProp.WORKERS_LAUNCHED_BY_GATHER]) {
+    return node[NodeProp.WORKERS_LAUNCHED_BY_GATHER] as number
+  }
+  const workers = node[NodeProp.WORKERS]
+  if (Array.isArray(workers)) {
+    return workers.length
+  }
+  if (typeof workers === "number") {
+    return workers
+  }
+  return NaN
+}
 
 export default function useNode(node: Node, viewOptions: ViewOptions) {
   const store = inject(StoreKey) as Store
@@ -242,15 +259,7 @@ export default function useNode(node: Node, viewOptions: ViewOptions) {
   })
 
   const workersLaunchedCount = computed((): number => {
-    console.warn("Make sure it works for workers that are not array")
-    if (node[NodeProp.WORKERS_LAUNCHED]) {
-      return node[NodeProp.WORKERS_LAUNCHED] as number
-    }
-    if (node[NodeProp.WORKERS_LAUNCHED_BY_GATHER]) {
-      return node[NodeProp.WORKERS_LAUNCHED_BY_GATHER] as number
-    }
-    const workers = node[NodeProp.WORKERS] as Worker[]
-    return workers ? workers.length : NaN
+    return getWorkersLaunchedCount(node)
   })
 
   const workersPlannedCount = computed((): number => {
