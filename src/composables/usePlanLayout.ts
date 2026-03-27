@@ -101,66 +101,40 @@ export function usePlanLayout(
     layoutRootNode: FlexHierarchyPointNode<Node>,
   ): [number, number, number, number] {
     const descendants = layoutRootNode.descendants()
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+
     if (viewOptions.orientation === Orientation.LeftToRight) {
-      const minX =
-        _.min(
-          _.map(descendants, (childNode) => {
-            return childNode.x
-          }),
-        ) || 0
+      for (const childNode of descendants) {
+        const x = childNode.x
+        const xMax = x + (childNode.ySize - padding)
+        const yMin = childNode.y - childNode.xSize / 2
+        const yMax = childNode.y + childNode.xSize / 2
 
-      const maxX =
-        _.max(
-          _.map(descendants, (childNode) => {
-            // Width is ySize - padding
-            return childNode.x + (childNode.ySize - padding)
-          }),
-        ) || 0
+        if (x < minX) minX = x
+        if (xMax > maxX) maxX = xMax
+        if (yMin < minY) minY = yMin
+        if (yMax > maxY) maxY = yMax
+      }
+    } else {
+      for (const childNode of descendants) {
+        const xMin = childNode.x - childNode.xSize / 2
+        const xMax = childNode.x + childNode.xSize / 2
+        const y = childNode.y
+        const yMax = y + childNode.ySize
 
-      const minY =
-        _.min(
-          _.map(descendants, (childNode) => {
-            // Height is xSize. centered at y.
-            return childNode.y - childNode.xSize / 2
-          }),
-        ) || 0
-
-      const maxY =
-        _.max(
-          _.map(descendants, (childNode) => {
-            return childNode.y + childNode.xSize / 2
-          }),
-        ) || 0
-      return [minX, maxX, minY, maxY]
+        if (xMin < minX) minX = xMin
+        if (xMax > maxX) maxX = xMax
+        if (y < minY) minY = y
+        if (yMax > maxY) maxY = yMax
+      }
     }
 
-    const minX =
-      _.min(
-        _.map(descendants, (childNode) => {
-          return childNode.x - childNode.xSize / 2
-        }),
-      ) || 0
-
-    const maxX =
-      _.max(
-        _.map(descendants, (childNode) => {
-          return childNode.x + childNode.xSize / 2
-        }),
-      ) || 0
-
-    const minY =
-      _.min(
-        _.map(descendants, (childNode) => {
-          return childNode.y
-        }),
-      ) || 0
-
-    const maxY =
-      _.max(
-        _.map(descendants, (childNode) => {
-          return childNode.y + childNode.ySize
-        }),
-      ) || 0
+    if (minX === Infinity) {
+      return [0, 0, 0, 0]
+    }
     return [minX, maxX, minY, maxY]
   }
 
