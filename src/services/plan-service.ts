@@ -124,13 +124,20 @@ export class PlanService {
       plan.content.maxDuration = slowest[NodeProp.EXCLUSIVE_DURATION] as number
     }
 
-    const highestEstimateFactor = _.max(
-      _.map(this.flat, (node) => {
+    const highestEstimateFactor = _.reduce(
+      this.flat,
+      (max, node) => {
         const f = node[NodeProp.PLANNER_ESTIMATE_FACTOR]
-        if (f !== Infinity) {
+        if (
+          f !== undefined &&
+          f !== Infinity &&
+          (max === undefined || f > max)
+        ) {
           return f
         }
-      }),
+        return max
+      },
+      undefined as number | undefined,
     ) as number
     plan.content.maxEstimateFactor = highestEstimateFactor * 2 || 1
   }
